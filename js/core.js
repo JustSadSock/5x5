@@ -10,6 +10,7 @@
   let usedAtk = { A: 0, B: 0 }, usedShield = { A: 0, B: 0 };
   let simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
   let units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
+  let score = { A: 0, B: 0 };
 
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -26,6 +27,32 @@
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
   const atkOv = document.getElementById('atkOverlay');
+  const scoreA = document.getElementById('scoreA');
+  const scoreB = document.getElementById('scoreB');
+  const scoreReset = document.getElementById('scoreReset');
+
+  let audioCtx;
+
+  function playSound(type) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    const freq = { move: 440, attack: 660, shield: 330, win: 880 }[type] || 440;
+    osc.frequency.value = freq; gain.gain.value = 0.3;
+    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+  }
+
+  function updateScore() {
+    scoreA.textContent = score.A;
+    scoreB.textContent = score.B;
+  }
+
+  scoreReset.onclick = () => {
+    score = { A: 0, B: 0 };
+    updateScore();
+  };
 
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
@@ -40,6 +67,7 @@
     board.style.visibility = 'visible';
     ui.style.visibility = 'visible';
     buildBoard(); bindUI(); render(); updateUI();
+    updateScore();
   }
 
   function buildBoard() {
@@ -67,6 +95,23 @@
     });
     btnDel.onclick = () => { if (phase.startsWith('plan')) deleteLast(); };
     btnNext.onclick = () => nextStep();
+
+    document.addEventListener('keydown', e => {
+      if (atkOv.style.visibility === 'visible') return;
+      const map = {
+        ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+        a: 'attack', s: 'shield'
+      };
+      if (map[e.key]) {
+        const btn = acts.find(b => b.dataset.act === map[e.key]);
+        if (btn && !btn.disabled) btn.click();
+        e.preventDefault();
+      } else if (e.key === 'Backspace') {
+        if (phase.startsWith('plan')) btnDel.click();
+      } else if (e.key === 'Enter') {
+        btnNext.click();
+      }
+    });
   }
 
   function openAttack(P) {
@@ -273,6 +318,7 @@
       if (typeof r === 'string' && DXY[r]) {
         units[pl].x = Math.max(0, Math.min(4, units[pl].x + DXY[r][0]));
         units[pl].y = Math.max(0, Math.min(4, units[pl].y + DXY[r][1]));
+        playSound('move');
       }
     });
     render();
@@ -291,6 +337,7 @@
           ov2.className = 'attack'; cell2.append(ov2);
           if (!sh && units[other].x === nx && units[other].y === ny) units[other].alive = false;
         });
+        playSound('attack');
       }
     });
     ['A', 'B'].forEach(pl => {
@@ -298,6 +345,7 @@
       if (r === 'shield') {
         const u = units[pl], ov = document.createElement('div');
         ov.className = 'shield'; document.getElementById(`c${u.x}${u.y}`).append(ov);
+        playSound('shield');
       }
     });
     render();
@@ -311,6 +359,7 @@
     if (sim || win) {
       const txt = sim ? 'Смерть с обеих сторон: ничья.' :
         win === 'DRAW' ? 'Изнурённые — ничья.' : `Игрок ${win} победил!`;
+      if (win === 'A' || win === 'B') { score[win]++; updateScore(); playSound('win'); }
       showResult(txt); return;
     }
 
