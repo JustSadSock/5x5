@@ -11,6 +11,7 @@
   let simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
   let units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
   let score = { A: 0, B: 0 };
+  let edgesCollapsed = false;
 
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -68,6 +69,7 @@
     ui.classList.add('show');
     buildBoard(); bindUI(); render(); updateUI();
     updateScore();
+    edgesCollapsed = false;
   }
 
   function buildBoard() {
@@ -267,10 +269,13 @@
     }
     btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
     document.querySelectorAll('.cell').forEach(c => {
-      const x = +c.id[1], y = +c.id[2];
-      if (round === 4 && phase.startsWith('plan') && (x === 0 || x === 4 || y === 0 || y === 4)) {
-        c.classList.add('dying-cell');
-      } else c.classList.remove('dying-cell');
+      const x = +c.id[1], y = +c.id[2], edge = x === 0 || x === 4 || y === 0 || y === 4;
+      c.classList.remove('cracked', 'lava');
+      if (round === 4 && phase.startsWith('plan') && edge && !edgesCollapsed) {
+        c.classList.add('cracked');
+      } else if (edgesCollapsed && edge) {
+        c.classList.add('lava');
+      }
     });
   }
 
@@ -316,9 +321,15 @@
     ['A', 'B'].forEach(pl => {
       const r = pl === 'A' ? aA : aB;
       if (typeof r === 'string' && DXY[r]) {
-        units[pl].x = Math.max(0, Math.min(4, units[pl].x + DXY[r][0]));
-        units[pl].y = Math.max(0, Math.min(4, units[pl].y + DXY[r][1]));
-        playSound('move');
+        let nx = units[pl].x + DXY[r][0];
+        let ny = units[pl].y + DXY[r][1];
+        nx = Math.max(0, Math.min(4, nx));
+        ny = Math.max(0, Math.min(4, ny));
+        if (edgesCollapsed && (nx === 0 || nx === 4 || ny === 0 || ny === 4)) {
+          units[pl].alive = false;
+        } else {
+          units[pl].x = nx; units[pl].y = ny; playSound('move');
+        }
       }
     });
     render();
@@ -350,24 +361,17 @@
     });
     render();
 
-    let sim = false, win = null;
-    if (!units.A.alive && !units.B.alive) sim = true;
-    else if (units.A.alive && !units.B.alive) win = 'A';
-    else if (!units.A.alive && units.B.alive) win = 'B';
-    else if (step > STEPS && round >= MAX_R) win = 'DRAW';
-
-    if (sim || win) {
-      const txt = sim ? 'Смерть с обеих сторон: ничья.' :
-        win === 'DRAW' ? 'Изнурённые — ничья.' : `Игрок ${win} победил!`;
-      if (win === 'A' || win === 'B') { score[win]++; updateScore(); playSound('win'); }
-      showResult(txt); return;
-    }
+    if (checkOutcome()) return;
 
     step++;
+    if (round === 4 && step === 2 && !edgesCollapsed) {
+      if (collapseEdges()) return;
+    }
     if (step > STEPS) {
       round++;
       if (round > MAX_R) { showResult('Изнурённые — ничья.'); return; }
       phase = 'planA'; step = 1;
+      edgesCollapsed = false;
       plans = { A: [], B: [] };
       usedMove = { A: new Set(), B: new Set() };
       usedAtkDirs = { A: new Set(), B: new Set() };
@@ -396,6 +400,39 @@
     }
   }
 
+  function checkOutcome() {
+    let sim = false, win = null;
+    if (!units.A.alive && !units.B.alive) sim = true;
+    else if (units.A.alive && !units.B.alive) win = 'A';
+    else if (!units.A.alive && units.B.alive) win = 'B';
+    else if (step > STEPS && round >= MAX_R) win = 'DRAW';
+    if (sim || win) {
+      const txt = sim ? 'Смерть с обеих сторон: ничья.' :
+        win === 'DRAW' ? 'Изнурённые — ничья.' : `Игрок ${win} победил!`;
+      if (win === 'A' || win === 'B') { score[win]++; updateScore(); playSound('win'); }
+      showResult(txt); return true;
+    }
+    return false;
+  }
+
+  function collapseEdges() {
+    edgesCollapsed = true;
+    document.querySelectorAll('.cell').forEach(c => {
+      const x = +c.id[1], y = +c.id[2];
+      if (x === 0 || x === 4 || y === 0 || y === 4) {
+        c.classList.remove('cracked');
+        c.classList.add('fall');
+        setTimeout(() => { c.classList.remove('fall'); c.classList.add('lava'); }, 500);
+      }
+    });
+    ['A', 'B'].forEach(pl => {
+      const u = units[pl];
+      if (u.alive && (u.x === 0 || u.x === 4 || u.y === 0 || u.y === 4)) u.alive = false;
+    });
+    render();
+    return checkOutcome();
+  }
+
   function showResult(text) {
     const ov = document.createElement('div'); ov.id = 'resultOverlay';
     ov.innerHTML = `<div>${text}</div><button id="resOk">Ок</button>`;
@@ -411,6 +448,7 @@
     usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
     simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
+    edgesCollapsed = false;
     clearPlan();
     document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
     render(); btnNext.textContent = '▶ Далее'; updateUI();
