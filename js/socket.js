@@ -1,12 +1,12 @@
-const socket = new WebSocket("wss://ТВОЙ-СЕРВЕР.glitch.me");
+const socket = new WebSocket("wss://boom-poised-sawfish.glitch.me");
 
 socket.onopen = () => {
-  log("Соединение установлено");
+  log("✅ Соединение установлено");
 };
 
 socket.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  log("Получено: " + JSON.stringify(data));
+  log("📨 Получено: " + JSON.stringify(data));
 
   if (data.type === "room_created") {
     document.getElementById("roomCode").innerText = `Комната: ${data.roomId}`;
@@ -14,11 +14,11 @@ socket.onmessage = (event) => {
 
   if (data.type === "start_game") {
     playerIndex = data.playerIndex;
-    log("Игра началась. Вы игрок " + playerIndex);
+    log("🎮 Игра началась. Вы игрок " + playerIndex);
   }
 
   if (data.type === "opponent_move") {
-    handleOpponentMove(data.move); // Реализуй эту функцию в логике игры
+    handleOpponentMove(data.move); // сделаешь сам в игровом коде
   }
 };
 
