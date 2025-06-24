@@ -331,5 +331,13 @@
   <div id="atkOverlay"></div>
 
   <script src="js/core.js"></script>
+  <button onclick="createRoom()">Создать комнату</button>
+<input id="roomInput" placeholder="Код комнаты">
+<button onclick="joinRoom(document.getElementById('roomInput').value)">Присоединиться</button>
+<div id="roomCode"></div>
+<div id="log" style="font-family: monospace; font-size: 12px;"></div>
+
+<script src="socket.js"></script>
+
 </body>
 </html>
