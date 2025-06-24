@@ -72,7 +72,7 @@
   function openAttack(P) {
     atkOv.innerHTML = ''; atkOv.style.visibility = 'visible';
     let tmp = [];
-    Object.keys(DXY).filter(d => !usedMove[P].has(d)).forEach(d => {
+    Object.keys(DXY).filter(d => !usedAtkDirs[P].has(d)).forEach(d => {
       const btn = document.createElement('button');
       btn.textContent = { up: '↑', down: '↓', left: '←', right: '→' }[d];
       btn.onclick = () => {
@@ -146,9 +146,26 @@
     plans.B = []; usedMove.B.clear(); usedAtkDirs.B.clear();
     usedAtk.B = 0; usedShield.B = 0; simPos.B = { ...units.B };
     const opp = units.A;
+
+    function pathDir(sx, sy, tx, ty) {
+      const q = [[sx, sy, null]], vis = new Set([`${sx},${sy}`]);
+      for (let i = 0; i < q.length; i++) {
+        const [x, y, first] = q[i];
+        if (x === tx && y === ty) return first;
+        for (const [d, [dx, dy]] of Object.entries(DXY)) {
+          const nx = x + dx, ny = y + dy;
+          const key = `${nx},${ny}`;
+          if (nx < 0 || nx > 4 || ny < 0 || ny > 4 || vis.has(key)) continue;
+          vis.add(key);
+          q.push([nx, ny, first || d]);
+        }
+      }
+      return null;
+    }
+
     for (let i = 0; i < STEPS; i++) {
       const di = Object.entries(DXY).find(([d, [dx, dy]]) =>
-        simPos.B.x + dx === opp.x && simPos.B.y + dy === opp.y && !usedMove.B.has(d)
+        simPos.B.x + dx === opp.x && simPos.B.y + dy === opp.y && !usedAtkDirs.B.has(d)
       );
       if (di && usedAtk.B < 1) {
         const [d] = di;
@@ -156,37 +173,40 @@
         usedAtk.B++; usedAtkDirs.B.add(d);
         continue;
       }
-      let best = null, bd = Infinity;
-      for (const [d, [dx, dy]] of Object.entries(DXY)) {
-        if (usedAtkDirs.B.has(d)) continue;
-        const nx = simPos.B.x + dx, ny = simPos.B.y + dy;
-        if (nx < 0 || nx > 4 || ny < 0 || ny > 4) continue;
-        const dist = Math.abs(nx - opp.x) + Math.abs(ny - opp.y);
-        if (dist < bd) { bd = dist; best = d; }
-      }
-      if (Math.random() > aiRand && best) {
+
+      const best = pathDir(simPos.B.x, simPos.B.y, opp.x, opp.y);
+
+      if (best && !usedAtkDirs.B.has(best) && Math.random() > aiRand) {
         plans.B.push(best);
         usedMove.B.add(best);
-        simPos.B.x += DXY[best][0]; simPos.B.y += DXY[best][1];
+        simPos.B.x += DXY[best][0];
+        simPos.B.y += DXY[best][1];
         continue;
       }
+
       if (usedShield.B < 1 && Math.random() < 0.3) {
-        plans.B.push('shield'); usedShield.B++; continue;
+        plans.B.push('shield');
+        usedShield.B++;
+        continue;
       }
+
       const opts = [];
       for (const d in DXY) {
-        const [dx, dy] = DXY[d], nx = simPos.B.x + dx, ny = simPos.B.y + dy;
+        const [dx, dy] = DXY[d];
+        const nx = simPos.B.x + dx, ny = simPos.B.y + dy;
         if (nx >= 0 && nx < 5 && ny >= 0 && ny < 5 && !usedAtkDirs.B.has(d)) opts.push(d);
       }
       if (usedAtk.B < 1) opts.push({ type: 'attack', dirs: [] });
       if (usedShield.B < 1) opts.push('shield');
+
       const choice = opts[Math.floor(Math.random() * opts.length)];
       plans.B.push(choice);
       if (typeof choice === 'string') {
         if (choice === 'shield') usedShield.B++;
         else {
           usedMove.B.add(choice);
-          simPos.B.x += DXY[choice][0]; simPos.B.y += DXY[choice][1];
+          simPos.B.x += DXY[choice][0];
+          simPos.B.y += DXY[choice][1];
         }
       } else usedAtk.B++;
     }
@@ -240,7 +260,7 @@
       x = Math.max(0, Math.min(4, x)); y = Math.max(0, Math.min(4, y));
       const cell = document.getElementById(`c${x}${y}`);
       let ov = document.createElement('div');
-      if (typeof r === 'object') {
+      if (typeof r === 'object' && r.type === 'attack') {
         ov.className = 'planAttack'; ov.textContent = '•'; cell.append(ov);
         r.dirs.forEach(d => {
           const [dx, dy] = DXY[d], nx = x + dx, ny = y + dy;
@@ -278,7 +298,7 @@
     render();
     ['A', 'B'].forEach(pl => {
       const r = pl === 'A' ? aA : aB, other = pl === 'A' ? 'B' : 'A';
-      if (typeof r === 'object') {
+      if (typeof r === 'object' && r.type === 'attack') {
         const u = units[pl], tx = u.x, ty = u.y;
         const sh = plans[other][step - 1] === 'shield';
         const cellS = document.getElementById(`c${tx}${ty}`), ovS = document.createElement('div');
@@ -367,7 +387,4 @@
     render(); btnNext.textContent = '▶ Далее'; updateUI();
   }
 
-  function clearPlan() {
-    document.querySelectorAll('.planMove,.planAttack,.planShield').forEach(e => e.remove());
-  }
 })();
