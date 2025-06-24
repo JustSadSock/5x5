@@ -31,8 +31,23 @@
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
+  const bgMusic = document.getElementById('bgMusic');
+  const bgVideo = document.getElementById('bgVideo');
 
   let audioCtx;
+  let musicStarted = false;
+
+  function startMusic() {
+    if (musicStarted) return;
+    musicStarted = true;
+    bgMusic.volume = 0.5;
+    bgMusic.play().catch(() => {});
+  }
+
+  function stopMusic() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
+  }
 
   function playSound(type) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -55,9 +70,9 @@
     updateScore();
   };
 
-  b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
-  b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
-  rulesInit.onclick = () => rulesOv.style.display = 'block';
+  b1p.onclick = () => { startMusic(); single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
+  b2p.onclick = () => { startMusic(); single = false; ms.style.display = 'none'; startGame(); };
+  rulesInit.onclick = () => { startMusic(); rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
 
   ds.querySelector('.easy').onclick   = () => { aiRand = 0.5;  ds.style.display = 'none'; startGame(); };
@@ -65,6 +80,8 @@
   ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  ds.style.display = 'none'; startGame(); };
 
   function startGame() {
+    stopMusic();
+    if (bgVideo) bgVideo.classList.add('fade');
     board.style.visibility = 'visible';
     ui.classList.add('show');
     buildBoard(); bindUI(); render(); updateUI();
