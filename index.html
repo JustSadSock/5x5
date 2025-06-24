@@ -6,7 +6,12 @@
   <title>5×5 PvP Game</title>
   <style>
     * { box-sizing:border-box; margin:0; padding:0; }
-    html,body { width:100%; height:100%; font-family:sans-serif; overflow:hidden; background:#222; }
+    html,body {
+      width:100%; height:100%; font-family:'Segoe UI',sans-serif;
+      overflow:hidden;
+      background:linear-gradient(135deg,#1e1e1e,#111);
+      color:#fff;
+    }
 
     /* Первый экран */
     #modeSelect, #difficultySelect {
@@ -17,7 +22,10 @@
       flex:1; margin:5px; border-radius:8px;
       display:flex; align-items:center; justify-content:center;
       cursor:pointer; font-size:32px; color:#fff;
+      background:rgba(0,0,0,0.4);
+      transition:background .3s, transform .3s;
     }
+    .panel:hover, .panelDiff:hover { background:rgba(0,0,0,0.6); transform:scale(1.05); }
     .modeBtn { background:#285; }
     .rulesBtn { background:orange; color:#000; }
     #difficultySelect { display:none; }
@@ -48,21 +56,27 @@
       display:grid; grid-template:repeat(5,60px)/repeat(5,60px);
       gap:2px; margin:10px auto;
       position:relative; left:60px;
+      padding:4px; background:#111;
+      border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.6);
     }
     .cell {
       width:60px; height:60px;
-      background:#444; border:1px solid #555;
-      position:relative;
+      background:#333; border:1px solid #555;
+      position:relative; transition:background .2s;
+      box-shadow:inset 0 0 5px rgba(0,0,0,0.5);
     }
+    .cell:hover { background:#555; }
     .dying-cell { background:rgba(255,0,0,0.3)!important; }
 
     #ui {
       visibility:hidden;
       width:100%; max-width:360px;
       margin:10px auto;
-      background:rgba(0,0,0,0.7);
+      background:rgba(0,0,0,0.8);
       padding:10px; display:flex;
       flex-direction:column; gap:6px;
+      border-radius:8px;
+      box-shadow:0 0 10px rgba(0,0,0,0.5);
     }
     #phase { text-align:center; color:#fff; min-height:24px; }
     #planCells { display:flex; justify-content:space-between; margin-bottom:6px; }
@@ -83,7 +97,11 @@
     #btn-del, #btn-next {
       padding:8px; font-size:16px; border:none;
       background:#285; color:#fff; border-radius:4px;
-      cursor:pointer;
+      cursor:pointer; transition:background .2s, transform .2s;
+    }
+    #actions button:hover:not(:disabled),
+    #btn-del:hover:not(:disabled), #btn-next:hover:not(:disabled) {
+      background:#39b; transform:translateY(-2px);
     }
     #actions button:disabled, .blocked,
     #btn-next:disabled {
@@ -95,6 +113,7 @@
       position:absolute; width:40px; height:40px;
       border-radius:50%; top:50%; left:50%;
       transform:translate(-50%,-50%); z-index:5;
+      box-shadow:0 0 6px rgba(0,0,0,0.6);
     }
     .playerA { background:#0af; }
     .playerB { background:#f40; }
