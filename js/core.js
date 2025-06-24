@@ -39,9 +39,14 @@ function handleOpponentMove(move) {
   const ds = document.getElementById('difficultySelect');
   const b1p = document.getElementById('btn1p');
   const b2p = document.getElementById('btn2p');
+  const bOnline = document.getElementById('btnOnline');
   const rulesInit = document.getElementById('rulesBtnInitial');
   const rulesOv = document.getElementById('rulesOverlay');
   const rulesClose = document.getElementById('rulesClose');
+  const onlineMenu = document.getElementById('onlineMenu');
+  const onlineCreate = document.getElementById('onlineCreate');
+  const onlineJoin = document.getElementById('onlineJoin');
+  const roomInput = document.getElementById('roomInput');
   const board = document.getElementById('board');
   const ui = document.getElementById('ui');
   const phaseEl = document.getElementById('phase');
@@ -94,12 +99,16 @@ function handleOpponentMove(move) {
 
   b1p.onclick = () => { startMusic(); single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { startMusic(); single = false; ms.style.display = 'none'; startGame(); };
+  bOnline.onclick = () => { startMusic(); ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
   rulesInit.onclick = () => { startMusic(); rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
 
   ds.querySelector('.easy').onclick   = () => { aiRand = 0.5;  ds.style.display = 'none'; startGame(); };
   ds.querySelector('.medium').onclick = () => { aiRand = 0.25; ds.style.display = 'none'; startGame(); };
   ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  ds.style.display = 'none'; startGame(); };
+
+  onlineCreate.onclick = () => { initSocket(); createRoom(); };
+  onlineJoin.onclick = () => { initSocket(); joinRoom(roomInput.value.trim()); };
 
   function startGame() {
     stopMusic();
@@ -409,6 +418,9 @@ function handleOpponentMove(move) {
       if (collapseEdges()) return;
     }
     if (step > STEPS) {
+      if (typeof sendState === 'function') {
+        sendState(JSON.stringify({ units, round, step }));
+      }
       round++;
       if (round > MAX_R) { showResult('Изнурённые — ничья.'); return; }
       phase = 'planA'; step = 1;
@@ -498,4 +510,13 @@ function handleOpponentMove(move) {
   function clearPlan() {
     document.querySelectorAll('.planMove,.planAttack,.planShield').forEach(e => e.remove());
   }
+
+  window.launchGame = startGame;
+  window.startOnlineGame = function(idx) {
+    single = false;
+    playerIndex = idx;
+    ms.style.display = 'none';
+    if (onlineMenu) onlineMenu.style.display = 'none';
+    startGame();
+  };
 })();

@@ -280,12 +280,21 @@
     <div id="btn1p" class="panel modeBtn">1 игрок</div>
     <div id="rulesBtnInitial" class="panel rulesBtn">Правила</div>
     <div id="btn2p" class="panel modeBtn">2 игрока</div>
+    <div id="btnOnline" class="panel modeBtn">Онлайн</div>
   </div>
 
   <div id="difficultySelect">
     <div class="panelDiff easy">Легко</div>
     <div class="panelDiff medium">Средне</div>
     <div class="panelDiff hard">Сложно</div>
+  </div>
+
+  <div id="onlineMenu" style="display:none;flex-direction:column;align-items:center;gap:10px;">
+    <div id="onlineCreate" class="panel modeBtn">Создать комнату</div>
+    <input id="roomInput" placeholder="Код комнаты" style="padding:6px;max-width:140px;">
+    <div id="onlineJoin" class="panel modeBtn">Присоединиться</div>
+    <div id="roomCode"></div>
+    <div id="log" style="font-family: monospace; font-size: 12px;"></div>
   </div>
 
   <div id="scoreboard">
@@ -331,13 +340,7 @@
   <div id="atkOverlay"></div>
 
   <script src="js/core.js"></script>
-  <button onclick="createRoom()">Создать комнату</button>
-<input id="roomInput" placeholder="Код комнаты">
-<button onclick="joinRoom(document.getElementById('roomInput').value)">Присоединиться</button>
-<div id="roomCode"></div>
-<div id="log" style="font-family: monospace; font-size: 12px;"></div>
-
-<script src="socket.js"></script>
+  <script src="js/socket.js"></script>
 
 </body>
 </html>
