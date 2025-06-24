@@ -1,40 +1,49 @@
-const socket = new WebSocket("wss://boom-poised-sawfish.glitch.me");
+let socket;
 
-socket.onopen = () => {
-  log("✅ Соединение установлено");
-};
-
-socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  log("📨 Получено: " + JSON.stringify(data));
-
-  if (data.type === "room_created") {
-    document.getElementById("roomCode").innerText = `Комната: ${data.roomId}`;
-  }
-
-  if (data.type === "start_game") {
-    playerIndex = data.playerIndex;
-    log("🎮 Игра началась. Вы игрок " + playerIndex);
-  }
-
-  if (data.type === "opponent_move") {
-    handleOpponentMove(data.move); // сделаешь сам в игровом коде
-  }
-};
+function initSocket() {
+  if (socket && socket.readyState === WebSocket.OPEN) return;
+  socket = new WebSocket('ws://localhost:8080');
+  socket.onopen = () => log('✅ Соединение установлено');
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    log('📨 Получено: ' + JSON.stringify(data));
+    if (data.type === 'room_created') {
+      const el = document.getElementById('roomCode');
+      if (el) el.innerText = `Комната: ${data.roomId}`;
+    }
+    if (data.type === 'start_game') {
+      startOnlineGame(data.playerIndex);
+    }
+    if (data.type === 'opponent_move') {
+      handleOpponentMove(data.move);
+    }
+    if (data.type === 'state_ok') log('✔ Ходы совпадают');
+    if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
+    if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
+  };
+}
 
 function createRoom() {
-  socket.send(JSON.stringify({ type: "create" }));
+  if (!socket) initSocket();
+  socket.send(JSON.stringify({ type: 'create' }));
 }
 
 function joinRoom(roomId) {
-  socket.send(JSON.stringify({ type: "join", roomId }));
+  if (!socket) initSocket();
+  socket.send(JSON.stringify({ type: 'join', roomId }));
 }
 
 function sendMove(move) {
-  socket.send(JSON.stringify({ type: "move", move }));
+  if (socket && socket.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify({ type: 'move', move }));
+}
+
+function sendState(state) {
+  if (socket && socket.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify({ type: 'state', state }));
 }
 
 function log(text) {
-  const el = document.getElementById("log");
-  el.innerHTML += text + "<br>";
+  const el = document.getElementById('log');
+  if (el) el.innerHTML += text + '<br>';
 }
