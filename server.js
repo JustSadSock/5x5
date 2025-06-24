@@ -1,5 +1,25 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+
+const server = http.createServer((req, res) => {
+  const file = req.url === '/' ? '/index.html' : req.url;
+  const filePath = path.join(__dirname, file);
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404);
+      res.end('Not found');
+    } else {
+      const ext = path.extname(filePath);
+      const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css' };
+      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
+      res.end(data);
+    }
+  });
+});
+
+const wss = new WebSocket.Server({ server });
 
 const rooms = {};
 
@@ -62,4 +82,6 @@ wss.on('connection', ws => {
   });
 });
 
-console.log('WebSocket server running on ws://localhost:8080');
+server.listen(8080, () => {
+  console.log('Server running on http://localhost:8080');
+});

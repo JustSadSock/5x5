@@ -2,7 +2,8 @@ let socket;
 
 function initSocket() {
   if (socket && socket.readyState === WebSocket.OPEN) return;
-  socket = new WebSocket('ws://localhost:8080');
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(protocol + '//' + location.host);
   socket.onopen = () => log('✅ Соединение установлено');
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);

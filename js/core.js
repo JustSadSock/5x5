@@ -58,23 +58,8 @@ function handleOpponentMove(move) {
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
-  const bgMusic = document.getElementById('bgMusic');
-  const bgVideo = document.getElementById('bgVideo');
 
   let audioCtx;
-  let musicStarted = false;
-
-  function startMusic() {
-    if (musicStarted) return;
-    musicStarted = true;
-    bgMusic.volume = 0.5;
-    bgMusic.play().catch(() => {});
-  }
-
-  function stopMusic() {
-    bgMusic.pause();
-    bgMusic.currentTime = 0;
-  }
 
   function playSound(type) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -97,10 +82,10 @@ function handleOpponentMove(move) {
     updateScore();
   };
 
-  b1p.onclick = () => { startMusic(); single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
-  b2p.onclick = () => { startMusic(); single = false; ms.style.display = 'none'; startGame(); };
-  bOnline.onclick = () => { startMusic(); ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
-  rulesInit.onclick = () => { startMusic(); rulesOv.style.display = 'block'; };
+  b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
+  b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
+  bOnline.onclick = () => { ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
+  rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
 
   ds.querySelector('.easy').onclick   = () => { aiRand = 0.5;  ds.style.display = 'none'; startGame(); };
@@ -111,8 +96,6 @@ function handleOpponentMove(move) {
   onlineJoin.onclick = () => { initSocket(); joinRoom(roomInput.value.trim()); };
 
   function startGame() {
-    stopMusic();
-    if (bgVideo) bgVideo.classList.add('fade');
     board.style.visibility = 'visible';
     ui.classList.add('show');
     buildBoard(); bindUI(); render(); updateUI();
@@ -512,7 +495,7 @@ function handleOpponentMove(move) {
   }
 
   window.launchGame = startGame;
-  window.startOnlineGame = function(idx) {
+window.startOnlineGame = function(idx) {
     single = false;
     playerIndex = idx;
     ms.style.display = 'none';
@@ -520,3 +503,6 @@ function handleOpponentMove(move) {
     startGame();
   };
 })();
+
+// Prevent double-click zoom on mobile
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });

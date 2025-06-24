@@ -11,6 +11,7 @@
       overflow:hidden;
       background:linear-gradient(135deg,#1e1e1e,#111);
       color:#fff;
+      touch-action: manipulation;
     }
 
     /* Первый экран */
@@ -43,16 +44,6 @@
     .medium { background:#ff9800; }
     .hard   { background:#f44336; }
 
-    #bgVideo {
-      position:fixed;
-      top:0; left:0;
-      width:100%; height:100%;
-      object-fit:cover;
-      z-index:-1;
-      filter:blur(3px) brightness(0.5);
-      transition:opacity .5s ease;
-    }
-    #bgVideo.fade { opacity:0; pointer-events:none; }
     #title {
       font-size:48px;
       text-shadow:0 0 10px #0ff;
@@ -272,8 +263,6 @@
 </head>
 <body>
 
-  <video id="bgVideo" autoplay muted loop playsinline src="https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"></video>
-  <audio id="bgMusic" loop src="https://samplelib.com/lib/preview/mp3/sample-3s.mp3"></audio>
 
   <div id="modeSelect">
     <h1 id="title">5×5 Arena</h1>
