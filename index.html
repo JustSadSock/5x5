@@ -86,7 +86,7 @@
     .dying-cell { background:rgba(255,0,0,0.3)!important; }
 
     #ui {
-      visibility:hidden;
+      visibility:hidden; opacity:0; transform:translateY(20px);
       width:100%; max-width:360px;
       margin:10px auto;
       background:rgba(0,0,0,0.8);
@@ -94,7 +94,9 @@
       flex-direction:column; gap:6px;
       border-radius:8px;
       box-shadow:0 0 10px rgba(0,0,0,0.5);
+      transition:opacity .3s ease, transform .3s ease;
     }
+    #ui.show { visibility:visible; opacity:1; transform:translateY(0); }
     #phase { text-align:center; color:#fff; min-height:24px; }
     #planCells { display:flex; justify-content:space-between; margin-bottom:6px; }
     .planCell {
@@ -108,21 +110,48 @@
     #actions {
       display:grid;
       grid-template:repeat(3,1fr)/repeat(2,1fr);
-      gap:6px;
+      gap:8px;
+      padding:8px;
+      background:rgba(0,0,0,0.6);
+      border:1px solid #444;
+      border-radius:8px;
+      box-shadow:inset 0 0 10px rgba(0,0,0,0.6);
     }
     #actions button,
     #btn-del, #btn-next {
-      padding:8px; font-size:16px; border:none;
-      background:#285; color:#fff; border-radius:4px;
-      cursor:pointer; transition:background .2s, transform .2s;
+      position:relative;
+      padding:12px; font-size:20px; border:none;
+      background:linear-gradient(135deg,#2b8,#085);
+      color:#fff; border-radius:6px;
+      cursor:pointer;
+      box-shadow:0 2px 4px rgba(0,0,0,0.5);
+      transition:transform .15s ease, box-shadow .15s ease;
     }
+    #actions button.moveBtn { background:linear-gradient(135deg,#2b8,#085); }
+    #actions button.atkBtn  { background:linear-gradient(135deg,#b22,#600); }
+    #actions button.shieldBtn { background:linear-gradient(135deg,#24a,#046); }
     #actions button:hover:not(:disabled),
     #btn-del:hover:not(:disabled), #btn-next:hover:not(:disabled) {
-      background:#39b; transform:translateY(-2px);
+      transform:translateY(-2px) scale(1.05);
+      box-shadow:0 4px 8px rgba(0,0,0,0.6);
+    }
+    #actions button:active:not(:disabled),
+    #btn-del:active:not(:disabled), #btn-next:active:not(:disabled) {
+      transform:scale(0.95);
+      box-shadow:0 1px 2px rgba(0,0,0,0.4);
     }
     #actions button:disabled, .blocked,
     #btn-next:disabled {
       background:#555; cursor:default;
+    }
+    #actions button::after {
+      content:'';
+      position:absolute; inset:0; border-radius:inherit;
+      background:rgba(255,255,255,0.3);
+      opacity:0; transform:scale(0);
+    }
+    #actions button:active::after {
+      animation:ripple .3s ease forwards;
     }
 
     /* Юниты и эффекты */
@@ -162,6 +191,8 @@
     @keyframes flash { from{opacity:0} to{opacity:0.7} }
     @keyframes pop   { from{transform:translate(-50%,-50%) scale(0)}
                        to{transform:translate(-50%,-50%) scale(1)} }
+    @keyframes ripple { from{opacity:0.4; transform:scale(0)}
+                       to{opacity:0; transform:scale(1)} }
 
     .planMove, .planAttack, .planShield {
       position:absolute; top:50%; left:50%;
@@ -252,12 +283,12 @@
       <div class="planCell" id="pc4"></div>
     </div>
     <div id="actions">
-      <button data-act="up">↑</button>
-      <button data-act="down">↓</button>
-      <button data-act="left">←</button>
-      <button data-act="right">→</button>
-      <button data-act="attack">⚔</button>
-      <button data-act="shield">🛡</button>
+      <button data-act="up" class="moveBtn">↑</button>
+      <button data-act="down" class="moveBtn">↓</button>
+      <button data-act="left" class="moveBtn">←</button>
+      <button data-act="right" class="moveBtn">→</button>
+      <button data-act="attack" class="atkBtn">⚔</button>
+      <button data-act="shield" class="shieldBtn">🛡</button>
     </div>
     <div style="display:flex;gap:6px;">
       <button id="btn-del">← Удалить</button>
