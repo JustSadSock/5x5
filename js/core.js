@@ -65,7 +65,7 @@
 
   function startGame() {
     board.style.visibility = 'visible';
-    ui.style.visibility = 'visible';
+    ui.classList.add('show');
     buildBoard(); bindUI(); render(); updateUI();
     updateScore();
   }
