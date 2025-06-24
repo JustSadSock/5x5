@@ -1,3 +1,25 @@
+let playerIndex = null;
+let yourTurn = false;
+
+function placeSymbol(x, y, who) {
+  const cell = document.getElementById(`c${x}${y}`);
+  if (cell) {
+    cell.textContent = who === 0 ? 'X' : 'O';
+  }
+}
+
+function onCellClick(x, y) {
+  if (!yourTurn) return;
+  placeSymbol(x, y, playerIndex);
+  sendMove({ x, y });
+  yourTurn = false;
+}
+
+function handleOpponentMove(move) {
+  placeSymbol(move.x, move.y, 1 - playerIndex);
+  yourTurn = true;
+}
+
 (() => {
   const MAX_R = 4, STEPS = 5;
   const DXY = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -94,7 +116,9 @@
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 5; x++) {
         const c = document.createElement('div');
-        c.className = 'cell'; c.id = `c${x}${y}`;
+        c.className = 'cell';
+        c.id = `c${x}${y}`;
+        c.addEventListener('click', () => onCellClick(x, y));
         board.append(c);
       }
     }
