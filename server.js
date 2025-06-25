@@ -63,9 +63,14 @@ wss.on('connection', ws => {
     } else if (data.type === 'submit_moves') {
       const room = rooms[ws.roomId];
       if (!room) return;
-      room.pendingMoves[ws.playerIndex] = data.moves;
-      if (room.pendingMoves[0] && room.pendingMoves[1]) {
-        room.players.forEach(p => p.send(JSON.stringify({ type: 'round_ready', moves: room.pendingMoves })));
+      room.pendingMoves[ws.playerIndex] = Array.isArray(data.moves) ? data.moves.slice(0, 5) : null;
+      if (
+        Array.isArray(room.pendingMoves[0]) && room.pendingMoves[0].length === 5 &&
+        Array.isArray(room.pendingMoves[1]) && room.pendingMoves[1].length === 5
+      ) {
+        room.players.forEach(p =>
+          p.send(JSON.stringify({ type: 'round_ready', moves: room.pendingMoves }))
+        );
       }
     } else if (data.type === 'reveal') {
       const room = rooms[ws.roomId];

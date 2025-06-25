@@ -2,6 +2,9 @@ let playerIndex = null;
 let yourTurn = false;
 let localMoves = [];
 let canPlay = false;
+let isOnline = false;
+
+const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
 function placeSymbol(x, y, who) {
   const cell = document.getElementById(`c${x}${y}`);
@@ -201,6 +204,10 @@ function startNewRound() {
       }
     }
     updateUI(); drawPlan(P);
+    if (isOnline && plans[mySide()].length === STEPS) {
+      const btn = document.getElementById('confirmBtn');
+      if (btn) btn.disabled = false;
+    }
   }
 
   function deleteLast() {
@@ -514,29 +521,33 @@ function startNewRound() {
   }
 
   window.launchGame = startGame;
-window.startOnlineGame = function(idx) {
+  window.startOnlineGame = function(idx) {
     single = false;
     playerIndex = idx;
+    isOnline = true;
     ms.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
     startGame();
     startNewRound();
+    if (isOnline) document.getElementById('btn-next').style.display = 'none';
   };
+  window.plans = plans;
 })();
 
 // Multiplayer helpers
 onRoundReady = function(moves) {
+  window.roundPackage = moves;
   if (playerIndex === 0) {
     const btn = document.getElementById('revealBtn');
     if (btn) btn.style.display = 'inline-block';
   }
-  window.roundMoves = moves;
 };
 
 onRevealMoves = function(moves) {
-  Object.entries(moves).forEach(([idx, arr]) => {
-    arr.forEach(m => applyMove(m, +idx));
-  });
+  for (let step = 0; step < 5; step++) {
+    applyMove(moves[0][step], 0);
+    applyMove(moves[1][step], 1);
+  }
   startNewRound();
 };
 
@@ -544,15 +555,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const cbtn = document.getElementById('confirmBtn');
   const rbtn = document.getElementById('revealBtn');
   if (cbtn) cbtn.onclick = () => {
-    if (localMoves.length === 5) {
-      submitMoves(localMoves);
-      canPlay = false;
-      cbtn.disabled = true;
-    }
+    const moves = window.plans[mySide()];
+    if (moves.length !== 5) return;
+    submitMoves(moves);
+    canPlay = false;
+    cbtn.disabled = true;
   };
-  if (rbtn) rbtn.onclick = () => {
+  if (rbtn) rbtn.onclick = function() {
     revealMoves();
-    rbtn.style.display = 'none';
+    this.style.display = 'none';
   };
 });
 
