@@ -3,9 +3,20 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
+const publicDir = path.join(__dirname, 'public');
+
 const server = http.createServer((req, res) => {
-  const file = req.url === '/' ? '/index.html' : req.url;
-  const filePath = path.join(__dirname, file);
+  const urlPath = new URL(req.url, `http://${req.headers.host}`).pathname;
+  if (urlPath.includes('..')) {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
+  const target = urlPath === '/' ? '/index.html' : urlPath;
+  const filePath = path.resolve(publicDir, '.' + target);
+  if (!filePath.startsWith(publicDir)) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404);
