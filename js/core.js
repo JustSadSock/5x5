@@ -528,8 +528,8 @@ function startNewRound() {
     isOnline = true;
     ms.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
-    resetGame();
     startGame();
+    resetGame();
     startNewRound();
     if (isOnline) document.getElementById('btn-next').style.display = 'none';
   };
