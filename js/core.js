@@ -536,23 +536,22 @@ function startNewRound() {
     if (isOnline) document.getElementById('btn-next').style.display = 'none';
   };
   window.plans = plans;
-})();
 
-// Multiplayer helpers
-onStartRound = function(moves) {
-  plans = { A: moves[0], B: moves[1] };
-  window.plans = plans;
-  phase = 'execute';
-  step = 1;
-  const next = document.getElementById('btn-next');
-  if (next) {
-    next.style.display = 'inline-block';
-    next.textContent = '▶ Выполнить';
-    next.disabled = false;
-  }
-  clearPlan();
-  updateUI();
-};
+  window.onStartRound = function(moves) {
+    plans = { A: moves[0], B: moves[1] };
+    window.plans = plans;
+    phase = 'execute';
+    step = 1;
+    const next = document.getElementById('btn-next');
+    if (next) {
+      next.style.display = 'inline-block';
+      next.textContent = '▶ Выполнить';
+      next.disabled = false;
+    }
+    clearPlan();
+    updateUI();
+  };
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   const cbtn = document.getElementById('confirmBtn');
