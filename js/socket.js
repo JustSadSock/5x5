@@ -1,10 +1,13 @@
 let socket;
+let isConnected = false;
 
 function initSocket() {
   if (socket && socket.readyState === WebSocket.OPEN) return;
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  socket = new WebSocket(protocol + '//' + location.host);
-  socket.onopen = () => log('✅ Соединение установлено');
+  socket = new WebSocket("wss://boom-poised-sawfish.glitch.me");
+  socket.onopen = () => {
+    isConnected = true;
+    log('✅ Соединение установлено');
+  };
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     log('📨 Получено: ' + JSON.stringify(data));
@@ -25,16 +28,28 @@ function initSocket() {
 }
 
 function createRoom() {
+  if (!isConnected) {
+    log('⛔ WebSocket ещё не подключён');
+    return;
+  }
   if (!socket) initSocket();
   socket.send(JSON.stringify({ type: 'create' }));
 }
 
 function joinRoom(roomId) {
+  if (!isConnected) {
+    log('⛔ WebSocket ещё не подключён');
+    return;
+  }
   if (!socket) initSocket();
   socket.send(JSON.stringify({ type: 'join', roomId }));
 }
 
 function sendMove(move) {
+  if (!isConnected) {
+    log('⛔ WebSocket ещё не подключён');
+    return;
+  }
   if (socket && socket.readyState === WebSocket.OPEN)
     socket.send(JSON.stringify({ type: 'move', move }));
 }
