@@ -99,5 +99,4 @@ document.addEventListener('DOMContentLoaded', () => {
   updateConnectionStatus('Оффлайн', 'orange');
 });
 
-// Handlers that main.js should define
-function onStartRound() {}
+// Placeholder removed to allow main game script to define handlers
