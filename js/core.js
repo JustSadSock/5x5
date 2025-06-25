@@ -369,9 +369,6 @@ function startNewRound() {
     });
   }
 
-  function clearPlan() {
-    document.querySelectorAll('.planMove,.planAttack,.planShield').forEach(e => e.remove());
-  }
 
   function execStep() {
     clearPlan();
