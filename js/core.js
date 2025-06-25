@@ -435,6 +435,7 @@ function startNewRound() {
       phase = 'planA'; step = 1;
       edgesCollapsed = false;
       plans = { A: [], B: [] };
+      window.plans = plans;
       usedMove = { A: new Set(), B: new Set() };
       usedAtkDirs = { A: new Set(), B: new Set() };
       usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
@@ -506,6 +507,7 @@ function startNewRound() {
   function resetGame() {
     round = 1; step = 1; phase = 'planA';
     plans = { A: [], B: [] };
+    window.plans = plans;
     usedMove = { A: new Set(), B: new Set() };
     usedAtkDirs = { A: new Set(), B: new Set() };
     usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
@@ -539,6 +541,7 @@ function startNewRound() {
 // Multiplayer helpers
 onStartRound = function(moves) {
   plans = { A: moves[0], B: moves[1] };
+  window.plans = plans;
   phase = 'execute';
   step = 1;
   const next = document.getElementById('btn-next');
