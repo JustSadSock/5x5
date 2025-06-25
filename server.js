@@ -4,6 +4,7 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const publicDir = path.join(__dirname, 'public');
+const indexFile = path.join(__dirname, 'index.html');
 
 const server = http.createServer((req, res) => {
   const urlPath = new URL(req.url, `http://${req.headers.host}`).pathname;
@@ -11,11 +12,17 @@ const server = http.createServer((req, res) => {
     res.writeHead(400);
     return res.end('Bad request');
   }
-  const target = urlPath === '/' ? '/index.html' : urlPath;
-  const filePath = path.resolve(publicDir, '.' + target);
-  if (!filePath.startsWith(publicDir)) {
-    res.writeHead(403);
-    return res.end('Forbidden');
+  let filePath;
+  if (urlPath === '/' || urlPath === '/index.html') {
+    filePath = indexFile;
+  } else if (urlPath.startsWith('/js/')) {
+    filePath = path.join(publicDir, urlPath);
+  } else {
+    filePath = path.resolve(publicDir, '.' + urlPath);
+    if (!filePath.startsWith(publicDir)) {
+      res.writeHead(403);
+      return res.end('Forbidden');
+    }
   }
   fs.readFile(filePath, (err, data) => {
     if (err) {
