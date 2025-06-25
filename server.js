@@ -83,11 +83,13 @@ wss.on('connection', ws => {
     } else if (data.type === 'submit_moves') {
       const room = rooms[ws.roomId];
       if (!room) return;
+      console.log(`Player ${ws.playerIndex} submitted moves in room ${ws.roomId}`);
       room.pendingMoves[ws.playerIndex] = Array.isArray(data.moves) ? data.moves.slice(0, 5) : null;
       if (
         Array.isArray(room.pendingMoves[0]) && room.pendingMoves[0].length === 5 &&
         Array.isArray(room.pendingMoves[1]) && room.pendingMoves[1].length === 5
       ) {
+        console.log(`Emitting start_round for room ${ws.roomId}`);
         room.players.forEach(p =>
           p.send(JSON.stringify({ type: 'start_round', moves: room.pendingMoves }))
         );
