@@ -4,10 +4,11 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
   <title>5×5 PvP Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     * { box-sizing:border-box; margin:0; padding:0; }
     html,body {
-      width:100%; height:100%; font-family:'Segoe UI','Roboto',sans-serif;
+      width:100%; height:100%; font-family:'Orbitron','Share Tech Mono',sans-serif;
       overflow:hidden;
       background:linear-gradient(135deg,#1e1e1e,#111);
       color:#fff;
@@ -39,6 +40,9 @@
       background:linear-gradient(135deg,#f8b500,#e08f00);
       color:#000;
     }
+    #btn1p { background:linear-gradient(135deg,#03d,#037); }
+    #btn2p { background:linear-gradient(135deg,#d03,#703); }
+    #btnOnline { background:linear-gradient(135deg,#0a8,#064); }
     #difficultySelect { display:none; }
     .easy   { background:#4caf50; }
     .medium { background:#ff9800; }
@@ -46,7 +50,15 @@
 
     #title {
       font-size:48px;
-      text-shadow:0 0 10px #0ff;
+      font-weight:700;
+      text-shadow:0 0 10px #0ff, 0 0 20px #0ff;
+    }
+
+    #tagline {
+      font-size:20px;
+      color:#0ff;
+      text-shadow:0 0 5px #0ff;
+      margin-bottom:10px;
     }
 
     /* Правила */
@@ -248,6 +260,7 @@
       position:absolute; top:6px; left:50%; transform:translateX(-50%);
       background:rgba(0,0,0,0.7); padding:6px 12px; border-radius:6px;
       display:flex; align-items:center; gap:8px; font-size:18px;
+      font-family:'Share Tech Mono', monospace;
       z-index:25;
     }
     #scoreboard button {
@@ -266,6 +279,7 @@
 
   <div id="modeSelect">
     <h1 id="title">5×5 Arena</h1>
+    <div id="tagline"></div>
     <div id="btn1p" class="panel modeBtn">1 игрок</div>
     <div id="rulesBtnInitial" class="panel rulesBtn">Правила</div>
     <div id="btn2p" class="panel modeBtn">2 игрока</div>
@@ -283,7 +297,7 @@
     <input id="roomInput" placeholder="Код комнаты" style="padding:6px;max-width:140px;">
     <div id="onlineJoin" class="panel modeBtn">Присоединиться</div>
     <div id="roomCode"></div>
-    <div id="log" style="font-family: monospace; font-size: 12px;"></div>
+    <div id="log" style="font-family: 'Share Tech Mono', monospace; font-size: 12px;"></div>
   </div>
 
   <div id="scoreboard">
@@ -330,6 +344,16 @@
 
   <script src="js/core.js"></script>
   <script src="js/socket.js"></script>
+  <script>
+    const taglines = [
+      'Добро пожаловать в неоновые битвы!',
+      'Погрузись в киберпанк-арену!',
+      'Время сияющих дуэлей!',
+      'Готов к битве в стиле кибер?'
+    ];
+    const tl = document.getElementById('tagline');
+    if (tl) tl.textContent = taglines[Math.floor(Math.random() * taglines.length)];
+  </script>
 
 </body>
 </html>
