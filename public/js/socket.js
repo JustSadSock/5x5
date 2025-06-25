@@ -1,6 +1,7 @@
 let socket;
 let isConnected = false;
-const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
+// Connect to the same host that served the page using WebSocket protocol
+const WS_SERVER_URL = location.origin.replace(/^http/, 'ws');
 
 function updateConnectionStatus(text, color) {
   const el = document.getElementById('connectionStatus');
