@@ -1,5 +1,7 @@
 let playerIndex = null;
 let yourTurn = false;
+let localMoves = [];
+let canPlay = false;
 
 function placeSymbol(x, y, who) {
   const cell = document.getElementById(`c${x}${y}`);
@@ -9,15 +11,32 @@ function placeSymbol(x, y, who) {
 }
 
 function onCellClick(x, y) {
-  if (!yourTurn) return;
-  placeSymbol(x, y, playerIndex);
-  sendMove({ x, y });
-  yourTurn = false;
+  if (!canPlay) return;
+  if (localMoves.length >= 5) return;
+  localMoves.push({ x, y });
+  applyMove({ x, y }, playerIndex);
+  if (localMoves.length === 5) {
+    const btn = document.getElementById('confirmBtn');
+    if (btn) btn.disabled = false;
+  }
 }
 
 function handleOpponentMove(move) {
   placeSymbol(move.x, move.y, 1 - playerIndex);
   yourTurn = true;
+}
+
+function applyMove(move, who) {
+  placeSymbol(move.x, move.y, who);
+}
+
+function startNewRound() {
+  localMoves = [];
+  canPlay = true;
+  const btn = document.getElementById('confirmBtn');
+  if (btn) btn.disabled = true;
+  const rev = document.getElementById('revealBtn');
+  if (rev) rev.style.display = 'none';
 }
 
 (() => {
@@ -501,8 +520,41 @@ window.startOnlineGame = function(idx) {
     ms.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
     startGame();
+    startNewRound();
   };
 })();
+
+// Multiplayer helpers
+onRoundReady = function(moves) {
+  if (playerIndex === 0) {
+    const btn = document.getElementById('revealBtn');
+    if (btn) btn.style.display = 'inline-block';
+  }
+  window.roundMoves = moves;
+};
+
+onRevealMoves = function(moves) {
+  Object.entries(moves).forEach(([idx, arr]) => {
+    arr.forEach(m => applyMove(m, +idx));
+  });
+  startNewRound();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const cbtn = document.getElementById('confirmBtn');
+  const rbtn = document.getElementById('revealBtn');
+  if (cbtn) cbtn.onclick = () => {
+    if (localMoves.length === 5) {
+      submitMoves(localMoves);
+      canPlay = false;
+      cbtn.disabled = true;
+    }
+  };
+  if (rbtn) rbtn.onclick = () => {
+    revealMoves();
+    rbtn.style.display = 'none';
+  };
+});
 
 // Prevent double-click zoom on mobile
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });

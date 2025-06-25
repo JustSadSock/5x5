@@ -21,6 +21,12 @@ function initSocket() {
     if (data.type === 'opponent_move') {
       handleOpponentMove(data.move);
     }
+    if (data.type === 'round_ready') {
+      onRoundReady(data.moves);
+    }
+    if (data.type === 'reveal_moves') {
+      onRevealMoves(data.moves);
+    }
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
     if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
@@ -54,6 +60,24 @@ function sendMove(move) {
     socket.send(JSON.stringify({ type: 'move', move }));
 }
 
+function submitMoves(moves) {
+  if (!isConnected) {
+    log('⛔ WebSocket ещё не подключён');
+    return;
+  }
+  if (socket && socket.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify({ type: 'submit_moves', moves }));
+}
+
+function revealMoves() {
+  if (!isConnected) {
+    log('⛔ WebSocket ещё не подключён');
+    return;
+  }
+  if (socket && socket.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify({ type: 'reveal' }));
+}
+
 function sendState(state) {
   if (socket && socket.readyState === WebSocket.OPEN)
     socket.send(JSON.stringify({ type: 'state', state }));
@@ -63,3 +87,7 @@ function log(text) {
   const el = document.getElementById('log');
   if (el) el.innerHTML += text + '<br>';
 }
+
+// Handlers that main.js should define
+function onRoundReady() {}
+function onRevealMoves() {}

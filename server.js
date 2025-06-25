@@ -37,7 +37,7 @@ wss.on('connection', ws => {
     if (data.type === 'create') {
       let code;
       do { code = genCode(); } while (rooms[code]);
-      rooms[code] = { players: [ws], states: [null, null] };
+      rooms[code] = { players: [ws], states: [null, null], pendingMoves: { 0: null, 1: null } };
       ws.roomId = code;
       ws.playerIndex = 0;
       ws.send(JSON.stringify({ type: 'room_created', roomId: code }));
@@ -60,6 +60,19 @@ wss.on('connection', ws => {
       if (opp && opp.readyState === WebSocket.OPEN) {
         opp.send(JSON.stringify({ type: 'opponent_move', move: data.move }));
       }
+    } else if (data.type === 'submit_moves') {
+      const room = rooms[ws.roomId];
+      if (!room) return;
+      room.pendingMoves[ws.playerIndex] = data.moves;
+      if (room.pendingMoves[0] && room.pendingMoves[1]) {
+        room.players.forEach(p => p.send(JSON.stringify({ type: 'round_ready', moves: room.pendingMoves })));
+      }
+    } else if (data.type === 'reveal') {
+      const room = rooms[ws.roomId];
+      if (!room) return;
+      if (ws.playerIndex !== 0) return;
+      room.players.forEach(p => p.send(JSON.stringify({ type: 'reveal_moves', moves: room.pendingMoves })));
+      room.pendingMoves = { 0: null, 1: null };
     } else if (data.type === 'state') {
       const room = rooms[ws.roomId];
       if (!room) return;
@@ -79,6 +92,7 @@ wss.on('connection', ws => {
     room.players = room.players.filter(p => p !== ws);
     room.players.forEach(p => p.send(JSON.stringify({ type: 'opponent_left' })));
     if (room.players.length === 0) delete rooms[roomId];
+    else room.pendingMoves = { 0: null, 1: null };
   });
 });
 
