@@ -52,6 +52,7 @@ function initSocket(onReady) {
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
     if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
+    if (data.type === 'room_expired') log('⌛ Комната закрыта из-за неактивности');
   });
 }
 
