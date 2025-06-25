@@ -112,8 +112,8 @@ function startNewRound() {
   ds.querySelector('.medium').onclick = () => { aiRand = 0.25; ds.style.display = 'none'; startGame(); };
   ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  ds.style.display = 'none'; startGame(); };
 
-  onlineCreate.onclick = () => { initSocket(); createRoom(); };
-  onlineJoin.onclick = () => { initSocket(); joinRoom(roomInput.value.trim()); };
+  onlineCreate.onclick = () => { createRoom(); };
+  onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
 
   function startGame() {
     board.style.visibility = 'visible';
