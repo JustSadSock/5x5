@@ -3,7 +3,8 @@ let isConnected = false;
 
 function initSocket() {
   if (socket && socket.readyState === WebSocket.OPEN) return;
-  socket = new WebSocket("wss://boom-poised-sawfish.glitch.me");
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(proto + '//' + location.host);
   socket.onopen = () => {
     isConnected = true;
     log('✅ Соединение установлено');
@@ -21,11 +22,8 @@ function initSocket() {
     if (data.type === 'opponent_move') {
       handleOpponentMove(data.move);
     }
-    if (data.type === 'round_ready') {
-      onRoundReady(data.moves);
-    }
-    if (data.type === 'reveal_moves') {
-      onRevealMoves(data.moves);
+    if (data.type === 'start_round') {
+      onStartRound(data.moves);
     }
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
@@ -69,15 +67,6 @@ function submitMoves(moves) {
     socket.send(JSON.stringify({ type: 'submit_moves', moves }));
 }
 
-function revealMoves() {
-  if (!isConnected) {
-    log('⛔ WebSocket ещё не подключён');
-    return;
-  }
-  if (socket && socket.readyState === WebSocket.OPEN)
-    socket.send(JSON.stringify({ type: 'reveal' }));
-}
-
 function sendState(state) {
   if (socket && socket.readyState === WebSocket.OPEN)
     socket.send(JSON.stringify({ type: 'state', state }));
@@ -89,5 +78,4 @@ function log(text) {
 }
 
 // Handlers that main.js should define
-function onRoundReady() {}
-function onRevealMoves() {}
+function onStartRound() {}

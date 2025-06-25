@@ -69,15 +69,10 @@ wss.on('connection', ws => {
         Array.isArray(room.pendingMoves[1]) && room.pendingMoves[1].length === 5
       ) {
         room.players.forEach(p =>
-          p.send(JSON.stringify({ type: 'round_ready', moves: room.pendingMoves }))
+          p.send(JSON.stringify({ type: 'start_round', moves: room.pendingMoves }))
         );
+        room.pendingMoves = { 0: null, 1: null };
       }
-    } else if (data.type === 'reveal') {
-      const room = rooms[ws.roomId];
-      if (!room) return;
-      if (ws.playerIndex !== 0) return;
-      room.players.forEach(p => p.send(JSON.stringify({ type: 'reveal_moves', moves: room.pendingMoves })));
-      room.pendingMoves = { 0: null, 1: null };
     } else if (data.type === 'state') {
       const room = rooms[ws.roomId];
       if (!room) return;

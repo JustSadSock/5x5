@@ -38,8 +38,6 @@ function startNewRound() {
   canPlay = true;
   const btn = document.getElementById('confirmBtn');
   if (btn) btn.disabled = true;
-  const rev = document.getElementById('revealBtn');
-  if (rev) rev.style.display = 'none';
 }
 
 (() => {
@@ -141,7 +139,7 @@ function startNewRound() {
   function bindUI() {
     acts.forEach(b => {
       b.onclick = () => {
-        const P = phase === 'planA' ? 'A' : 'B';
+        const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
         if (phase === 'execute' || plans[P].length >= STEPS) return;
         const act = b.dataset.act;
         if (DXY[act] && usedAtkDirs[P].has(act)) return;
@@ -211,7 +209,7 @@ function startNewRound() {
   }
 
   function deleteLast() {
-    const P = plans.A.length === STEPS && plans.B.length < STEPS ? 'B' : 'A';
+    const P = isOnline ? mySide() : (plans.A.length === STEPS && plans.B.length < STEPS ? 'B' : 'A');
     if (!plans[P].length) return;
     const a = plans[P].pop();
     if (typeof a === 'string') {
@@ -299,7 +297,7 @@ function startNewRound() {
   }
 
   function updateUI() {
-    const P = phase === 'planA' ? 'A' : 'B';
+    const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
     phaseEl.textContent =
       `Раунд ${round}/${MAX_R}, ${P}: ` +
       (phase === 'execute' ? 'ход' : 'план') +
@@ -322,7 +320,9 @@ function startNewRound() {
       if (a === 'shield' && usedShield[P] >= 1) b.disabled = true;
     });
     if (single && phase === 'planA') {
-      btnNext.disabled = (plans[P].length === 0);
+      btnNext.disabled = plans[P].length === 0;
+    } else if (isOnline) {
+      btnNext.disabled = phase !== 'execute';
     } else {
       btnNext.disabled = (plans[P].length < STEPS && phase !== 'execute');
     }
@@ -440,6 +440,7 @@ function startNewRound() {
       usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
       simPos = { A: { x: units.A.x, y: units.A.y }, B: { x: units.B.x, y: units.B.y } };
       btnNext.textContent = '▶ Далее';
+      startNewRound();
     }
     updateUI();
   }
@@ -527,6 +528,7 @@ function startNewRound() {
     isOnline = true;
     ms.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
+    resetGame();
     startGame();
     startNewRound();
     if (isOnline) document.getElementById('btn-next').style.display = 'none';
@@ -535,35 +537,28 @@ function startNewRound() {
 })();
 
 // Multiplayer helpers
-onRoundReady = function(moves) {
-  window.roundPackage = moves;
-  if (playerIndex === 0) {
-    const btn = document.getElementById('revealBtn');
-    if (btn) btn.style.display = 'inline-block';
+onStartRound = function(moves) {
+  plans = { A: moves[0], B: moves[1] };
+  phase = 'execute';
+  step = 1;
+  const next = document.getElementById('btn-next');
+  if (next) {
+    next.style.display = 'inline-block';
+    next.textContent = '▶ Выполнить';
+    next.disabled = false;
   }
-};
-
-onRevealMoves = function(moves) {
-  for (let step = 0; step < 5; step++) {
-    applyMove(moves[0][step], 0);
-    applyMove(moves[1][step], 1);
-  }
-  startNewRound();
+  clearPlan();
+  updateUI();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   const cbtn = document.getElementById('confirmBtn');
-  const rbtn = document.getElementById('revealBtn');
   if (cbtn) cbtn.onclick = () => {
     const moves = window.plans[mySide()];
     if (moves.length !== 5) return;
     submitMoves(moves);
     canPlay = false;
     cbtn.disabled = true;
-  };
-  if (rbtn) rbtn.onclick = function() {
-    revealMoves();
-    this.style.display = 'none';
   };
 });
 
