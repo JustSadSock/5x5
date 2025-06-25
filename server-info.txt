@@ -1,2 +1,2 @@
-Current server link: http://localhost:8080
+Current server link: https://boom-poised-sawfish.glitch.me
 The index file (index.html) must be placed in the root folder.
