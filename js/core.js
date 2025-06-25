@@ -227,6 +227,10 @@ function startNewRound() {
       usedAtk[P]--; a.dirs.forEach(d => usedAtkDirs[P].delete(d));
     }
     updateUI(); drawPlan(P);
+    if (isOnline && plans[mySide()].length !== STEPS) {
+      const btn = document.getElementById('confirmBtn');
+      if (btn) btn.disabled = true;
+    }
   }
 
   function nextStep() {
