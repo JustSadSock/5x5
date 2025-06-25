@@ -1,0 +1,2 @@
+Current server link: http://localhost:8080
+The index file (index.html) must be placed in the root folder.
