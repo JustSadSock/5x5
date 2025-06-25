@@ -1,5 +1,6 @@
 let socket;
 let isConnected = false;
+let startRoundTimer = null;
 // Connect to the dedicated WebSocket server
 const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
 
@@ -48,6 +49,10 @@ function initSocket(onReady) {
       handleOpponentMove(data.move);
     }
     if (data.type === 'start_round') {
+      if (startRoundTimer) {
+        clearTimeout(startRoundTimer);
+        startRoundTimer = null;
+      }
       onStartRound(data.moves);
     }
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
@@ -83,8 +88,15 @@ function submitMoves(moves) {
     log('⛔ WebSocket ещё не подключён');
     return;
   }
-  if (socket && socket.readyState === WebSocket.OPEN)
+  if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'submit_moves', moves }));
+    if (startRoundTimer) clearTimeout(startRoundTimer);
+    startRoundTimer = setTimeout(() => {
+      log('сервер не начал раунд, перепроверьте соединение');
+      const btn = document.getElementById('confirmBtn');
+      if (btn) btn.disabled = false;
+    }, 10000);
+  }
 }
 
 function sendState(state) {
