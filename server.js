@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
-const publicDir = path.join(__dirname, 'public');
+const publicDir = __dirname;
+const jsDir = path.join(__dirname, 'js');
 const indexFile = path.join(__dirname, 'index.html');
 
 const server = http.createServer((req, res) => {
@@ -16,7 +17,7 @@ const server = http.createServer((req, res) => {
   if (urlPath === '/' || urlPath === '/index.html') {
     filePath = indexFile;
   } else if (urlPath.startsWith('/js/')) {
-    filePath = path.join(publicDir, urlPath);
+    filePath = path.join(jsDir, urlPath.slice(4));
   } else {
     filePath = path.resolve(publicDir, '.' + urlPath);
     if (!filePath.startsWith(publicDir)) {
