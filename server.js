@@ -33,6 +33,7 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server });
 
 const rooms = {};
+const ROOM_TIMEOUT_MS = 300000; // 5 minutes
 
 function genCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -48,7 +49,7 @@ wss.on('connection', ws => {
     if (data.type === 'create') {
       let code;
       do { code = genCode(); } while (rooms[code]);
-      rooms[code] = { players: [ws], states: [null, null], pendingMoves: { 0: null, 1: null } };
+      rooms[code] = { players: [ws], states: [null, null], pendingMoves: { 0: null, 1: null }, expireTimer: null };
       ws.roomId = code;
       ws.playerIndex = 0;
       ws.send(JSON.stringify({ type: 'room_created', roomId: code }));
@@ -59,6 +60,7 @@ wss.on('connection', ws => {
         return;
       }
       room.players.push(ws);
+      if (room.expireTimer) { clearTimeout(room.expireTimer); room.expireTimer = null; }
       ws.roomId = data.roomId;
       ws.playerIndex = 1;
       room.players.forEach((p, i) => {
@@ -102,8 +104,23 @@ wss.on('connection', ws => {
     if (!room) return;
     room.players = room.players.filter(p => p !== ws);
     room.players.forEach(p => p.send(JSON.stringify({ type: 'opponent_left' })));
-    if (room.players.length === 0) delete rooms[roomId];
-    else room.pendingMoves = { 0: null, 1: null };
+    if (room.players.length === 0) {
+      if (room.expireTimer) clearTimeout(room.expireTimer);
+      delete rooms[roomId];
+    } else {
+      room.pendingMoves = { 0: null, 1: null };
+      if (room.expireTimer) clearTimeout(room.expireTimer);
+      room.expireTimer = setTimeout(() => {
+        const r = rooms[roomId];
+        if (r && r.players.length === 1) {
+          const p = r.players[0];
+          if (p.readyState === WebSocket.OPEN) {
+            p.send(JSON.stringify({ type: 'room_expired' }));
+          }
+          delete rooms[roomId];
+        }
+      }, ROOM_TIMEOUT_MS);
+    }
   });
 });
 
