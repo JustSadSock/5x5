@@ -2,6 +2,14 @@ let socket;
 let isConnected = false;
 const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
 
+function updateConnectionStatus(text, color) {
+  const el = document.getElementById('connectionStatus');
+  if (el) {
+    el.textContent = text;
+    if (color) el.style.color = color;
+  }
+}
+
 function initSocket(onReady) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     if (onReady) onReady();
@@ -12,10 +20,18 @@ function initSocket(onReady) {
     return;
   }
   socket = new WebSocket(WS_SERVER_URL);
+  updateConnectionStatus('Подключение...', 'yellow');
   socket.addEventListener('open', () => {
     isConnected = true;
     log('✅ Соединение установлено');
+    updateConnectionStatus('Онлайн', 'lime');
     if (onReady) onReady();
+  });
+  socket.addEventListener('close', () => {
+    isConnected = false;
+    log('⚠ Соединение прервано');
+    updateConnectionStatus('Оффлайн. Переподключение...', 'orange');
+    setTimeout(() => initSocket(), 2000);
   });
   socket.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
@@ -78,6 +94,10 @@ function log(text) {
   const el = document.getElementById('log');
   if (el) el.innerHTML += text + '<br>';
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateConnectionStatus('Оффлайн', 'orange');
+});
 
 // Handlers that main.js should define
 function onStartRound() {}
