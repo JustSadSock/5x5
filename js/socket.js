@@ -1,15 +1,23 @@
 let socket;
 let isConnected = false;
+const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
 
-function initSocket() {
-  if (socket && socket.readyState === WebSocket.OPEN) return;
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  socket = new WebSocket(proto + '//' + location.host);
-  socket.onopen = () => {
+function initSocket(onReady) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    if (onReady) onReady();
+    return;
+  }
+  if (socket && socket.readyState === WebSocket.CONNECTING) {
+    if (onReady) socket.addEventListener('open', onReady, { once: true });
+    return;
+  }
+  socket = new WebSocket(WS_SERVER_URL);
+  socket.addEventListener('open', () => {
     isConnected = true;
     log('✅ Соединение установлено');
-  };
-  socket.onmessage = (event) => {
+    if (onReady) onReady();
+  });
+  socket.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
     log('📨 Получено: ' + JSON.stringify(data));
     if (data.type === 'room_created') {
@@ -28,25 +36,19 @@ function initSocket() {
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
     if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
-  };
+  });
 }
 
 function createRoom() {
-  if (!isConnected) {
-    log('⛔ WebSocket ещё не подключён');
-    return;
-  }
-  if (!socket) initSocket();
-  socket.send(JSON.stringify({ type: 'create' }));
+  initSocket(() => {
+    socket.send(JSON.stringify({ type: 'create' }));
+  });
 }
 
 function joinRoom(roomId) {
-  if (!isConnected) {
-    log('⛔ WebSocket ещё не подключён');
-    return;
-  }
-  if (!socket) initSocket();
-  socket.send(JSON.stringify({ type: 'join', roomId }));
+  initSocket(() => {
+    socket.send(JSON.stringify({ type: 'join', roomId }));
+  });
 }
 
 function sendMove(move) {
