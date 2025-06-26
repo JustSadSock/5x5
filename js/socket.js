@@ -196,6 +196,7 @@ function showOpponentLeftModal() {
   document.getElementById('leaveToMenu').onclick = () => {
     ov.remove();
     cleanupRoom();
+    if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
     const ms = document.getElementById('modeSelect');
     const onlineMenu = document.getElementById('onlineMenu');
     if (ms) ms.style.display = 'flex';
@@ -204,6 +205,7 @@ function showOpponentLeftModal() {
   document.getElementById('leaveCreate').onclick = () => {
     ov.remove();
     cleanupRoom();
+    if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
     const ms = document.getElementById('modeSelect');
     const onlineMenu = document.getElementById('onlineMenu');
     if (ms) ms.style.display = 'none';
