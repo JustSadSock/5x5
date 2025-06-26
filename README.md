@@ -29,3 +29,5 @@ After you press the **Подтвердить** button your moves are sent to the
 ```
 
 The confirm button becomes active again so you can resend the moves. This usually means that the connection to the server was interrupted.
+
+If the page manages to reconnect, you will see **«Переподключено, повторный вход…»** and the client will automatically recreate or rejoin the last room.
