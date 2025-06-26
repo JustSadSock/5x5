@@ -2,6 +2,24 @@
 
 A simple WebSocket-based 5×5 PvP game.
 
+## Getting started
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start the server (choose either command):
+
+   ```bash
+   npm start
+   # or
+   node server.js
+   ```
+
+   The game will be served on [http://localhost:8080](http://localhost:8080).
+
 ## Troubleshooting
 
 After you press the **Подтвердить** button your moves are sent to the server. The client waits for the `start_round` message to continue. If this message does not arrive within about 10 seconds you will see the error:
