@@ -38,6 +38,7 @@ function startNewRound() {
   canPlay = true;
   const btn = document.getElementById('confirmBtn');
   if (btn) btn.disabled = true;
+  console.log('Planning phase started');
 }
 
 (() => {
@@ -541,6 +542,7 @@ function startNewRound() {
   window.onStartRound = function(moves) {
     plans = { A: moves[0], B: moves[1] };
     window.plans = plans;
+    console.log('Starting execution phase with moves', moves);
     phase = 'execute';
     step = 1;
     const next = document.getElementById('btn-next');
@@ -549,6 +551,8 @@ function startNewRound() {
       next.textContent = '▶ Выполнить';
       next.disabled = false;
     }
+    const cbtn = document.getElementById('confirmBtn');
+    if (cbtn) cbtn.disabled = true;
     clearPlan();
     updateUI();
   };

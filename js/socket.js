@@ -53,8 +53,10 @@ function initSocket(onReady) {
         clearTimeout(startRoundTimer);
         startRoundTimer = null;
       }
+      log('▶ Начало раунда');
       onStartRound(data.moves);
     }
+    if (data.type === 'error') log('⚠ ' + data.message);
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
     if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
@@ -86,6 +88,10 @@ function sendMove(move) {
 function submitMoves(moves) {
   if (!isConnected) {
     log('⛔ WebSocket ещё не подключён');
+    return;
+  }
+  if (!Array.isArray(moves) || moves.length !== 5) {
+    log('⚠ Нужно выбрать ровно 5 ходов');
     return;
   }
   if (socket && socket.readyState === WebSocket.OPEN) {
