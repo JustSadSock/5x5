@@ -91,11 +91,14 @@ wss.on('connection', ws => {
       }
       console.log(`Player ${ws.playerIndex} submitted moves in room ${ws.roomId}`);
       room.pendingMoves[ws.playerIndex] = data.moves.slice(0, 5);
+      room.players.forEach(p =>
+        p.send(JSON.stringify({ type: 'player_confirmed', playerIndex: ws.playerIndex }))
+      );
       if (
         Array.isArray(room.pendingMoves[0]) && room.pendingMoves[0].length === 5 &&
         Array.isArray(room.pendingMoves[1]) && room.pendingMoves[1].length === 5
       ) {
-        console.log(`Emitting start_round for room ${ws.roomId}`);
+        console.log(`Both players confirmed moves in room ${ws.roomId}, starting round`);
         room.players.forEach(p =>
           p.send(JSON.stringify({ type: 'start_round', moves: room.pendingMoves }))
         );

@@ -48,11 +48,17 @@ function initSocket(onReady) {
     if (data.type === 'opponent_move') {
       handleOpponentMove(data.move);
     }
+    if (data.type === 'player_confirmed') {
+      const who = data.playerIndex === 0 ? 'Игрок A' : 'Игрок B';
+      showConfirmMessage(who + ' подтвердил ходы');
+      log(who + ' подтвердил ходы');
+    }
     if (data.type === 'start_round') {
       if (startRoundTimer) {
         clearTimeout(startRoundTimer);
         startRoundTimer = null;
       }
+      log('Оба игрока подтвердили ходы, начинается просмотр');
       log('▶ Начало раунда');
       onStartRound(data.moves);
     }
@@ -113,6 +119,17 @@ function sendState(state) {
 function log(text) {
   const el = document.getElementById('log');
   if (el) el.innerHTML += text + '<br>';
+}
+
+function showConfirmMessage(text) {
+  const el = document.getElementById('confirmToast');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => {
+    el.classList.remove('show');
+  }, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
