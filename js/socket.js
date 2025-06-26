@@ -19,6 +19,24 @@ function resetRoomState() {
   wasCreator = false;
 }
 
+function clearRoomUI() {
+  const codeEl = document.getElementById('roomCode');
+  if (codeEl) codeEl.innerText = '';
+  const logEl = document.getElementById('log');
+  if (logEl) logEl.innerHTML = '';
+  const btn = document.getElementById('confirmBtn');
+  if (btn) btn.disabled = true;
+}
+
+function cleanupRoom() {
+  if (startRoundTimer) {
+    clearTimeout(startRoundTimer);
+    startRoundTimer = null;
+  }
+  resetRoomState();
+  clearRoomUI();
+}
+
 function initSocket(onReady) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     if (onReady) onReady();
@@ -83,8 +101,14 @@ function initSocket(onReady) {
     if (data.type === 'error') log('⚠ ' + data.message);
     if (data.type === 'state_ok') log('✔ Ходы совпадают');
     if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
-    if (data.type === 'opponent_left') log('⚠ Оппонент покинул игру');
-    if (data.type === 'room_expired') log('⌛ Комната закрыта из-за неактивности');
+    if (data.type === 'opponent_left') {
+      log('⚠ Оппонент покинул игру');
+      cleanupRoom();
+    }
+    if (data.type === 'room_expired') {
+      log('⌛ Комната закрыта из-за неактивности');
+      cleanupRoom();
+    }
   });
 }
 
@@ -152,4 +176,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.resetRoomState = resetRoomState;
+window.cleanupRoom = cleanupRoom;
 // Placeholder removed to allow main game script to define handlers

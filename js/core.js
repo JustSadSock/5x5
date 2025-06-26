@@ -503,7 +503,11 @@ function startNewRound() {
     const ov = document.createElement('div'); ov.id = 'resultOverlay';
     ov.innerHTML = `<div>${text}</div><button id="resOk">Ок</button>`;
     document.body.append(ov);
-    document.getElementById('resOk').onclick = () => { ov.remove(); resetGame(); };
+    document.getElementById('resOk').onclick = () => {
+      ov.remove();
+      resetGame();
+      if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+    };
   }
 
   function resetGame() {
