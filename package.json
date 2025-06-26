@@ -4,8 +4,9 @@
   "main": "server.js",
   "license": "MIT",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test"
+    "pretest": "npm install",
+    "test": "node --test",
+    "start": "node server.js"
   },
   "dependencies": {
     "ws": "^8.17.0"
