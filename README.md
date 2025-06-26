@@ -18,7 +18,7 @@ A simple WebSocket-based 5×5 PvP game.
    node server.js
    ```
 
-   The game will be served on [http://localhost:8080](http://localhost:8080).
+   The game will be served on [https://boom-poised-sawfish.glitch.me](https://boom-poised-sawfish.glitch.me).
 
 ## Troubleshooting
 
