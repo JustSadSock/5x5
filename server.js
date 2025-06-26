@@ -8,11 +8,12 @@ const jsDir = path.join(__dirname, 'js');
 const indexFile = path.join(__dirname, 'index.html');
 
 function requestHandler(req, res) {
-  const urlPath = new URL(req.url, `http://${req.headers.host}`).pathname;
-  if (urlPath.includes('..')) {
+  const rawPath = decodeURIComponent(req.url.split('?')[0]);
+  if (rawPath.includes('..')) {
     res.writeHead(400);
     return res.end('Bad request');
   }
+  const urlPath = new URL(rawPath, `http://${req.headers.host}`).pathname;
   let filePath;
   if (urlPath === '/' || urlPath === '/index.html') {
     filePath = indexFile;
@@ -186,4 +187,8 @@ if (require.main === module) {
   });
 }
 
-module.exports = { isValidMove, attachWebSocketServer };
+module.exports = {
+  isValidMove,
+  attachWebSocketServer,
+  requestHandler
+};
