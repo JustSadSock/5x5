@@ -89,7 +89,10 @@ wss.on('connection', ws => {
         console.log(`Player ${ws.playerIndex} sent invalid moves in room ${ws.roomId}`);
         return;
       }
-      console.log(`Player ${ws.playerIndex} submitted moves in room ${ws.roomId}`);
+      console.log(
+        `Received moves from player ${ws.playerIndex} in room ${ws.roomId}:`,
+        data.moves
+      );
       room.pendingMoves[ws.playerIndex] = data.moves.slice(0, 5);
       room.players.forEach(p =>
         p.send(JSON.stringify({ type: 'player_confirmed', playerIndex: ws.playerIndex }))
@@ -98,11 +101,19 @@ wss.on('connection', ws => {
         Array.isArray(room.pendingMoves[0]) && room.pendingMoves[0].length === 5 &&
         Array.isArray(room.pendingMoves[1]) && room.pendingMoves[1].length === 5
       ) {
-        console.log(`Both players confirmed moves in room ${ws.roomId}, starting round`);
+        console.log(
+          `Starting round in room ${ws.roomId}. Player 0 moves: ${JSON.stringify(
+            room.pendingMoves[0]
+          )}, Player 1 moves: ${JSON.stringify(room.pendingMoves[1])}`
+        );
         room.players.forEach(p =>
           p.send(JSON.stringify({ type: 'start_round', moves: room.pendingMoves }))
         );
         room.pendingMoves = { 0: null, 1: null };
+      } else {
+        console.log(
+          `Room ${ws.roomId} waiting for moves: P0 ${Array.isArray(room.pendingMoves[0]) ? room.pendingMoves[0].length : 'none'}, P1 ${Array.isArray(room.pendingMoves[1]) ? room.pendingMoves[1].length : 'none'}`
+        );
       }
     } else if (data.type === 'state') {
       const room = rooms[ws.roomId];
