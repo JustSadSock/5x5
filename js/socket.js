@@ -104,6 +104,7 @@ function initSocket(onReady) {
     if (data.type === 'opponent_left') {
       log('⚠ Оппонент покинул игру');
       cleanupRoom();
+      showOpponentLeftModal();
     }
     if (data.type === 'room_expired') {
       log('⌛ Комната закрыта из-за неактивности');
@@ -168,6 +169,35 @@ function showConfirmMessage(text) {
   el._hideTimer = setTimeout(() => {
     el.classList.remove('show');
   }, 2000);
+}
+
+function showOpponentLeftModal() {
+  const ov = document.createElement('div');
+  ov.id = 'leaveOverlay';
+  ov.innerHTML =
+    '<div>Оппонент покинул комнату</div>' +
+    '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
+    '<button id="leaveToMenu">В меню</button>' +
+    '<button id="leaveCreate">Создать новую</button>' +
+    '</div>';
+  document.body.append(ov);
+  document.getElementById('leaveToMenu').onclick = () => {
+    ov.remove();
+    cleanupRoom();
+    const ms = document.getElementById('modeSelect');
+    const onlineMenu = document.getElementById('onlineMenu');
+    if (ms) ms.style.display = 'flex';
+    if (onlineMenu) onlineMenu.style.display = 'none';
+  };
+  document.getElementById('leaveCreate').onclick = () => {
+    ov.remove();
+    cleanupRoom();
+    const ms = document.getElementById('modeSelect');
+    const onlineMenu = document.getElementById('onlineMenu');
+    if (ms) ms.style.display = 'none';
+    if (onlineMenu) onlineMenu.style.display = 'flex';
+    createRoom();
+  };
 }
 
 document.addEventListener('DOMContentLoaded', () => {

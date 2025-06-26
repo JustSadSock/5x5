@@ -255,6 +255,16 @@
     }
     #resultOverlay button { margin-top:10px; padding:8px 16px; }
 
+    /* Оппонент покинул игру */
+    #leaveOverlay {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      background:#333; padding:20px;
+      border-radius:6px; text-align:center;
+      z-index:20;
+    }
+    #leaveOverlay button { margin-top:10px; padding:8px 16px; }
+
     /* Счёт */
     #scoreboard {
       position:absolute; top:6px; left:50%; transform:translateX(-50%);
@@ -313,6 +323,7 @@
     <div id="onlineCreate" class="panel modeBtn">Создать комнату</div>
     <input id="roomInput" placeholder="Код комнаты" style="padding:6px;max-width:140px;">
     <div id="onlineJoin" class="panel modeBtn">Присоединиться</div>
+    <div id="onlineBack" class="panel modeBtn">В меню</div>
     <div id="roomCode"></div>
     <div id="connectionStatus" style="font-family:'Share Tech Mono',monospace;font-size:12px;"></div>
     <div id="log" style="font-family: 'Share Tech Mono', monospace; font-size: 12px;"></div>
