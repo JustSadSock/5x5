@@ -68,6 +68,36 @@ test('round flow', async t => {
   assert.deepEqual(roundB.moves[0], movesA);
   assert.deepEqual(roundB.moves[1], movesB);
 
+  const okWaitA = waitMessage(
+    a,
+    d => d.type === 'state_ok' || d.type === 'state_mismatch'
+  );
+  const okWaitB = waitMessage(
+    b,
+    d => d.type === 'state_ok' || d.type === 'state_mismatch'
+  );
+  a.send(JSON.stringify({ type: 'state', state: 'SAME' }));
+  b.send(JSON.stringify({ type: 'state', state: 'SAME' }));
+  const okA = await okWaitA;
+  const okB = await okWaitB;
+  assert.equal(okA.type, 'state_ok');
+  assert.equal(okB.type, 'state_ok');
+
+  const mmWaitA = waitMessage(
+    a,
+    d => d.type === 'state_ok' || d.type === 'state_mismatch'
+  );
+  const mmWaitB = waitMessage(
+    b,
+    d => d.type === 'state_ok' || d.type === 'state_mismatch'
+  );
+  a.send(JSON.stringify({ type: 'state', state: 'A' }));
+  b.send(JSON.stringify({ type: 'state', state: 'B' }));
+  const mmA = await mmWaitA;
+  const mmB = await mmWaitB;
+  assert.equal(mmA.type, 'state_mismatch');
+  assert.equal(mmB.type, 'state_mismatch');
+
   a.close();
   b.close();
   server.close();
