@@ -43,6 +43,22 @@ const wss = new WebSocket.Server({ server });
 const rooms = {};
 const ROOM_TIMEOUT_MS = 300000; // 5 minutes
 
+const VALID_DIRS = ['up', 'down', 'left', 'right'];
+function isValidMove(move) {
+  if (typeof move === 'string') {
+    return VALID_DIRS.includes(move) || move === 'shield';
+  }
+  if (
+    move &&
+    typeof move === 'object' &&
+    move.type === 'attack' &&
+    Array.isArray(move.dirs)
+  ) {
+    return move.dirs.every(d => VALID_DIRS.includes(d));
+  }
+  return false;
+}
+
 function genCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
@@ -87,6 +103,11 @@ wss.on('connection', ws => {
       if (!Array.isArray(data.moves) || data.moves.length !== 5) {
         ws.send(JSON.stringify({ type: 'error', message: 'Нужно отправить ровно 5 ходов' }));
         console.log(`Player ${ws.playerIndex} sent invalid moves in room ${ws.roomId}`);
+        return;
+      }
+      if (!data.moves.every(isValidMove)) {
+        ws.send(JSON.stringify({ type: 'error' }));
+        console.log(`Player ${ws.playerIndex} sent malformed moves in room ${ws.roomId}`);
         return;
       }
       console.log(
@@ -153,6 +174,10 @@ wss.on('connection', ws => {
   });
 });
 
-server.listen(8080, () => {
-  console.log('Server running on http://localhost:8080');
-});
+if (require.main === module) {
+  server.listen(8080, () => {
+    console.log('Server running on http://localhost:8080');
+  });
+}
+
+module.exports = { isValidMove };
