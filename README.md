@@ -20,6 +20,14 @@ A simple WebSocket-based 5×5 PvP game.
 
    The game will be served on [https://boom-poised-sawfish.glitch.me](https://boom-poised-sawfish.glitch.me).
 
+### Running tests
+
+After installing dependencies with `npm install`, the test suite can be run using:
+
+```bash
+npm test
+```
+
 ## Troubleshooting
 
 After you press the **Подтвердить** button your moves are sent to the server. The client waits for the `start_round` message to continue. If this message does not arrive within about 10 seconds you will see the error:
