@@ -118,6 +118,7 @@ function startNewRound() {
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
   onlineBack.onclick = () => {
     if (typeof window.resetRoomState === 'function') window.resetRoomState();
+    if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
     onlineMenu.style.display = 'none';
     ms.style.display = 'flex';
   };
@@ -512,6 +513,7 @@ function startNewRound() {
     document.getElementById('resOk').onclick = () => {
       ov.remove();
       resetGame();
+      if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
       if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
     };
   }
@@ -547,6 +549,13 @@ function startNewRound() {
     startNewRound();
     if (isOnline) document.getElementById('btn-next').style.display = 'none';
   };
+
+  function exitOnlineMode() {
+    isOnline = false;
+    playerIndex = null;
+  }
+
+  window.exitOnlineMode = exitOnlineMode;
   window.plans = plans;
 
   window.onStartRound = function(moves) {
