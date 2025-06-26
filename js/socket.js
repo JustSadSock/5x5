@@ -38,6 +38,8 @@ function initSocket(onReady) {
   socket.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
     log('📨 Получено: ' + JSON.stringify(data));
+    // Also output payloads to the browser console for easier debugging
+    console.log('WebSocket payload:', data);
     if (data.type === 'room_created') {
       const el = document.getElementById('roomCode');
       if (el) el.innerText = `Комната: ${data.roomId}`;
@@ -60,6 +62,8 @@ function initSocket(onReady) {
       }
       log('Оба игрока подтвердили ходы, начинается просмотр');
       log('▶ Начало раунда');
+      // Log moves object to verify contents
+      console.log('start_round moves:', data.moves);
       onStartRound(data.moves);
     }
     if (data.type === 'error') log('⚠ ' + data.message);
