@@ -42,6 +42,38 @@ function requestHandler(req, res) {
 const rooms = {};
 const ROOM_TIMEOUT_MS = 300000; // 5 minutes
 
+function removeFromRoom(ws) {
+  const roomId = ws.roomId;
+  if (!roomId) return;
+  const room = rooms[roomId];
+  if (!room) {
+    ws.roomId = undefined;
+    ws.playerIndex = undefined;
+    return;
+  }
+  room.players = room.players.filter(p => p !== ws);
+  room.players.forEach(p => p.send(JSON.stringify({ type: 'opponent_left' })));
+  if (room.players.length === 0) {
+    if (room.expireTimer) clearTimeout(room.expireTimer);
+    delete rooms[roomId];
+  } else {
+    room.pendingMoves = { 0: null, 1: null };
+    if (room.expireTimer) clearTimeout(room.expireTimer);
+    room.expireTimer = setTimeout(() => {
+      const r = rooms[roomId];
+      if (r && r.players.length === 1) {
+        const p = r.players[0];
+        if (p.readyState === WebSocket.OPEN) {
+          p.send(JSON.stringify({ type: 'room_expired' }));
+        }
+        delete rooms[roomId];
+      }
+    }, ROOM_TIMEOUT_MS);
+  }
+  ws.roomId = undefined;
+  ws.playerIndex = undefined;
+}
+
 const VALID_DIRS = ['up', 'down', 'left', 'right'];
 function isValidMove(move) {
   if (typeof move === 'string') {
@@ -67,12 +99,14 @@ function genCode() {
 
 function attachWebSocketServer(server) {
   const wss = new WebSocket.Server({ server });
+  wss.rooms = rooms;
 
   wss.on('connection', ws => {
     ws.on('message', msg => {
       let data;
       try { data = JSON.parse(msg); } catch (e) { return; }
       if (data.type === 'create') {
+        removeFromRoom(ws);
         let code;
         do { code = genCode(); } while (rooms[code]);
         rooms[code] = { players: [ws], states: [null, null], pendingMoves: { 0: null, 1: null }, expireTimer: null };
@@ -80,6 +114,7 @@ function attachWebSocketServer(server) {
         ws.playerIndex = 0;
         ws.send(JSON.stringify({ type: 'room_created', roomId: code }));
       } else if (data.type === 'join') {
+        removeFromRoom(ws);
         const room = rooms[data.roomId];
         if (!room || room.players.length >= 2) {
           ws.send(JSON.stringify({ type: 'error', message: 'Комната недоступна' }));
@@ -150,29 +185,7 @@ function attachWebSocketServer(server) {
       }
     });
     ws.on('close', () => {
-      const roomId = ws.roomId;
-      if (!roomId) return;
-      const room = rooms[roomId];
-      if (!room) return;
-      room.players = room.players.filter(p => p !== ws);
-      room.players.forEach(p => p.send(JSON.stringify({ type: 'opponent_left' })));
-      if (room.players.length === 0) {
-        if (room.expireTimer) clearTimeout(room.expireTimer);
-        delete rooms[roomId];
-      } else {
-        room.pendingMoves = { 0: null, 1: null };
-        if (room.expireTimer) clearTimeout(room.expireTimer);
-        room.expireTimer = setTimeout(() => {
-          const r = rooms[roomId];
-          if (r && r.players.length === 1) {
-            const p = r.players[0];
-            if (p.readyState === WebSocket.OPEN) {
-              p.send(JSON.stringify({ type: 'room_expired' }));
-            }
-            delete rooms[roomId];
-          }
-        }, ROOM_TIMEOUT_MS);
-      }
+      removeFromRoom(ws);
     });
   });
 

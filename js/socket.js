@@ -3,6 +3,7 @@ let isConnected = false;
 let startRoundTimer = null;
 let lastRoomId = null;
 let wasCreator = false;
+let intentionalClose = false;
 // Connect to the dedicated WebSocket server
 const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
 
@@ -32,6 +33,10 @@ function cleanupRoom() {
   if (startRoundTimer) {
     clearTimeout(startRoundTimer);
     startRoundTimer = null;
+  }
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    intentionalClose = true;
+    socket.close();
   }
   resetRoomState();
   clearRoomUI();
@@ -63,6 +68,11 @@ function initSocket(onReady) {
   socket.addEventListener('close', () => {
     isConnected = false;
     log('⚠ Соединение прервано');
+    if (intentionalClose) {
+      intentionalClose = false;
+      updateConnectionStatus('Оффлайн', 'orange');
+      return;
+    }
     updateConnectionStatus('Оффлайн. Переподключение...', 'orange');
     setTimeout(() => initSocket(), 2000);
   });
@@ -114,6 +124,7 @@ function initSocket(onReady) {
 }
 
 function createRoom() {
+  cleanupRoom();
   wasCreator = true;
   lastRoomId = null;
   initSocket(() => {
@@ -122,6 +133,7 @@ function createRoom() {
 }
 
 function joinRoom(roomId) {
+  cleanupRoom();
   wasCreator = false;
   lastRoomId = roomId;
   initSocket(() => {
