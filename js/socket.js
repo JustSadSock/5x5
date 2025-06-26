@@ -1,6 +1,8 @@
 let socket;
 let isConnected = false;
 let startRoundTimer = null;
+let lastRoomId = null;
+let wasCreator = false;
 // Connect to the dedicated WebSocket server
 const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
 
@@ -10,6 +12,11 @@ function updateConnectionStatus(text, color) {
     el.textContent = text;
     if (color) el.style.color = color;
   }
+}
+
+function resetRoomState() {
+  lastRoomId = null;
+  wasCreator = false;
 }
 
 function initSocket(onReady) {
@@ -26,7 +33,13 @@ function initSocket(onReady) {
   socket.addEventListener('open', () => {
     isConnected = true;
     log('✅ Соединение установлено');
-    updateConnectionStatus('Онлайн', 'lime');
+    if (!onReady && (wasCreator || lastRoomId)) {
+      updateConnectionStatus('Переподключено, повторный вход...', 'lime');
+      const msg = wasCreator ? { type: 'create' } : { type: 'join', roomId: lastRoomId };
+      socket.send(JSON.stringify(msg));
+    } else {
+      updateConnectionStatus('Онлайн', 'lime');
+    }
     if (onReady) onReady();
   });
   socket.addEventListener('close', () => {
@@ -43,6 +56,7 @@ function initSocket(onReady) {
     if (data.type === 'room_created') {
       const el = document.getElementById('roomCode');
       if (el) el.innerText = `Комната: ${data.roomId}`;
+      lastRoomId = data.roomId;
     }
     if (data.type === 'start_game') {
       startOnlineGame(data.playerIndex);
@@ -75,12 +89,16 @@ function initSocket(onReady) {
 }
 
 function createRoom() {
+  wasCreator = true;
+  lastRoomId = null;
   initSocket(() => {
     socket.send(JSON.stringify({ type: 'create' }));
   });
 }
 
 function joinRoom(roomId) {
+  wasCreator = false;
+  lastRoomId = roomId;
   initSocket(() => {
     socket.send(JSON.stringify({ type: 'join', roomId }));
   });
@@ -138,6 +156,8 @@ function showConfirmMessage(text) {
 
 document.addEventListener('DOMContentLoaded', () => {
   updateConnectionStatus('Оффлайн', 'orange');
+  resetRoomState();
 });
 
+window.resetRoomState = resetRoomState;
 // Placeholder removed to allow main game script to define handlers
