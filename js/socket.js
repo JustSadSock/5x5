@@ -104,14 +104,6 @@ function joinRoom(roomId) {
   });
 }
 
-function sendMove(move) {
-  if (!isConnected) {
-    log('⛔ WebSocket ещё не подключён');
-    return;
-  }
-  if (socket && socket.readyState === WebSocket.OPEN)
-    socket.send(JSON.stringify({ type: 'move', move }));
-}
 
 function submitMoves(moves) {
   if (!isConnected) {
