@@ -242,8 +242,17 @@
       display:flex; flex-wrap:wrap; gap:6px;
       border-radius:6px; z-index:10;
     }
-    #atkOverlay button { background:#a22; color:#fff; }
-    #atkOverlay .confirm { background:#2a2; color:#fff; flex:1 1 100%; }
+    #atkOverlay button {
+      background:#a22;
+      color:#fff !important;
+      border:none !important;
+    }
+    #atkOverlay .confirm {
+      background:#2a2;
+      color:#fff !important;
+      border:none !important;
+      flex:1 1 100%;
+    }
 
     /* Результат */
     #resultOverlay {
@@ -253,7 +262,11 @@
       border-radius:6px; text-align:center;
       z-index:20;
     }
-    #resultOverlay button { margin-top:10px; padding:8px 16px; }
+    #resultOverlay button {
+      margin-top:10px; padding:8px 16px;
+      color:#fff !important;
+      border:none !important;
+    }
 
     /* Оппонент покинул игру */
     #leaveOverlay {
@@ -263,7 +276,11 @@
       border-radius:6px; text-align:center;
       z-index:20;
     }
-    #leaveOverlay button { margin-top:10px; padding:8px 16px; }
+    #leaveOverlay button {
+      margin-top:10px; padding:8px 16px;
+      color:#fff !important;
+      border:none !important;
+    }
 
     /* Счёт */
     #scoreboard {
@@ -274,7 +291,9 @@
       z-index:25;
     }
     #scoreboard button {
-      padding:4px 8px; background:#840; color:#fff; border:none;
+      padding:4px 8px; background:#840;
+      color:#fff !important;
+      border:none !important;
       border-radius:4px; cursor:pointer;
     }
     #settingsBtn { background:#444; }
@@ -282,10 +301,17 @@
     #settingsModal {
       display:none; position:absolute; top:50%; left:50%;
       transform:translate(-50%,-50%);
-      background:#222; padding:20px; border-radius:8px;
-      z-index:30; color:#fff;
+      background:rgba(0,0,0,0.9);
+      padding:20px; border-radius:10px;
+      border:2px solid #0ff;
+      box-shadow:0 0 10px #0ff, inset 0 0 10px #0ff;
+      z-index:30; color:#0ff;
+      font-family:'Orbitron','Share Tech Mono',sans-serif;
     }
-    #settingsModal label { display:block; margin-bottom:10px; }
+    #settingsModal label { display:block; margin-bottom:10px; color:#fff; }
+    #settingsModal select, #settingsModal input[type="range"] {
+      background:#222; border:1px solid #0ff; color:#0ff;
+    }
 
     /* Всплывающие сообщения */
     #confirmToast {
@@ -303,6 +329,23 @@
       transition:opacity .3s;
     }
     #confirmToast.show { opacity:1; }
+
+    button {
+      color:#0ff;
+      border:2px solid #0ff;
+      border-radius:6px;
+      text-shadow:0 0 6px #0ff;
+      cursor:pointer;
+      transition:background .2s, box-shadow .2s, transform .2s;
+    }
+    button:hover:not(:disabled) {
+      box-shadow:0 0 10px #0ff;
+      transform:translateY(-2px);
+    }
+    button:active:not(:disabled) {
+      box-shadow:0 0 4px #0ff;
+      transform:translateY(0) scale(0.95);
+    }
 
     /* Мелкие правки для широких экранов */
     @media (min-width: 600px) {
@@ -342,6 +385,7 @@
     <span id="scoreA">0</span> : <span id="scoreB">0</span>
     <button id="scoreReset" data-i18n="resetScore">Сбросить счёт</button>
     <button id="settingsBtn">⚙</button>
+    <button id="menuBtn" data-i18n="toMenu">В меню</button>
   </div>
 
   <div id="settingsModal">
