@@ -504,6 +504,7 @@ function startNewRound() {
     clearPlan();
     document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
     const [aA, aB] = [plans.A[step - 1], plans.B[step - 1]];
+    const moved = { A: false, B: false };
     ['A', 'B'].forEach(pl => {
       const r = pl === 'A' ? aA : aB;
       if (typeof r === 'string' && DXY[r]) {
@@ -515,10 +516,17 @@ function startNewRound() {
           units[pl].alive = false;
         } else {
           units[pl].x = nx; units[pl].y = ny; playSound('move');
+          moved[pl] = true;
         }
       }
     });
     render();
+    Object.keys(moved).forEach(pl => {
+      if (moved[pl]) {
+        const el = document.querySelector(`#c${units[pl].x}${units[pl].y} .player${pl}`);
+        if (el) el.classList.add('moveAnim');
+      }
+    });
     ['A', 'B'].forEach(pl => {
       const r = pl === 'A' ? aA : aB, other = pl === 'A' ? 'B' : 'A';
       if (typeof r === 'object') {
@@ -616,8 +624,8 @@ function startNewRound() {
       const x = +c.id[1], y = +c.id[2];
       if (x === 0 || x === 4 || y === 0 || y === 4) {
         c.classList.remove('cracked');
-        c.classList.add('fall');
-        setTimeout(() => { c.classList.remove('fall'); c.classList.add('lava'); }, 500);
+        c.classList.add('collapse');
+        setTimeout(() => { c.classList.remove('collapse'); c.classList.add('lava'); }, 600);
       }
     });
     ['A', 'B'].forEach(pl => {
