@@ -1,5 +1,6 @@
 let socket;
 let handleClose;
+let handleMessage;
 let isConnected = false;
 let startRoundTimer = null;
 let lastRoomId = null;
@@ -37,6 +38,7 @@ function cleanupRoom() {
   }
   if (socket) {
     socket.removeEventListener('close', handleClose);
+    socket.removeEventListener('message', handleMessage);
     intentionalClose = true;
     socket.close();
     socket = null; // ensure old connection isn't reused
@@ -83,7 +85,7 @@ function initSocket(onReady) {
     setTimeout(() => initSocket(), 2000);
   };
   socket.addEventListener('close', handleClose);
-  socket.addEventListener('message', (event) => {
+  handleMessage = function handleMessage(event) {
     const data = JSON.parse(event.data);
     log('📨 Получено: ' + JSON.stringify(data));
     // Also output payloads to the browser console for easier debugging
@@ -127,7 +129,8 @@ function initSocket(onReady) {
       log('⌛ Комната закрыта из-за неактивности');
       cleanupRoom();
     }
-  });
+  };
+  socket.addEventListener('message', handleMessage);
 }
 
 function createRoom() {
