@@ -328,6 +328,27 @@
       color:#fff !important; border:none !important;
       pointer-events:auto;
     }
+    .speedControl {
+      position:absolute;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(0,0,0,0.7);
+      padding:6px 12px;
+      border-radius:6px;
+      pointer-events:auto;
+    }
+    #replaySpeed {
+      width:120px;
+      accent-color:#0ff;
+    }
+    #replaySpeedLabel {
+      min-width:24px;
+      text-align:center;
+    }
 
     /* Tutorial overlay */
     #tutorialOverlay {
@@ -541,7 +562,13 @@
 
   <div id="atkOverlay"></div>
   <div id="confirmToast"></div>
-  <div id="replayOverlay"><button id="replayClose" data-i18n="close" data-sound="nav">Close</button></div>
+  <div id="replayOverlay">
+    <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
+    <div class="speedControl">
+      <input id="replaySpeed" type="range" min="0" max="5" step="0.5" value="1">
+      <span id="replaySpeedLabel">1x</span>
+    </div>
+  </div>
   <div id="tutorialOverlay">
     <div id="tutorialContent"></div>
     <button id="tutorialNext" data-i18n="nextBtn" data-sound="nav">Next</button>
