@@ -27,7 +27,7 @@ function clearRoomUI() {
   if (codeEl) codeEl.innerText = '';
   const logEl = document.getElementById('log');
   if (logEl) logEl.innerHTML = '';
-  const btn = document.getElementById('confirmBtn');
+  const btn = document.getElementById('btn-next');
   if (btn) btn.disabled = true;
 }
 
@@ -178,11 +178,11 @@ function submitMoves(moves) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'submit_moves', moves }));
     if (startRoundTimer) clearTimeout(startRoundTimer);
-    startRoundTimer = setTimeout(() => {
-      log(t('server_no_round'));
-      const btn = document.getElementById('confirmBtn');
-      if (btn) btn.disabled = false;
-    }, 10000);
+      startRoundTimer = setTimeout(() => {
+        log(t('server_no_round'));
+        const btn = document.getElementById('btn-next');
+        if (btn) btn.disabled = false;
+      }, 10000);
   }
 }
 
