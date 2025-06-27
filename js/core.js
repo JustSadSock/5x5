@@ -3,7 +3,8 @@ let yourTurn = false;
 let localMoves = [];
 let canPlay = false;
 let isOnline = false;
-let soundVolume = 1;
+let soundVolume = parseFloat(localStorage.getItem('volume'));
+if (isNaN(soundVolume)) soundVolume = 1;
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
@@ -827,12 +828,16 @@ document.addEventListener('DOMContentLoaded', () => {
     volumeSlider.value = soundVolume;
     volumeSlider.oninput = () => {
       soundVolume = parseFloat(volumeSlider.value);
+      localStorage.setItem('volume', soundVolume);
     };
   }
   if (langSelect) {
     langSelect.value = window.i18n ? window.i18n.lang : 'en';
     langSelect.onchange = () => {
-      if (window.i18n) window.i18n.setLang(langSelect.value);
+      if (window.i18n) {
+        window.i18n.setLang(langSelect.value);
+        localStorage.setItem('language', langSelect.value);
+      }
     };
   }
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
