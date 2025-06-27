@@ -90,7 +90,7 @@ function startNewRound() {
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.type = 'sine';
-    const freq = { move: 440, attack: 660, shield: 330, win: 880 }[type] || 440;
+    const freq = { move: 440, attack: 660, shield: 330, win: 880, ui: 550 }[type] || 440;
     osc.frequency.value = freq; gain.gain.value = 0.3 * soundVolume;
     osc.start(); osc.stop(audioCtx.currentTime + 0.15);
   }
@@ -508,14 +508,24 @@ function startNewRound() {
   }
 
   function showResult(text) {
-    const ov = document.createElement('div'); ov.id = 'resultOverlay';
-    ov.innerHTML = `<div>${text}</div><button id="resOk">${t('ok')}</button>`;
+    const ov = document.createElement('div');
+    ov.id = 'resultOverlay';
+    ov.innerHTML =
+      `<div>${text}</div>` +
+      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
+      `<button id="resMenu">${t('toMenu')}</button>` +
+      `<button id="resOk">${t('ok')}</button>` +
+      '</div>';
     document.body.append(ov);
     document.getElementById('resOk').onclick = () => {
       ov.remove();
       resetGame();
       if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
       if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+    };
+    document.getElementById('resMenu').onclick = () => {
+      ov.remove();
+      returnToMenu();
     };
   }
 
@@ -557,6 +567,18 @@ function startNewRound() {
   }
 
   window.exitOnlineMode = exitOnlineMode;
+  function returnToMenu() {
+    resetGame();
+    board.style.visibility = 'hidden';
+    ui.classList.remove('show');
+    if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+    exitOnlineMode();
+    ms.style.display = 'flex';
+    if (ds) ds.style.display = 'none';
+    if (onlineMenu) onlineMenu.style.display = 'none';
+  }
+
+  window.returnToMenu = returnToMenu;
   window.plans = plans;
 
   window.onStartRound = function(moves) {
@@ -593,6 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
   const langSelect = document.getElementById('langSelect');
+  const menuBtn = document.getElementById('menuBtn');
 
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
@@ -612,6 +635,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.i18n) window.i18n.setLang(langSelect.value);
     };
   }
+  if (menuBtn) menuBtn.onclick = () => returnToMenu();
+
+  document.body.addEventListener('click', e => {
+    if (e.target.tagName === 'BUTTON') playSound('ui');
+  });
 });
 
 // Prevent double-click zoom on mobile
