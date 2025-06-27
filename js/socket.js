@@ -64,6 +64,11 @@ function initSocket(onReady) {
   socket.addEventListener('open', () => {
     isConnected = true;
     log('✅ ' + t('onlineStatus')); // connection established
+    if (typeof socket.pong === 'function') {
+      socket.addEventListener('ping', () => {
+        try { socket.pong(); } catch (e) {}
+      });
+    }
     if (!onReady && (wasCreator || lastRoomId)) {
       updateConnectionStatus(t('rejoin'), 'lime');
       const msg = wasCreator ? { type: 'create' } : { type: 'join', roomId: lastRoomId };
@@ -91,6 +96,14 @@ function initSocket(onReady) {
     log('📨 ' + JSON.stringify(data));
     // Also output payloads to the browser console for easier debugging
     console.log('WebSocket payload:', data);
+    if (data.type === 'ping') {
+      if (typeof socket.pong === 'function') {
+        try { socket.pong(); } catch (e) {}
+      } else if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'pong' }));
+      }
+      return;
+    }
     if (data.type === 'room_created') {
       const el = document.getElementById('roomCode');
       if (el) el.innerText = `${t('room')}: ${data.roomId}`;
