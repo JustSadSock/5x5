@@ -406,7 +406,7 @@ function startNewRound() {
     return s;
   }
 
-  function randomAction(state, usedMoveSet, usedAtkSet, atkCount, shieldCount, oppAct) {
+  function randomAction(state, usedMoveSet, usedAtkSet, atkCount, shieldCount) {
     const me = state.units.B, opp = state.units.A;
     const di = Object.entries(DXY).find(([d, [dx, dy]]) =>
       me.x + dx === opp.x && me.y + dy === opp.y && !usedMoveSet.has(d)
@@ -452,7 +452,7 @@ function startNewRound() {
       let atkC = 0, shC = 0;
       const plan = [];
       for (let i = 0; i < STEPS; i++) {
-        const act = randomAction(state, usedM, usedA, atkC, shC, plans.A[i]);
+        const act = randomAction(state, usedM, usedA, atkC, shC);
         plan.push(act);
         if (typeof act === 'string') {
           if (act === 'shield') shC++; else usedM.add(act);
