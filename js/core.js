@@ -58,6 +58,8 @@ function startNewRound() {
   let replayHistory = [];
   let currentReplay = null;
   let isReplaying = false;
+  let isTutorial = false;
+  let tutorialIndex = 0;
 
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -67,6 +69,7 @@ function startNewRound() {
   const rulesInit = document.getElementById('rulesBtnInitial');
   const rulesOv = document.getElementById('rulesOverlay');
   const rulesClose = document.getElementById('rulesClose');
+  const rulesTutorial = document.getElementById('rulesTutorial');
   const onlineMenu = document.getElementById('onlineMenu');
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
@@ -83,6 +86,45 @@ function startNewRound() {
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
+  const tutorialScript = [
+    { trigger: 'start', key: 'tutorial1' },
+    { trigger: 'afterMove', key: 'tutorial2' },
+    { trigger: 'afterConfirm', key: 'tutorial3' }
+  ];
+
+  function showTutorial(event) {
+    if (!isTutorial) return;
+    const step = tutorialScript[tutorialIndex];
+    if (step && step.trigger === event && tutOv && tutCont && tutNext) {
+      tutCont.textContent = t(step.key);
+      tutOv.classList.add('show');
+      tutNext.onclick = () => {
+        tutOv.classList.remove('show');
+        tutorialIndex++;
+        if (tutorialIndex >= tutorialScript.length) {
+          isTutorial = false;
+          localStorage.setItem('tutorialDone', '1');
+        }
+      };
+    }
+  }
+
+  function startTutorial() {
+    single = true;
+    isTutorial = true;
+    tutorialIndex = 0;
+    ms.style.display = 'none';
+    if (ds) ds.style.display = 'none';
+    startGame();
+    resetGame();
+    startNewRound();
+    showTutorial('start');
+  }
+
+  window.startTutorial = startTutorial;
+  const tutOv = document.getElementById('tutorialOverlay');
+  const tutCont = document.getElementById('tutorialContent');
+  const tutNext = document.getElementById('tutorialNext');
 
   let audioCtx;
 
@@ -115,6 +157,7 @@ function startNewRound() {
   bOnline.onclick = () => { ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
   rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
+  if (rulesTutorial) rulesTutorial.onclick = () => { rulesOv.style.display = 'none'; startTutorial(); };
 
   ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  ds.style.display = 'none'; startGame(); };
   ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  ds.style.display = 'none'; startGame(); };
@@ -220,6 +263,7 @@ function startNewRound() {
     }
     updateUI();
     drawPlan(P);
+    showTutorial('afterMove');
   }
 
   function deleteLast() {
@@ -253,21 +297,22 @@ function startNewRound() {
       }
       return;
     }
-    if (phase === 'planA' && single) {
-      autoPlanB();
-      phase = 'execute';
-      startRecordingRound();
-      btnNext.textContent = t('executeBtn');
-      clearPlan(); updateUI();
-      return;
-    }
-    if (phase !== 'execute') {
-      phase = phase === 'planA' ? 'planB' : 'execute';
-      if (phase === 'execute') startRecordingRound();
-      btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
-      clearPlan(); updateUI();
-      return;
-    }
+  if (phase === 'planA' && single) {
+    autoPlanB();
+    phase = 'execute';
+    startRecordingRound();
+    btnNext.textContent = t('executeBtn');
+    clearPlan(); updateUI();
+    showTutorial('afterConfirm');
+    return;
+  }
+  if (phase !== 'execute') {
+    phase = phase === 'planA' ? 'planB' : 'execute';
+    if (phase === 'execute') { startRecordingRound(); showTutorial('afterConfirm'); }
+    btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
+    clearPlan(); updateUI();
+    return;
+  }
     execStep();
   }
 
@@ -906,23 +951,8 @@ document.addEventListener('DOMContentLoaded', () => {
     playSound(e.target.dataset.sound || "ui");
   });
 
-  const tutOv = document.getElementById('tutorialOverlay');
-  const tutCont = document.getElementById('tutorialContent');
-  const tutNext = document.getElementById('tutorialNext');
-  if (tutOv && tutCont && tutNext && !localStorage.getItem('tutorialDone')) {
-    const steps = [t('tutorial1'), t('tutorial2'), t('tutorial3')];
-    let idx = 0;
-    tutCont.textContent = steps[0];
-    tutOv.classList.add('show');
-    tutNext.onclick = () => {
-      idx++;
-      if (idx < steps.length) {
-        tutCont.textContent = steps[idx];
-      } else {
-        tutOv.classList.remove('show');
-        localStorage.setItem('tutorialDone', '1');
-      }
-    };
+  if (!localStorage.getItem('tutorialDone') && typeof window.startTutorial === 'function') {
+    window.startTutorial();
   }
 });
 

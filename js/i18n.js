@@ -61,6 +61,7 @@
       ,rule6: 'A player dies if struck by an attack or when stepping on collapsed cells.'
       ,rule7: 'After three rounds the outer ring collapses leaving a 3\u00d73 arena.'
       ,rule8: 'If there is no winner after the last round, the match ends in a draw.'
+      ,tutorial: 'Tutorial'
       ,tutorial1: 'Welcome! Use arrows or buttons to move.'
       ,tutorial2: 'Plan five actions including one attack and one shield.'
       ,tutorial3: 'Press Confirm to execute and win.'
@@ -126,6 +127,7 @@
       rule6: 'Игрок погибает от атаки или наступив на провалившуюся клетку.',
       rule7: 'После трёх раундов края поля разрушаются, остаётся зона 3\u00d73.',
       rule8: 'Если победителя нет после финала, объявляется ничья.'
+      ,tutorial: 'Обучение'
       ,tutorial1: 'Добро пожаловать! Используйте стрелки или кнопки для движения.'
       ,tutorial2: 'Запланируйте пять действий, включая атаку и щит.'
       ,tutorial3: 'Нажмите \u00abПодтвердить\u00bb, чтобы начать раунд.'
@@ -191,6 +193,7 @@
       rule6: 'Гравець гине від атаки або ступивши на зруйновану клітину.',
       rule7: 'Після трьох раундів зовнішнє кільце зникає, залишається арена 3\u00d73.',
       rule8: 'Якщо переможця немає після фінального раунду, оголошується нічия.'
+      ,tutorial: 'Навчання'
       ,tutorial1: 'Ласкаво просимо! Використовуйте стрілки або кнопки для руху.'
       ,tutorial2: 'Заплануйте п\u2019ять дій, включаючи атаку та щит.'
       ,tutorial3: 'Натисніть \u00abПідтвердити\u00bb, щоб розпочати раунд.'
