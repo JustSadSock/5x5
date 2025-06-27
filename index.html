@@ -424,25 +424,25 @@
   <div id="modeSelect">
     <h1 id="title">5×5 Arena</h1>
     <div id="tagline"></div>
-    <div id="btn1p" class="panel modeBtn" data-i18n="singlePlayer">1 игрок</div>
-    <div id="rulesBtnInitial" class="panel rulesBtn" data-i18n="rules">Правила</div>
-    <div id="btn2p" class="panel modeBtn" data-i18n="twoPlayers">2 игрока</div>
-    <div id="btnOnline" class="panel modeBtn" data-i18n="online">Онлайн</div>
+    <div id="btn1p" class="panel modeBtn" data-i18n="singlePlayer" data-sound="nav">1 игрок</div>
+    <div id="rulesBtnInitial" class="panel rulesBtn" data-i18n="rules" data-sound="nav">Правила</div>
+    <div id="btn2p" class="panel modeBtn" data-i18n="twoPlayers" data-sound="nav">2 игрока</div>
+    <div id="btnOnline" class="panel modeBtn" data-i18n="online" data-sound="nav">Онлайн</div>
   </div>
 
   <div id="difficultySelect">
-    <div class="panelDiff easy" data-i18n="easy">Легко</div>
-    <div class="panelDiff medium" data-i18n="medium">Средне</div>
-    <div class="panelDiff hard" data-i18n="hard">Сложно</div>
-    <div class="panelDiff expert" data-i18n="expert">Эксперт</div>
-    <div class="panelDiff insane" data-i18n="insane">Безумие</div>
+    <div class="panelDiff easy" data-i18n="easy" data-sound="nav">Легко</div>
+    <div class="panelDiff medium" data-i18n="medium" data-sound="nav">Средне</div>
+    <div class="panelDiff hard" data-i18n="hard" data-sound="nav">Сложно</div>
+    <div class="panelDiff expert" data-i18n="expert" data-sound="nav">Эксперт</div>
+    <div class="panelDiff insane" data-i18n="insane" data-sound="nav">Безумие</div>
   </div>
 
   <div id="onlineMenu" style="display:none;flex-direction:column;align-items:center;gap:10px;">
-    <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom">Создать комнату</div>
+    <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
     <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты" style="padding:6px;max-width:140px;">
-    <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom">Присоединиться</div>
-    <div id="onlineBack" class="panel modeBtn" data-i18n="toMenu">В меню</div>
+    <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
+    <div id="onlineBack" class="panel modeBtn" data-i18n="toMenu" data-sound="nav">В меню</div>
     <div id="roomCode"></div>
     <div id="connectionStatus" style="font-family:'Share Tech Mono',monospace;font-size:12px;"></div>
     <div id="log" style="font-family: 'Share Tech Mono', monospace; font-size: 12px;"></div>
@@ -450,9 +450,9 @@
 
   <div id="scoreboard">
     <span id="scoreA">0</span> : <span id="scoreB">0</span>
-    <button id="scoreReset" data-i18n="resetScore">Сбросить счёт</button>
-    <button id="settingsBtn">⚙</button>
-    <button id="menuBtn" data-i18n="toMenu">В меню</button>
+    <button id="scoreReset" data-i18n="resetScore" data-sound="nav">Сбросить счёт</button>
+    <button id="settingsBtn" data-sound="nav">⚙</button>
+    <button id="menuBtn" data-i18n="toMenu" data-sound="nav">В меню</button>
   </div>
 
   <div id="settingsModal">
@@ -464,7 +464,7 @@
         <option value="uk">Українська</option>
       </select>
     </label>
-    <button id="settingsClose" data-i18n="close">Закрыть</button>
+    <button id="settingsClose" data-i18n="close" data-sound="nav">Закрыть</button>
   </div>
 
   <div id="rulesOverlay">
@@ -481,7 +481,7 @@
       <li data-i18n="rule7">Спустя три раунда внешнее кольцо поля обрушивается, остаётся зона 3×3.</li>
       <li data-i18n="rule8">Если и после финального раунда победителя нет, засчитывается ничья.</li>
     </ul>
-    <button id="rulesClose" data-i18n="close">Закрыть</button>
+    <button id="rulesClose" data-i18n="close" data-sound="nav">Закрыть</button>
   </div>
 
   <div id="gameArea">
@@ -497,29 +497,29 @@
       <div class="planCell" id="pc4"></div>
     </div>
     <div id="actions">
-      <button data-act="up" class="moveBtn">↑</button>
-      <button data-act="down" class="moveBtn">↓</button>
-      <button data-act="left" class="moveBtn">←</button>
-      <button data-act="right" class="moveBtn">→</button>
-      <button data-act="attack" class="atkBtn">⚔</button>
-      <button data-act="shield" class="shieldBtn">🛡</button>
+      <button data-act="up" class="moveBtn" data-sound="move">↑</button>
+      <button data-act="down" class="moveBtn" data-sound="move">↓</button>
+      <button data-act="left" class="moveBtn" data-sound="move">←</button>
+      <button data-act="right" class="moveBtn" data-sound="move">→</button>
+      <button data-act="attack" class="atkBtn" data-sound="attack">⚔</button>
+      <button data-act="shield" class="shieldBtn" data-sound="shield">🛡</button>
     </div>
     <div id="navButtons" style="display:flex;gap:6px;">
-      <button id="btn-del" data-i18n="deleteBtn">← Удалить</button>
-      <button id="btn-next" data-i18n="nextBtn">▶ Далее</button>
+      <button id="btn-del" data-i18n="deleteBtn" data-sound="nav">← Удалить</button>
+      <button id="btn-next" data-i18n="nextBtn" data-sound="nav">▶ Далее</button>
     </div>
   </div>
   <div id="onlineControls" style="margin-top:10px;display:flex;gap:6px;">
-    <button id="confirmBtn" disabled data-i18n="confirm">Подтвердить</button>
+    <button id="confirmBtn" disabled data-i18n="confirm" data-sound="nav">Подтвердить</button>
   </div>
   </div>
 
   <div id="atkOverlay"></div>
   <div id="confirmToast"></div>
-  <div id="replayOverlay"><button id="replayClose" data-i18n="close">Close</button></div>
+  <div id="replayOverlay"><button id="replayClose" data-i18n="close" data-sound="nav">Close</button></div>
   <div id="tutorialOverlay">
     <div id="tutorialContent"></div>
-    <button id="tutorialNext" data-i18n="nextBtn">Next</button>
+    <button id="tutorialNext" data-i18n="nextBtn" data-sound="nav">Next</button>
   </div>
 
   <script src="js/i18n.js"></script>
