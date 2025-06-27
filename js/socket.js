@@ -1,4 +1,5 @@
 let socket;
+let handleClose;
 let isConnected = false;
 let startRoundTimer = null;
 let lastRoomId = null;
@@ -34,7 +35,8 @@ function cleanupRoom() {
     clearTimeout(startRoundTimer);
     startRoundTimer = null;
   }
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+  if (socket) {
+    socket.removeEventListener('close', handleClose);
     intentionalClose = true;
     socket.close();
   }
@@ -65,7 +67,8 @@ function initSocket(onReady) {
     }
     if (onReady) onReady();
   });
-  socket.addEventListener('close', () => {
+  handleClose = function handleClose(event) {
+    if (event.target !== socket) return;  // ignore old sockets
     isConnected = false;
     log('⚠ Соединение прервано');
     if (intentionalClose) {
@@ -75,7 +78,8 @@ function initSocket(onReady) {
     }
     updateConnectionStatus('Оффлайн. Переподключение...', 'orange');
     setTimeout(() => initSocket(), 2000);
-  });
+  };
+  socket.addEventListener('close', handleClose);
   socket.addEventListener('message', (event) => {
     const data = JSON.parse(event.data);
     log('📨 Получено: ' + JSON.stringify(data));
