@@ -246,13 +246,13 @@ function startNewRound() {
     if (phase === 'planA' && single) {
       autoPlanB();
       phase = 'execute';
-      btnNext.textContent = '▶ Выполнить';
+      btnNext.textContent = t('executeBtn');
       clearPlan(); updateUI();
       return;
     }
     if (phase !== 'execute') {
       phase = phase === 'planA' ? 'planB' : 'execute';
-      btnNext.textContent = phase === 'execute' ? '▶ Выполнить' : '▶ Далее';
+      btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
       clearPlan(); updateUI();
       return;
     }
@@ -312,8 +312,8 @@ function startNewRound() {
   function updateUI() {
     const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
     phaseEl.textContent =
-      `Раунд ${round}/${MAX_R}, ${P}: ` +
-      (phase === 'execute' ? 'ход' : 'план') +
+      `${t('round')} ${round}/${MAX_R}, ${P}: ` +
+      (phase === 'execute' ? t('turn') : t('plan')) +
       ` ${phase === 'execute' ? step : plans[P].length}/${STEPS}`;
     pcs.forEach((pc, i) => {
       const a = plans[P][i];
@@ -450,7 +450,7 @@ function startNewRound() {
       usedAtkDirs = { A: new Set(), B: new Set() };
       usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
       simPos = { A: { x: units.A.x, y: units.A.y }, B: { x: units.B.x, y: units.B.y } };
-      btnNext.textContent = '▶ Далее';
+      btnNext.textContent = t('nextBtn');
       startNewRound();
     }
     updateUI();
@@ -509,7 +509,7 @@ function startNewRound() {
 
   function showResult(text) {
     const ov = document.createElement('div'); ov.id = 'resultOverlay';
-    ov.innerHTML = `<div>${text}</div><button id="resOk">Ок</button>`;
+    ov.innerHTML = `<div>${text}</div><button id="resOk">${t('ok')}</button>`;
     document.body.append(ov);
     document.getElementById('resOk').onclick = () => {
       ov.remove();
@@ -531,7 +531,7 @@ function startNewRound() {
     edgesCollapsed = false;
     clearPlan();
     document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
-    render(); btnNext.textContent = '▶ Далее'; updateUI();
+    render(); btnNext.textContent = t('nextBtn'); updateUI();
   }
 
   function clearPlan() {
@@ -568,7 +568,7 @@ function startNewRound() {
     const next = document.getElementById('btn-next');
     if (next) {
       next.style.display = 'inline-block';
-      next.textContent = '▶ Выполнить';
+      next.textContent = t('executeBtn');
       next.disabled = false;
     }
     const cbtn = document.getElementById('confirmBtn');
@@ -592,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
+  const langSelect = document.getElementById('langSelect');
 
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
@@ -603,6 +604,12 @@ document.addEventListener('DOMContentLoaded', () => {
     volumeSlider.value = soundVolume;
     volumeSlider.oninput = () => {
       soundVolume = parseFloat(volumeSlider.value);
+    };
+  }
+  if (langSelect) {
+    langSelect.value = window.i18n ? window.i18n.lang : 'en';
+    langSelect.onchange = () => {
+      if (window.i18n) window.i18n.setLang(langSelect.value);
     };
   }
 });
