@@ -104,11 +104,30 @@ function genCode() {
   return code;
 }
 
+const PING_INTERVAL_MS = 10000;
+const PING_TIMEOUT_MS = 30000;
+
 function attachWebSocketServer(server) {
   const wss = new WebSocket.Server({ server });
   wss.rooms = rooms;
 
+  wss.pingInterval = setInterval(() => {
+    wss.clients.forEach(client => {
+      if (client.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - client.lastPong > PING_TIMEOUT_MS) {
+        removeFromRoom(client);
+        return client.terminate();
+      }
+      try { client.ping(); } catch (e) {}
+    });
+  }, PING_INTERVAL_MS);
+
   wss.on('connection', ws => {
+    ws.lastPong = Date.now();
+    ws.on('pong', () => {
+      ws.lastPong = Date.now();
+    });
+
     ws.on('message', msg => {
       let data;
       try { data = JSON.parse(msg); } catch (e) { return; }
