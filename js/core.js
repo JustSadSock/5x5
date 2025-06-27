@@ -73,7 +73,6 @@ function startNewRound() {
   const onlineMenu = document.getElementById('onlineMenu');
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
-  const onlineBack = document.getElementById('onlineBack');
   const roomInput = document.getElementById('roomInput');
   const board = document.getElementById('board');
   const ui = document.getElementById('ui');
@@ -167,12 +166,6 @@ function startNewRound() {
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
-  onlineBack.onclick = () => {
-    if (typeof window.resetRoomState === 'function') window.resetRoomState();
-    if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
-    onlineMenu.style.display = 'none';
-    ms.style.display = 'flex';
-  };
 
   function startGame() {
     board.style.visibility = 'visible';
