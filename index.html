@@ -397,6 +397,25 @@
     @media (min-width: 600px) {
       #board { margin-top:60px; }
     }
+
+    /* Адаптивные правки для портретной ориентации */
+    @media (orientation: portrait) {
+      #board {
+        grid-template: repeat(5,50px)/repeat(5,50px);
+        margin-top:20px;
+      }
+      .cell {
+        width:50px;
+        height:50px;
+      }
+      #ui {
+        max-width:300px;
+        gap:8px;
+      }
+      #navButtons {
+        flex-direction:column;
+      }
+    }
   </style>
 </head>
 <body>
@@ -485,7 +504,7 @@
       <button data-act="attack" class="atkBtn">⚔</button>
       <button data-act="shield" class="shieldBtn">🛡</button>
     </div>
-    <div style="display:flex;gap:6px;">
+    <div id="navButtons" style="display:flex;gap:6px;">
       <button id="btn-del" data-i18n="deleteBtn">← Удалить</button>
       <button id="btn-next" data-i18n="nextBtn">▶ Далее</button>
     </div>
