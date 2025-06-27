@@ -95,6 +95,9 @@ function startNewRound() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.15);
   }
 
+  // Expose sound function for handlers outside this scope
+  window.playSound = playSound;
+
   function updateScore() {
     scoreA.textContent = score.A;
     scoreB.textContent = score.B;
@@ -457,6 +460,7 @@ function startNewRound() {
   }
 
   function drawPlan(P) {
+    if (!document.getElementById('c00')) return;
     clearPlan();
     if (phase === 'execute') return;
     let { x, y } = units[P];
@@ -562,6 +566,7 @@ function startNewRound() {
   }
 
   function render() {
+    if (!document.getElementById('c00')) return;
     document.querySelectorAll('.playerA,.playerB,.playerHalf').forEach(e => e.remove());
     if (units.A.alive && units.B.alive && units.A.x === units.B.x && units.A.y === units.B.y) {
       const cell = document.getElementById(`c${units.A.x}${units.A.y}`);
