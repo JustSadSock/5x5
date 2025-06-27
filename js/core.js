@@ -1006,13 +1006,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   if (langSelect) {
-    langSelect.value = window.i18n ? window.i18n.lang : 'en';
-    langSelect.onchange = () => {
+    langSelect.dataset.value = window.i18n ? window.i18n.lang : 'en';
+  }
+  if (typeof setupDropdowns === 'function') setupDropdowns();
+  if (langSelect) {
+    langSelect.addEventListener('change', () => {
+      const val = langSelect.dataset.value;
       if (window.i18n) {
-        window.i18n.setLang(langSelect.value);
-        localStorage.setItem('language', langSelect.value);
+        window.i18n.setLang(val);
+        localStorage.setItem('language', val);
       }
-    };
+    });
   }
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
   if (replayClose) replayClose.onclick = () => endReplay();
