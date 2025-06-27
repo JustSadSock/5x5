@@ -9,6 +9,7 @@ let replaySpeed = 1;
 let replayFrames = [];
 let replayIndex = 0;
 let replayTimer = null;
+let replayPaused = false;
 let recorder = null;
 let recordedChunks = [];
 
@@ -735,6 +736,9 @@ function startNewRound() {
     isReplaying = true;
     const ov = document.getElementById('replayOverlay');
     if (ov) ov.classList.add('show');
+    replayPaused = false;
+    const pauseBtn = document.getElementById('replayPause');
+    if (pauseBtn) pauseBtn.textContent = '❚❚';
     resetGame();
     replayFrames = [];
     replayHistory.forEach(r => {
@@ -754,7 +758,7 @@ function startNewRound() {
     }
     function play() {
       if (!isReplaying) return;
-      if (replaySpeed === 0) { replayTimer = setTimeout(play, 100); return; }
+      if (replayPaused) { replayTimer = setTimeout(play, 100); return; }
       if (replayIndex >= replayFrames.length) { endReplay(); return; }
       const f = replayFrames[replayIndex++];
       renderReplayFrame(f);
@@ -982,8 +986,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const langSelect = document.getElementById('langSelect');
   const menuBtn = document.getElementById('menuBtn');
   const replayClose = document.getElementById('replayClose');
-  const replaySpeedSlider = document.getElementById('replaySpeed');
-  const replaySpeedLabel = document.getElementById('replaySpeedLabel');
+  const speedBtns = document.querySelectorAll('.speedBtn');
+  const replayPauseBtn = document.getElementById('replayPause');
   const replayBtn = document.getElementById('replayBtn');
   const saveReplayBtn = document.getElementById('saveReplay');
   const replaySeek = document.getElementById('replaySeek');
@@ -1018,12 +1022,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (saveReplayBtn) saveReplayBtn.onclick = () => saveReplayVideo();
   if (replaySeek) replaySeek.oninput = () => seekReplay(parseInt(replaySeek.value));
-  if (replaySpeedSlider && replaySpeedLabel) {
-    replaySpeedSlider.value = replaySpeed;
-    replaySpeedLabel.textContent = replaySpeed + 'x';
-    replaySpeedSlider.oninput = () => {
-      replaySpeed = parseFloat(replaySpeedSlider.value);
-      replaySpeedLabel.textContent = replaySpeed + 'x';
+  if (speedBtns.length) {
+    speedBtns.forEach(btn => {
+      if (parseFloat(btn.dataset.speed) === replaySpeed) btn.classList.add('active');
+      btn.onclick = () => {
+        replaySpeed = parseFloat(btn.dataset.speed);
+        speedBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+    });
+  }
+  if (replayPauseBtn) {
+    replayPauseBtn.onclick = () => {
+      replayPaused = !replayPaused;
+      replayPauseBtn.textContent = replayPaused ? '▶' : '❚❚';
     };
   }
 
