@@ -46,7 +46,7 @@ function startNewRound() {
   const MAX_R = 4, STEPS = 5;
   const DXY = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
-  let single = false, aiRand = 0.25;
+  let single = false, aiRand = 0.25, aiSamples = 60;
   let round = 1, step = 1, phase = 'planA';
   let plans = { A: [], B: [] };
   let usedMove = { A: new Set(), B: new Set() };
@@ -111,9 +111,9 @@ function startNewRound() {
   rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
 
-  ds.querySelector('.easy').onclick   = () => { aiRand = 0.5;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.medium').onclick = () => { aiRand = 0.25; ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  aiSamples = 150; ds.style.display = 'none'; startGame(); };
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
@@ -259,54 +259,159 @@ function startNewRound() {
     execStep();
   }
 
+  function simApplyMove(unit, act, collapsed) {
+    if (typeof act === 'string' && DXY[act]) {
+      let nx = unit.x + DXY[act][0];
+      let ny = unit.y + DXY[act][1];
+      nx = Math.max(0, Math.min(4, nx));
+      ny = Math.max(0, Math.min(4, ny));
+      if (collapsed && (nx === 0 || nx === 4 || ny === 0 || ny === 4)) {
+        unit.alive = false;
+      } else {
+        unit.x = nx; unit.y = ny;
+      }
+    }
+  }
+
+  function simStep(state, actA, actB) {
+    const { units } = state;
+    simApplyMove(units.A, actA, state.edgesCollapsed);
+    simApplyMove(units.B, actB, state.edgesCollapsed);
+
+    const shieldA = actA === 'shield';
+    const shieldB = actB === 'shield';
+
+    if (typeof actA === 'object' && units.A.alive) {
+      const atk = actA, tx = units.A.x, ty = units.A.y;
+      if (!shieldB && units.B.alive && units.B.x === tx && units.B.y === ty) units.B.alive = false;
+      atk.dirs.forEach(d => {
+        const [dx, dy] = DXY[d];
+        const nx = tx + dx, ny = ty + dy;
+        if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
+        if (!shieldB && units.B.alive && units.B.x === nx && units.B.y === ny) units.B.alive = false;
+      });
+    }
+
+    if (typeof actB === 'object' && units.B.alive) {
+      const atk = actB, tx = units.B.x, ty = units.B.y;
+      if (!shieldA && units.A.alive && units.A.x === tx && units.A.y === ty) units.A.alive = false;
+      atk.dirs.forEach(d => {
+        const [dx, dy] = DXY[d];
+        const nx = tx + dx, ny = ty + dy;
+        if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
+        if (!shieldA && units.A.alive && units.A.x === nx && units.A.y === ny) units.A.alive = false;
+      });
+    }
+
+    state.step++;
+    if (state.round === 4 && state.step === 2 && !state.edgesCollapsed) {
+      state.edgesCollapsed = true;
+      ['A', 'B'].forEach(pl => {
+        const u = state.units[pl];
+        if (u.alive && (u.x === 0 || u.x === 4 || u.y === 0 || u.y === 4)) u.alive = false;
+      });
+    }
+  }
+
+  function simOutcome(state) {
+    if (!state.units.A.alive && !state.units.B.alive) return 'draw';
+    if (state.units.A.alive && !state.units.B.alive) return 'A';
+    if (!state.units.A.alive && state.units.B.alive) return 'B';
+    return null;
+  }
+
+  function simulateSequence(planA, planB) {
+    const state = {
+      units: {
+        A: { ...units.A },
+        B: { ...units.B }
+      },
+      round,
+      step: 1,
+      edgesCollapsed
+    };
+    for (let i = 0; i < STEPS; i++) {
+      simStep(state, planA[i], planB[i]);
+      const out = simOutcome(state);
+      if (out) break;
+    }
+    return state;
+  }
+
+  function scoreState(state) {
+    const ua = state.units.A, ub = state.units.B;
+    if (!ub.alive && !ua.alive) return -50;
+    if (!ub.alive) return -100;
+    if (!ua.alive) return 200;
+    let dist = Math.abs(ub.x - ua.x) + Math.abs(ub.y - ua.y);
+    let s = 10 - dist;
+    if (dist === 1) s += 20;
+    if (state.edgesCollapsed && (ub.x === 0 || ub.x === 4 || ub.y === 0 || ub.y === 4)) s -= 40;
+    return s;
+  }
+
+  function randomAction(state, usedMoveSet, usedAtkSet, atkCount, shieldCount, oppAct) {
+    const me = state.units.B, opp = state.units.A;
+    const di = Object.entries(DXY).find(([d, [dx, dy]]) =>
+      me.x + dx === opp.x && me.y + dy === opp.y && !usedMoveSet.has(d)
+    );
+    if (di && atkCount < 1 && Math.random() > aiRand) {
+      const [d] = di; return { type: 'attack', dirs: [d] };
+    }
+    let best = null, bd = Infinity;
+    for (const [d, [dx, dy]] of Object.entries(DXY)) {
+      if (usedAtkSet.has(d)) continue;
+      const nx = me.x + dx, ny = me.y + dy;
+      if (nx < 0 || nx > 4 || ny < 0 || ny > 4) continue;
+      const dist = Math.abs(nx - opp.x) + Math.abs(ny - opp.y);
+      if (dist < bd) { bd = dist; best = d; }
+    }
+    if (Math.random() > aiRand && best) return best;
+    if (shieldCount < 1 && Math.random() < 0.3) return 'shield';
+    const opts = [];
+    for (const d in DXY) {
+      const [dx, dy] = DXY[d], nx = me.x + dx, ny = me.y + dy;
+      if (nx >= 0 && nx < 5 && ny >= 0 && ny < 5 && !usedAtkSet.has(d)) opts.push(d);
+    }
+    if (atkCount < 1) opts.push({ type: 'attack', dirs: [] });
+    if (shieldCount < 1) opts.push('shield');
+    return opts[Math.floor(Math.random() * opts.length)];
+  }
+
   function autoPlanB() {
     plans.B = []; usedMove.B.clear(); usedAtkDirs.B.clear();
     usedAtk.B = 0; usedShield.B = 0; simPos.B = { ...units.B };
-    const opp = units.A;
-    for (let i = 0; i < STEPS; i++) {
-      const di = Object.entries(DXY).find(([d, [dx, dy]]) =>
-        simPos.B.x + dx === opp.x && simPos.B.y + dy === opp.y && !usedMove.B.has(d)
-      );
-      if (di && usedAtk.B < 1) {
-        const [d] = di;
-        plans.B.push({ type: 'attack', dirs: [d] });
-        usedAtk.B++; usedAtkDirs.B.add(d);
-        continue;
-      }
-      let best = null, bd = Infinity;
-      for (const [d, [dx, dy]] of Object.entries(DXY)) {
-        if (usedAtkDirs.B.has(d)) continue;
-        const nx = simPos.B.x + dx, ny = simPos.B.y + dy;
-        if (nx < 0 || nx > 4 || ny < 0 || ny > 4) continue;
-        const dist = Math.abs(nx - opp.x) + Math.abs(ny - opp.y);
-        if (dist < bd) { bd = dist; best = d; }
-      }
-      if (Math.random() > aiRand && best) {
-        plans.B.push(best);
-        usedMove.B.add(best);
-        simPos.B.x += DXY[best][0]; simPos.B.y += DXY[best][1];
-        continue;
-      }
-      if (usedShield.B < 1 && Math.random() < 0.3) {
-        plans.B.push('shield'); usedShield.B++; continue;
-      }
-      const opts = [];
-      for (const d in DXY) {
-        const [dx, dy] = DXY[d], nx = simPos.B.x + dx, ny = simPos.B.y + dy;
-        if (nx >= 0 && nx < 5 && ny >= 0 && ny < 5 && !usedAtkDirs.B.has(d)) opts.push(d);
-      }
-      if (usedAtk.B < 1) opts.push({ type: 'attack', dirs: [] });
-      if (usedShield.B < 1) opts.push('shield');
-      const choice = opts[Math.floor(Math.random() * opts.length)];
-      plans.B.push(choice);
-      if (typeof choice === 'string') {
-        if (choice === 'shield') usedShield.B++;
-        else {
-          usedMove.B.add(choice);
-          simPos.B.x += DXY[choice][0]; simPos.B.y += DXY[choice][1];
+
+    const samples = aiSamples || 50;
+    const candidates = [];
+    for (let s = 0; s < samples; s++) {
+      const state = {
+        units: { A: { ...units.A }, B: { ...units.B } },
+        round,
+        step: 1,
+        edgesCollapsed
+      };
+      const usedM = new Set();
+      const usedA = new Set();
+      let atkC = 0, shC = 0;
+      const plan = [];
+      for (let i = 0; i < STEPS; i++) {
+        const act = randomAction(state, usedM, usedA, atkC, shC, plans.A[i]);
+        plan.push(act);
+        if (typeof act === 'string') {
+          if (act === 'shield') shC++; else usedM.add(act);
+        } else {
+          atkC++; act.dirs.forEach(d => usedA.add(d));
         }
-      } else usedAtk.B++;
+        simStep(state, plans.A[i], act);
+        if (!state.units.B.alive) break;
+      }
+      candidates.push({ plan, score: scoreState(state) });
     }
+    candidates.sort((a, b) => b.score - a.score);
+    const nTop = Math.min(candidates.length, Math.max(1, Math.round(1 / aiRand)));
+    const choice = candidates[Math.floor(Math.random() * nTop)] || { plan: [] };
+    plans.B = choice.plan;
   }
 
   function updateUI() {
