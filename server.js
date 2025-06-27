@@ -37,7 +37,8 @@ function requestHandler(req, res) {
         '.html': 'text/html',
         '.css': 'text/css',
         '.png': 'image/png',
-        '.ico': 'image/x-icon'
+        '.ico': 'image/x-icon',
+        '.json': 'application/json'
       };
       res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
       res.end(data);
