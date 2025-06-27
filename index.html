@@ -52,7 +52,19 @@
     .medium { background:#ff9800; }
     .hard   { background:#f44336; }
     .expert { background:#9c27b0; }
+
     .insane { background:#607d8b; }
+
+    #onlineMenu {
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      margin-top:20px;
+      height:100vh;
+      justify-content:flex-end;
+      padding-bottom:40px;
+    }
 
     #title {
       font-size:48px;
@@ -454,11 +466,10 @@
     <div class="panelDiff insane" data-i18n="insane" data-sound="nav">Безумие</div>
   </div>
 
-  <div id="onlineMenu" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-top:20px;">
+  <div id="onlineMenu">
     <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
     <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты" style="padding:6px;max-width:140px;">
     <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
-    <div id="onlineBack" class="panel modeBtn" data-i18n="toMenu" data-sound="nav">В меню</div>
     <div id="roomCode"></div>
     <div id="connectionStatus" style="font-family:'Share Tech Mono',monospace;font-size:12px;"></div>
     <div id="log" style="font-family: 'Share Tech Mono', monospace; font-size: 12px;"></div>
