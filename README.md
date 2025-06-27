@@ -22,14 +22,9 @@ A simple WebSocket-based 5×5 PvP game.
 
 ### Running tests
 
-After installing dependencies with `npm install`, you must install Playwright's
-browsers so the layout test in `layout-test.js` can run correctly:
-
-```bash
-npx playwright install
-```
-
-With the browsers installed, the test suite can be run using:
+After running `npm install`, Playwright's browsers are automatically installed
+via the `postinstall` script. Once dependencies are installed, the test suite
+can be run using:
 
 ```bash
 npm test
