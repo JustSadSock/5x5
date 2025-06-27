@@ -26,3 +26,14 @@ test('requestHandler rejects paths containing ..', async () => {
 
   await new Promise(res => server.close(res));
 });
+
+test('requestHandler returns 400 for malformed percent-encoding', async () => {
+  const server = http.createServer(requestHandler);
+  await new Promise(res => server.listen(0, res));
+  const { port } = server.address();
+
+  const status = await getStatus(port, '/%GG');
+  assert.equal(status, 400);
+
+  await new Promise(res => server.close(res));
+});
