@@ -6,6 +6,11 @@ let isOnline = false;
 let soundVolume = parseFloat(localStorage.getItem('volume'));
 if (isNaN(soundVolume)) soundVolume = 1;
 let replaySpeed = 1;
+let replayFrames = [];
+let replayIndex = 0;
+let replayTimer = null;
+let recorder = null;
+let recordedChunks = [];
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
@@ -722,6 +727,7 @@ function startNewRound() {
       replayHistory.push(currentReplay);
       currentReplay = null;
     }
+    updateReplayButton();
   }
 
   function startReplay() {
@@ -730,30 +736,80 @@ function startNewRound() {
     const ov = document.getElementById('replayOverlay');
     if (ov) ov.classList.add('show');
     resetGame();
-    let frames = [];
+    replayFrames = [];
     replayHistory.forEach(r => {
-      if (r.states.length) frames.push({ state: r.states[0] });
+      if (r.states.length) replayFrames.push({ state: r.states[0] });
       for (let i = 1; i < r.states.length; i++) {
-        frames.push({
+        replayFrames.push({
           state: r.states[i],
           actions: { A: r.actions.A[i - 1], B: r.actions.B[i - 1] }
         });
       }
     });
-    let i = 0;
+    replayIndex = 0;
+    const seek = document.getElementById('replaySeek');
+    if (seek) {
+      seek.max = replayFrames.length - 1;
+      seek.value = 0;
+    }
     function play() {
       if (!isReplaying) return;
-      if (replaySpeed === 0) { setTimeout(play, 100); return; }
-      if (i >= frames.length) { endReplay(); return; }
-      const f = frames[i++];
-      const st = f.state;
-      round = st.round; step = st.step; edgesCollapsed = st.edgesCollapsed;
-      units = { A: { ...st.units.A }, B: { ...st.units.B } };
-      render(); updateUI();
-      if (f.actions) animateReplayActions(f.actions);
-      setTimeout(play, 700 / (replaySpeed || 0.1));
+      if (replaySpeed === 0) { replayTimer = setTimeout(play, 100); return; }
+      if (replayIndex >= replayFrames.length) { endReplay(); return; }
+      const f = replayFrames[replayIndex++];
+      renderReplayFrame(f);
+      if (seek) seek.value = replayIndex;
+      replayTimer = setTimeout(play, 700 / (replaySpeed || 0.1));
     }
     play();
+  }
+
+  function renderReplayFrame(f) {
+    const st = f.state;
+    round = st.round; step = st.step; edgesCollapsed = st.edgesCollapsed;
+    units = { A: { ...st.units.A }, B: { ...st.units.B } };
+    render(); updateUI();
+    if (f.actions) animateReplayActions(f.actions);
+  }
+
+  function seekReplay(idx) {
+    if (!isReplaying) return;
+    if (idx < 0) idx = 0;
+    if (idx >= replayFrames.length) idx = replayFrames.length - 1;
+    replayIndex = idx;
+    clearTimeout(replayTimer);
+    const seek = document.getElementById('replaySeek');
+    if (seek) seek.value = replayIndex;
+    renderReplayFrame(replayFrames[replayIndex]);
+  }
+
+  async function saveReplayVideo() {
+    if (!replayHistory.length || recorder) return;
+    let stream;
+    if (document.body.captureStream) {
+      stream = document.body.captureStream();
+    } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: true }); }
+      catch (e) { alert('Recording not supported'); return; }
+    } else {
+      alert('Recording not supported');
+      return;
+    }
+    recordedChunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = e => recordedChunks.push(e.data);
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'replay.webm';
+      a.click();
+      URL.revokeObjectURL(url);
+      recordedChunks = [];
+    };
+    recorder.start();
+    startReplay();
   }
 
   function animateReplayActions(acts) {
@@ -804,13 +860,23 @@ function startNewRound() {
 
   function endReplay() {
     isReplaying = false;
+    if (recorder) {
+      try { recorder.stop(); } catch (e) {}
+      recorder = null;
+    }
     const ov = document.getElementById('replayOverlay');
     if (ov) ov.classList.remove('show');
     resetGame();
     updateScore();
+    updateReplayButton();
   }
 
   window.startReplay = startReplay;
+
+  function updateReplayButton() {
+    const btn = document.getElementById('replayBtn');
+    if (btn) btn.style.display = replayHistory.length ? 'inline-block' : 'none';
+  }
 
   function showResult(text) {
     const ov = document.createElement('div');
@@ -918,6 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const replayClose = document.getElementById('replayClose');
   const replaySpeedSlider = document.getElementById('replaySpeed');
   const replaySpeedLabel = document.getElementById('replaySpeedLabel');
+  const replayBtn = document.getElementById('replayBtn');
+  const saveReplayBtn = document.getElementById('saveReplay');
+  const replaySeek = document.getElementById('replaySeek');
 
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
@@ -943,6 +1012,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
   if (replayClose) replayClose.onclick = () => endReplay();
+  if (replayBtn) {
+    replayBtn.onclick = () => startReplay();
+    updateReplayButton();
+  }
+  if (saveReplayBtn) saveReplayBtn.onclick = () => saveReplayVideo();
+  if (replaySeek) replaySeek.oninput = () => seekReplay(parseInt(replaySeek.value));
   if (replaySpeedSlider && replaySpeedLabel) {
     replaySpeedSlider.value = replaySpeed;
     replaySpeedLabel.textContent = replaySpeed + 'x';
