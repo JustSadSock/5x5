@@ -39,7 +39,10 @@ function cleanupRoom() {
     socket.removeEventListener('close', handleClose);
     intentionalClose = true;
     socket.close();
+    socket = null; // ensure old connection isn't reused
   }
+  isConnected = false;
+  updateConnectionStatus('Оффлайн', 'orange');
   resetRoomState();
   clearRoomUI();
 }
