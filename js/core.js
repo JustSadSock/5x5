@@ -3,6 +3,7 @@ let yourTurn = false;
 let localMoves = [];
 let canPlay = false;
 let isOnline = false;
+let soundVolume = 1;
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
@@ -90,7 +91,7 @@ function startNewRound() {
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.type = 'sine';
     const freq = { move: 440, attack: 660, shield: 330, win: 880 }[type] || 440;
-    osc.frequency.value = freq; gain.gain.value = 0.3;
+    osc.frequency.value = freq; gain.gain.value = 0.3 * soundVolume;
     osc.start(); osc.stop(audioCtx.currentTime + 0.15);
   }
 
@@ -586,6 +587,24 @@ document.addEventListener('DOMContentLoaded', () => {
     canPlay = false;
     cbtn.disabled = true;
   };
+
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const settingsClose = document.getElementById('settingsClose');
+  const volumeSlider = document.getElementById('volumeSlider');
+
+  if (settingsBtn && settingsModal) {
+    settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
+  }
+  if (settingsClose && settingsModal) {
+    settingsClose.onclick = () => { settingsModal.style.display = 'none'; };
+  }
+  if (volumeSlider) {
+    volumeSlider.value = soundVolume;
+    volumeSlider.oninput = () => {
+      soundVolume = parseFloat(volumeSlider.value);
+    };
+  }
 });
 
 // Prevent double-click zoom on mobile

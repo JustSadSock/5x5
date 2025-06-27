@@ -277,6 +277,15 @@
       padding:4px 8px; background:#840; color:#fff; border:none;
       border-radius:4px; cursor:pointer;
     }
+    #settingsBtn { background:#444; }
+
+    #settingsModal {
+      display:none; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      background:#222; padding:20px; border-radius:8px;
+      z-index:30; color:#fff;
+    }
+    #settingsModal label { display:block; margin-bottom:10px; }
 
     /* Всплывающие сообщения */
     #confirmToast {
@@ -332,6 +341,18 @@
   <div id="scoreboard">
     <span id="scoreA">0</span> : <span id="scoreB">0</span>
     <button id="scoreReset">Сбросить счёт</button>
+    <button id="settingsBtn">⚙</button>
+  </div>
+
+  <div id="settingsModal">
+    <label>Громкость: <input id="volumeSlider" type="range" min="0" max="1" step="0.01"></label>
+    <label>Язык:
+      <select id="langSelect">
+        <option value="ru">Русский</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+    <button id="settingsClose">Закрыть</button>
   </div>
 
   <div id="rulesOverlay">
