@@ -92,7 +92,7 @@ function startNewRound() {
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.type = 'sine';
-    const freq = { move: 440, attack: 660, shield: 330, win: 880, ui: 550, nav: 500 }[type] || 440;
+    const freq = { move: 440, attack: 660, shield: 330, win: 880, ui: 550, nav: 500, death: 220 }[type] || 440;
     osc.frequency.value = freq; gain.gain.value = 0.3 * soundVolume;
     osc.start(); osc.stop(audioCtx.currentTime + 0.15);
   }
@@ -504,7 +504,7 @@ function startNewRound() {
 
   function execStep() {
     clearPlan();
-    document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+    document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     const [aA, aB] = [plans.A[step - 1], plans.B[step - 1]];
     const moved = { A: false, B: false };
     ['A', 'B'].forEach(pl => {
@@ -516,6 +516,8 @@ function startNewRound() {
         ny = Math.max(0, Math.min(4, ny));
         if (edgesCollapsed && (nx === 0 || nx === 4 || ny === 0 || ny === 4)) {
           units[pl].alive = false;
+          showDeath(nx, ny);
+          playSound('death');
         } else {
           units[pl].x = nx; units[pl].y = ny; playSound('move');
           moved[pl] = true;
@@ -536,13 +538,21 @@ function startNewRound() {
         const sh = plans[other][step - 1] === 'shield';
         const cellS = document.getElementById(`c${tx}${ty}`), ovS = document.createElement('div');
         ovS.className = 'attack'; cellS.append(ovS);
-        if (!sh && units[other].x === tx && units[other].y === ty) units[other].alive = false;
+        if (!sh && units[other].x === tx && units[other].y === ty) {
+          units[other].alive = false;
+          showDeath(tx, ty);
+          playSound('death');
+        }
         r.dirs.forEach(d => {
           const [dx, dy] = DXY[d], nx = tx + dx, ny = ty + dy;
           if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
           const cell2 = document.getElementById(`c${nx}${ny}`), ov2 = document.createElement('div');
           ov2.className = 'attack'; cell2.append(ov2);
-          if (!sh && units[other].x === nx && units[other].y === ny) units[other].alive = false;
+          if (!sh && units[other].x === nx && units[other].y === ny) {
+            units[other].alive = false;
+            showDeath(nx, ny);
+            playSound('death');
+          }
         });
         playSound('attack');
       }
@@ -632,7 +642,11 @@ function startNewRound() {
     });
     ['A', 'B'].forEach(pl => {
       const u = units[pl];
-      if (u.alive && (u.x === 0 || u.x === 4 || u.y === 0 || u.y === 4)) u.alive = false;
+      if (u.alive && (u.x === 0 || u.x === 4 || u.y === 0 || u.y === 4)) {
+        u.alive = false;
+        showDeath(u.x, u.y);
+        playSound('death');
+      }
     });
     render();
     recordState();
@@ -703,7 +717,7 @@ function startNewRound() {
   }
 
   function animateReplayActions(acts) {
-    document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+    document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     ['A', 'B'].forEach(pl => {
       const act = acts[pl];
       if (!act) return;
@@ -736,8 +750,16 @@ function startNewRound() {
       }
     });
     setTimeout(() => {
-      document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+      document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     }, 500);
+  }
+
+  function showDeath(x, y) {
+    const cell = document.getElementById(`c${x}${y}`);
+    if (!cell) return;
+    const ov = document.createElement('div');
+    ov.className = 'death';
+    cell.append(ov);
   }
 
   function endReplay() {
@@ -788,7 +810,7 @@ function startNewRound() {
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
     clearPlan();
-    document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+    document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     render(); btnNext.textContent = t('nextBtn'); updateUI();
   }
 
