@@ -5,6 +5,7 @@ let canPlay = false;
 let isOnline = false;
 let soundVolume = parseFloat(localStorage.getItem('volume'));
 if (isNaN(soundVolume)) soundVolume = 1;
+let replaySpeed = 1;
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
@@ -742,6 +743,7 @@ function startNewRound() {
     let i = 0;
     function play() {
       if (!isReplaying) return;
+      if (replaySpeed === 0) { setTimeout(play, 100); return; }
       if (i >= frames.length) { endReplay(); return; }
       const f = frames[i++];
       const st = f.state;
@@ -749,7 +751,7 @@ function startNewRound() {
       units = { A: { ...st.units.A }, B: { ...st.units.B } };
       render(); updateUI();
       if (f.actions) animateReplayActions(f.actions);
-      setTimeout(play, 700);
+      setTimeout(play, 700 / (replaySpeed || 0.1));
     }
     play();
   }
@@ -914,6 +916,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const langSelect = document.getElementById('langSelect');
   const menuBtn = document.getElementById('menuBtn');
   const replayClose = document.getElementById('replayClose');
+  const replaySpeedSlider = document.getElementById('replaySpeed');
+  const replaySpeedLabel = document.getElementById('replaySpeedLabel');
 
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
@@ -939,6 +943,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
   if (replayClose) replayClose.onclick = () => endReplay();
+  if (replaySpeedSlider && replaySpeedLabel) {
+    replaySpeedSlider.value = replaySpeed;
+    replaySpeedLabel.textContent = replaySpeed + 'x';
+    replaySpeedSlider.oninput = () => {
+      replaySpeed = parseFloat(replaySpeedSlider.value);
+      replaySpeedLabel.textContent = replaySpeed + 'x';
+    };
+  }
 
   document.body.addEventListener("click", e => {
     playSound(e.target.dataset.sound || "ui");
