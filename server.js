@@ -8,7 +8,13 @@ const jsDir = path.join(__dirname, 'js');
 const indexFile = path.join(__dirname, 'index.html');
 
 function requestHandler(req, res) {
-  const rawPath = decodeURIComponent(req.url.split('?')[0]);
+  let rawPath;
+  try {
+    rawPath = decodeURIComponent(req.url.split('?')[0]);
+  } catch (e) {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
   if (rawPath.includes('..')) {
     res.writeHead(400);
     return res.end('Bad request');
