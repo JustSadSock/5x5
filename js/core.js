@@ -120,6 +120,8 @@ function startNewRound() {
   ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  ds.style.display = 'none'; startGame(); };
   ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  ds.style.display = 'none'; startGame(); };
   ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  aiSamples = 150; ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.expert').onclick = () => { aiRand = 0.05; aiSamples = 300; ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.insane').onclick = () => { aiRand = 0.02; aiSamples = 500; ds.style.display = 'none'; startGame(); };
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
