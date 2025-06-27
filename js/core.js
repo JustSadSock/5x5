@@ -678,18 +678,66 @@ function startNewRound() {
     if (ov) ov.classList.add('show');
     resetGame();
     let frames = [];
-    replayHistory.forEach(r => frames.push(...r.states));
+    replayHistory.forEach(r => {
+      if (r.states.length) frames.push({ state: r.states[0] });
+      for (let i = 1; i < r.states.length; i++) {
+        frames.push({
+          state: r.states[i],
+          actions: { A: r.actions.A[i - 1], B: r.actions.B[i - 1] }
+        });
+      }
+    });
     let i = 0;
     function play() {
       if (!isReplaying) return;
       if (i >= frames.length) { endReplay(); return; }
       const f = frames[i++];
-      round = f.round; step = f.step; edgesCollapsed = f.edgesCollapsed;
-      units = { A: { ...f.units.A }, B: { ...f.units.B } };
+      const st = f.state;
+      round = st.round; step = st.step; edgesCollapsed = st.edgesCollapsed;
+      units = { A: { ...st.units.A }, B: { ...st.units.B } };
       render(); updateUI();
+      if (f.actions) animateReplayActions(f.actions);
       setTimeout(play, 700);
     }
     play();
+  }
+
+  function animateReplayActions(acts) {
+    document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+    ['A', 'B'].forEach(pl => {
+      const act = acts[pl];
+      if (!act) return;
+      if (typeof act === 'object') {
+        const u = units[pl];
+        const cellS = document.getElementById(`c${u.x}${u.y}`);
+        if (cellS) {
+          const ovS = document.createElement('div');
+          ovS.className = 'attack';
+          cellS.append(ovS);
+          act.dirs.forEach(d => {
+            const [dx, dy] = DXY[d];
+            const nx = u.x + dx, ny = u.y + dy;
+            if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
+            const c2 = document.getElementById(`c${nx}${ny}`);
+            if (!c2) return;
+            const ov2 = document.createElement('div');
+            ov2.className = 'attack';
+            c2.append(ov2);
+          });
+        }
+      } else if (act === 'shield') {
+        const u = units[pl];
+        const cell = document.getElementById(`c${u.x}${u.y}`);
+        if (cell) {
+          const ov = document.createElement('div');
+          ov.className = 'shield';
+          cell.append(ov);
+        }
+      }
+    });
+    setTimeout(() => {
+      document.querySelectorAll('.attack,.shield').forEach(e => e.remove());
+    }, 500);
   }
 
   function endReplay() {
