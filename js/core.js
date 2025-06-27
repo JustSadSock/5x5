@@ -56,6 +56,9 @@ function startNewRound() {
   let units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
   let score = { A: 0, B: 0 };
   let edgesCollapsed = false;
+  let replayHistory = [];
+  let currentReplay = null;
+  let isReplaying = false;
 
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -133,6 +136,7 @@ function startNewRound() {
     buildBoard(); bindUI(); render(); updateUI();
     updateScore();
     edgesCollapsed = false;
+    replayHistory = [];
   }
 
   function buildBoard() {
@@ -249,12 +253,14 @@ function startNewRound() {
     if (phase === 'planA' && single) {
       autoPlanB();
       phase = 'execute';
+      startRecordingRound();
       btnNext.textContent = t('executeBtn');
       clearPlan(); updateUI();
       return;
     }
     if (phase !== 'execute') {
       phase = phase === 'planA' ? 'planB' : 'execute';
+      if (phase === 'execute') startRecordingRound();
       btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
       clearPlan(); updateUI();
       return;
@@ -538,6 +544,7 @@ function startNewRound() {
       }
     });
     render();
+    recordState();
 
     if (checkOutcome()) return;
 
@@ -546,6 +553,7 @@ function startNewRound() {
       if (collapseEdges()) return;
     }
     if (step > STEPS) {
+      finalizeRound();
       if (typeof sendState === 'function') {
         sendState(JSON.stringify({ units, round, step }));
       }
@@ -594,6 +602,7 @@ function startNewRound() {
       const txt = sim ? 'Смерть с обеих сторон: ничья.' :
         win === 'DRAW' ? 'Изнурённые — ничья.' : `Игрок ${win} победил!`;
       if (win === 'A' || win === 'B') { score[win]++; updateScore(); playSound('win'); }
+      finalizeRound();
       showResult(txt); return true;
     }
     return false;
@@ -614,8 +623,72 @@ function startNewRound() {
       if (u.alive && (u.x === 0 || u.x === 4 || u.y === 0 || u.y === 4)) u.alive = false;
     });
     render();
+    recordState();
     return checkOutcome();
   }
+
+  function cloneState() {
+    return {
+      round,
+      step,
+      edgesCollapsed,
+      units: {
+        A: { ...units.A },
+        B: { ...units.B }
+      }
+    };
+  }
+
+  function startRecordingRound() {
+    currentReplay = {
+      actions: {
+        A: JSON.parse(JSON.stringify(plans.A)),
+        B: JSON.parse(JSON.stringify(plans.B))
+      },
+      states: []
+    };
+    currentReplay.states.push(cloneState());
+  }
+
+  function recordState() { if (currentReplay) currentReplay.states.push(cloneState()); }
+
+  function finalizeRound() {
+    if (currentReplay) {
+      replayHistory.push(currentReplay);
+      currentReplay = null;
+    }
+  }
+
+  function startReplay() {
+    if (isReplaying || replayHistory.length === 0) return;
+    isReplaying = true;
+    const ov = document.getElementById('replayOverlay');
+    if (ov) ov.classList.add('show');
+    resetGame();
+    let frames = [];
+    replayHistory.forEach(r => frames.push(...r.states));
+    let i = 0;
+    function play() {
+      if (!isReplaying) return;
+      if (i >= frames.length) { endReplay(); return; }
+      const f = frames[i++];
+      round = f.round; step = f.step; edgesCollapsed = f.edgesCollapsed;
+      units = { A: { ...f.units.A }, B: { ...f.units.B } };
+      render(); updateUI();
+      setTimeout(play, 700);
+    }
+    play();
+  }
+
+  function endReplay() {
+    isReplaying = false;
+    const ov = document.getElementById('replayOverlay');
+    if (ov) ov.classList.remove('show');
+    resetGame();
+    updateScore();
+  }
+
+  window.startReplay = startReplay;
 
   function showResult(text) {
     const ov = document.createElement('div');
@@ -623,6 +696,7 @@ function startNewRound() {
     ov.innerHTML =
       `<div>${text}</div>` +
       '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
+      `<button id="resReplay">${t('replay')}</button>` +
       `<button id="resMenu">${t('toMenu')}</button>` +
       `<button id="resOk">${t('ok')}</button>` +
       '</div>';
@@ -636,6 +710,10 @@ function startNewRound() {
     document.getElementById('resMenu').onclick = () => {
       ov.remove();
       returnToMenu();
+    };
+    document.getElementById('resReplay').onclick = () => {
+      ov.remove();
+      startReplay();
     };
   }
 
@@ -697,6 +775,7 @@ function startNewRound() {
     console.log('Starting execution phase with moves', moves);
     phase = 'execute';
     step = 1;
+    startRecordingRound();
     const next = document.getElementById('btn-next');
     if (next) {
       next.style.display = 'inline-block';
@@ -726,6 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const volumeSlider = document.getElementById('volumeSlider');
   const langSelect = document.getElementById('langSelect');
   const menuBtn = document.getElementById('menuBtn');
+  const replayClose = document.getElementById('replayClose');
 
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
@@ -746,6 +826,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
+  if (replayClose) replayClose.onclick = () => endReplay();
 
   document.body.addEventListener('click', e => {
     if (e.target.tagName === 'BUTTON') playSound('ui');
