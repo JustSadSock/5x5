@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "pretest": "npm install",
+    "postinstall": "npx playwright install",
     "test": "node --test",
     "start": "node server.js"
   },
