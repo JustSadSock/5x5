@@ -32,7 +32,13 @@ function requestHandler(req, res) {
       res.end('Not found');
     } else {
       const ext = path.extname(filePath);
-      const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css' };
+      const types = {
+        '.js': 'text/javascript',
+        '.html': 'text/html',
+        '.css': 'text/css',
+        '.png': 'image/png',
+        '.ico': 'image/x-icon'
+      };
       res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
       res.end(data);
     }
