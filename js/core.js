@@ -94,7 +94,7 @@ function startNewRound() {
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.type = 'sine';
-    const freq = { move: 440, attack: 660, shield: 330, win: 880, ui: 550 }[type] || 440;
+    const freq = { move: 440, attack: 660, shield: 330, win: 880, ui: 550, nav: 500 }[type] || 440;
     osc.frequency.value = freq; gain.gain.value = 0.3 * soundVolume;
     osc.start(); osc.stop(audioCtx.currentTime + 0.15);
   }
@@ -843,8 +843,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (menuBtn) menuBtn.onclick = () => returnToMenu();
   if (replayClose) replayClose.onclick = () => endReplay();
 
-  document.body.addEventListener('click', e => {
-    if (e.target.tagName === 'BUTTON') playSound('ui');
+  document.body.addEventListener("click", e => {
+    playSound(e.target.dataset.sound || "ui");
   });
 
   const tutOv = document.getElementById('tutorialOverlay');
