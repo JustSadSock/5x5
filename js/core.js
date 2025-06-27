@@ -846,6 +846,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.addEventListener('click', e => {
     if (e.target.tagName === 'BUTTON') playSound('ui');
   });
+
+  const tutOv = document.getElementById('tutorialOverlay');
+  const tutCont = document.getElementById('tutorialContent');
+  const tutNext = document.getElementById('tutorialNext');
+  if (tutOv && tutCont && tutNext && !localStorage.getItem('tutorialDone')) {
+    const steps = [t('tutorial1'), t('tutorial2'), t('tutorial3')];
+    let idx = 0;
+    tutCont.textContent = steps[0];
+    tutOv.classList.add('show');
+    tutNext.onclick = () => {
+      idx++;
+      if (idx < steps.length) {
+        tutCont.textContent = steps[idx];
+      } else {
+        tutOv.classList.remove('show');
+        localStorage.setItem('tutorialDone', '1');
+      }
+    };
+  }
 });
 
 // Prevent double-click zoom on mobile
