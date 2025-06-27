@@ -20,9 +20,9 @@ function onCellClick(x, y) {
   if (localMoves.length >= 5) return;
   localMoves.push({ x, y });
   applyMove({ x, y }, playerIndex);
+  // confirmation handled via Next button in online mode
   if (localMoves.length === 5) {
-    const btn = document.getElementById('confirmBtn');
-    if (btn) btn.disabled = false;
+    updateUI();
   }
 }
 
@@ -38,8 +38,6 @@ function applyMove(move, who) {
 function startNewRound() {
   localMoves = [];
   canPlay = true;
-  const btn = document.getElementById('confirmBtn');
-  if (btn) btn.disabled = true;
   console.log('Planning phase started');
 }
 
@@ -220,11 +218,8 @@ function startNewRound() {
         simPos[P].y += DXY[act][1];
       }
     }
-    updateUI(); drawPlan(P);
-    if (isOnline && plans[mySide()].length === STEPS) {
-      const btn = document.getElementById('confirmBtn');
-      if (btn) btn.disabled = false;
-    }
+    updateUI();
+    drawPlan(P);
   }
 
   function deleteLast() {
@@ -245,14 +240,19 @@ function startNewRound() {
     } else {
       usedAtk[P]--; a.dirs.forEach(d => usedAtkDirs[P].delete(d));
     }
-    updateUI(); drawPlan(P);
-    if (isOnline && plans[mySide()].length !== STEPS) {
-      const btn = document.getElementById('confirmBtn');
-      if (btn) btn.disabled = true;
-    }
+    updateUI();
+    drawPlan(P);
   }
 
   function nextStep() {
+    if (isOnline && phase !== 'execute') {
+      const moves = plans[mySide()];
+      if (moves.length === STEPS) {
+        submitMoves(moves);
+        btnNext.disabled = true;
+      }
+      return;
+    }
     if (phase === 'planA' && single) {
       autoPlanB();
       phase = 'execute';
@@ -452,7 +452,8 @@ function startNewRound() {
     if (single && phase === 'planA') {
       btnNext.disabled = plans[P].length === 0;
     } else if (isOnline) {
-      btnNext.disabled = phase !== 'execute';
+      if (phase === 'execute') btnNext.disabled = false;
+      else btnNext.disabled = plans[P].length !== STEPS;
     } else {
       btnNext.disabled = (plans[P].length < STEPS && phase !== 'execute');
     }
@@ -757,7 +758,6 @@ function startNewRound() {
     startGame();
     resetGame();
     startNewRound();
-    if (isOnline) document.getElementById('btn-next').style.display = 'none';
   };
 
   function exitOnlineMode() {
@@ -793,23 +793,12 @@ function startNewRound() {
       next.textContent = t('executeBtn');
       next.disabled = false;
     }
-    const cbtn = document.getElementById('confirmBtn');
-    if (cbtn) cbtn.disabled = true;
     clearPlan();
     updateUI();
   };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
-  const cbtn = document.getElementById('confirmBtn');
-  if (cbtn) cbtn.onclick = () => {
-    const moves = window.plans[mySide()];
-    if (moves.length !== 5) return;
-    submitMoves(moves);
-    canPlay = false;
-    cbtn.disabled = true;
-  };
-
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
