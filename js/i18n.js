@@ -48,6 +48,17 @@
       state_ok: 'Moves match',
       state_mismatch: 'State mismatch',
       room_closed_inactivity: 'Room closed due to inactivity'
+      ,rulesHeader: 'Game Concept and Rules'
+      ,rulesGeneral: 'Overview'
+      ,rulesIntro: 'This is a turn-based 5\u00d75 PvP arena for two players. Up to three rounds are played. If nobody wins, sudden death starts on the central 3\u00d73 grid.'
+      ,rule1: 'Each round players pre-plan five actions.'
+      ,rule2: 'Available actions are movement, one attack and one shield per round.'
+      ,rule3: 'An attack selects directions and hits your cell and chosen neighbours.'
+      ,rule4: 'The shield negates all damage for that step.'
+      ,rule5: 'After planning, actions execute in order for both players simultaneously.'
+      ,rule6: 'A player dies if struck by an attack or when stepping on collapsed cells.'
+      ,rule7: 'After three rounds the outer ring collapses leaving a 3\u00d73 arena.'
+      ,rule8: 'If there is no winner after the last round, the match ends in a draw.'
     },
     ru: {
       singlePlayer: '1 игрок',
@@ -96,7 +107,18 @@
       ws_not_connected: 'WebSocket ещё не подключён',
       state_ok: 'Ходы совпадают',
       state_mismatch: 'Несовпадение состояний',
-      room_closed_inactivity: 'Комната закрыта из-за неактивности'
+      room_closed_inactivity: 'Комната закрыта из-за неактивности',
+      rulesHeader: 'Концепция и правила игры',
+      rulesGeneral: 'Общее',
+      rulesIntro: 'Это пошаговая PvP-арена 5\u00d75 для двух игроков. Игра идёт три раунда, затем в отсутствие победителя начинается \u00abвнезапная смерть\u00bb в центре 3\u00d73.',
+      rule1: 'Каждый раунд игроки заранее выбирают пять действий.',
+      rule2: 'В распоряжении перемещения, одна атака и один щит за раунд.',
+      rule3: 'Атака задаёт направления и поражает текущую и соседние клетки.',
+      rule4: 'Щит блокирует урон выбранного хода.',
+      rule5: 'После планирования действия выполняются по порядку одновременно.',
+      rule6: 'Игрок погибает от атаки или наступив на провалившуюся клетку.',
+      rule7: 'После трёх раундов края поля разрушаются, остаётся зона 3\u00d73.',
+      rule8: 'Если победителя нет после финала, объявляется ничья.'
     },
     uk: {
       singlePlayer: '1 гравець',
@@ -145,7 +167,18 @@
       ws_not_connected: 'WebSocket ще не підключений',
       state_ok: 'Ходи збігаються',
       state_mismatch: 'Неспівпадіння станів',
-      room_closed_inactivity: 'Кімната закрита через неактивність'
+      room_closed_inactivity: 'Кімната закрита через неактивність',
+      rulesHeader: 'Концепція та правила гри',
+      rulesGeneral: 'Загальне',
+      rulesIntro: 'Це покрокова PvP-арена 5\u00d75 для двох гравців. Після трьох раундів за відсутності переможця починається \u00abраптова смерть\u00bb у центрі 3\u00d73.',
+      rule1: 'Щоразу гравці заздалегідь планують п\u2019ять дій.',
+      rule2: 'Доступні переміщення, одна атака та один щит за раунд.',
+      rule3: 'Атака вибирає напрямки та вражає поточну й сусідні клітини.',
+      rule4: 'Щит блокує весь урон цього кроку.',
+      rule5: 'Після планування дії виконуються послідовно одночасно у обох гравців.',
+      rule6: 'Гравець гине від атаки або ступивши на зруйновану клітину.',
+      rule7: 'Після трьох раундів зовнішнє кільце зникає, залишається арена 3\u00d73.',
+      rule8: 'Якщо переможця немає після фінального раунду, оголошується нічия.'
     }
   };
 
