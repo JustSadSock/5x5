@@ -18,7 +18,24 @@ A simple WebSocket-based 5×5 PvP game.
    node server.js
    ```
 
+
    The game will be served on [https://boom-poised-sawfish.glitch.me](https://boom-poised-sawfish.glitch.me).
+
+### Configuring the WebSocket server
+
+The client connects to the hosted WebSocket server above by default. For local
+development you can point the client at your own server in two ways:
+
+1. Define `WS_SERVER_URL` before including `js/socket.js`:
+
+   ```html
+   <script>window.WS_SERVER_URL = 'ws://localhost:8080';</script>
+   <script src="js/socket.js"></script>
+   ```
+
+2. Pass a `ws` query parameter when opening the page:
+
+   `http://localhost:8080/?ws=ws://localhost:8080`
 
 ### Running tests
 

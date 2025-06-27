@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
   for (const width of widths) {
     const context = await browser.newContext({ viewport: { width, height: 640 } });
     const page = await context.newPage();
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:8080/?ws=ws://localhost:8080');
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     if (bodyWidth > width) {
       console.error(`Layout overflow at width ${width}: body ${bodyWidth}`);

@@ -6,8 +6,18 @@ let startRoundTimer = null;
 let lastRoomId = null;
 let wasCreator = false;
 let intentionalClose = false;
-// Connect to the dedicated WebSocket server
-const WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
+// Connect to the dedicated WebSocket server by default. The URL can be
+// overridden by setting `window.WS_SERVER_URL` before this script runs or by
+// providing a `ws` query parameter in the page URL.
+let WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
+if (typeof window !== 'undefined') {
+  const params = new URLSearchParams(window.location.search);
+  if (window.WS_SERVER_URL) {
+    WS_SERVER_URL = window.WS_SERVER_URL;
+  } else if (params.get('ws')) {
+    WS_SERVER_URL = params.get('ws');
+  }
+}
 
 function updateConnectionStatus(text, color) {
   const el = document.getElementById('connectionStatus');
