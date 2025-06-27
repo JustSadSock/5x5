@@ -47,6 +47,7 @@ function cleanupRoom() {
   updateConnectionStatus('Оффлайн', 'orange');
   resetRoomState();
   clearRoomUI();
+  if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
 }
 
 function initSocket(onReady) {

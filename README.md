@@ -40,4 +40,4 @@ The confirm button becomes active again so you can resend the moves. This usuall
 
 If the page manages to reconnect, you will see **«Переподключено, повторный вход…»** and the client will automatically recreate or rejoin the last room.
 
-When your opponent leaves the room you will now see a popup with options to return to the online menu or immediately create a new room. Leaving the online menu (including via the **В меню** button) calls `exitOnlineMode()` which sets the game back to offline mode, resets the room state with `resetRoomState()` and shows the main screen.
+When your opponent leaves the room you will now see a popup with options to return to the online menu or immediately create a new room. Leaving the online menu (including via the **В меню** button) calls `exitOnlineMode()` which sets the game back to offline mode, resets the room state with `resetRoomState()` and shows the main screen. Exiting the online screen or reloading the page also clears `isOnline` and `playerIndex`.
