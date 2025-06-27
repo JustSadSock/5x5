@@ -117,7 +117,7 @@ function attachWebSocketServer(server) {
         removeFromRoom(ws);
         const room = rooms[data.roomId];
         if (!room || room.players.length >= 2) {
-          ws.send(JSON.stringify({ type: 'error', message: 'Комната недоступна' }));
+          ws.send(JSON.stringify({ type: 'error', message: 'Room unavailable' }));
           return;
         }
         room.players.push(ws);
@@ -138,7 +138,7 @@ function attachWebSocketServer(server) {
         const room = rooms[ws.roomId];
         if (!room) return;
         if (!Array.isArray(data.moves) || data.moves.length !== 5) {
-          ws.send(JSON.stringify({ type: 'error', message: 'Нужно отправить ровно 5 ходов' }));
+          ws.send(JSON.stringify({ type: 'error', message: 'Must send exactly 5 moves' }));
           console.log(`Player ${ws.playerIndex} sent invalid moves in room ${ws.roomId}`);
           return;
         }

@@ -44,7 +44,7 @@ function cleanupRoom() {
     socket = null; // ensure old connection isn't reused
   }
   isConnected = false;
-  updateConnectionStatus('Оффлайн', 'orange');
+  updateConnectionStatus(t('offline'), 'orange');
   resetRoomState();
   clearRoomUI();
   if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
@@ -60,40 +60,40 @@ function initSocket(onReady) {
     return;
   }
   socket = new WebSocket(WS_SERVER_URL);
-  updateConnectionStatus('Подключение...', 'yellow');
+  updateConnectionStatus(t('connecting'), 'yellow');
   socket.addEventListener('open', () => {
     isConnected = true;
-    log('✅ Соединение установлено');
+    log('✅ ' + t('onlineStatus')); // connection established
     if (!onReady && (wasCreator || lastRoomId)) {
-      updateConnectionStatus('Переподключено, повторный вход...', 'lime');
+      updateConnectionStatus(t('rejoin'), 'lime');
       const msg = wasCreator ? { type: 'create' } : { type: 'join', roomId: lastRoomId };
       socket.send(JSON.stringify(msg));
     } else {
-      updateConnectionStatus('Онлайн', 'lime');
+      updateConnectionStatus(t('onlineStatus'), 'lime');
     }
     if (onReady) onReady();
   });
   handleClose = function handleClose(event) {
     if (event.target !== socket) return;  // ignore old sockets
     isConnected = false;
-    log('⚠ Соединение прервано');
+    log('⚠ ' + t('connection_lost'));
     if (intentionalClose) {
       intentionalClose = false;
-      updateConnectionStatus('Оффлайн', 'orange');
+      updateConnectionStatus(t('offline'), 'orange');
       return;
     }
-    updateConnectionStatus('Оффлайн. Переподключение...', 'orange');
+    updateConnectionStatus(t('reconnecting'), 'orange');
     setTimeout(() => initSocket(), 2000);
   };
   socket.addEventListener('close', handleClose);
   handleMessage = function handleMessage(event) {
     const data = JSON.parse(event.data);
-    log('📨 Получено: ' + JSON.stringify(data));
+    log('📨 ' + JSON.stringify(data));
     // Also output payloads to the browser console for easier debugging
     console.log('WebSocket payload:', data);
     if (data.type === 'room_created') {
       const el = document.getElementById('roomCode');
-      if (el) el.innerText = `Комната: ${data.roomId}`;
+      if (el) el.innerText = `${t('room')}: ${data.roomId}`;
       lastRoomId = data.roomId;
     }
     if (data.type === 'start_game') {
@@ -103,31 +103,31 @@ function initSocket(onReady) {
       handleOpponentMove(data.move);
     }
     if (data.type === 'player_confirmed') {
-      const who = data.playerIndex === 0 ? 'Игрок A' : 'Игрок B';
-      showConfirmMessage(who + ' подтвердил ходы');
-      log(who + ' подтвердил ходы');
+      const who = data.playerIndex === 0 ? t('playerA') : t('playerB');
+      showConfirmMessage(who + ' ' + t('confirmed'));
+      log(who + ' ' + t('confirmed'));
     }
     if (data.type === 'start_round') {
       if (startRoundTimer) {
         clearTimeout(startRoundTimer);
         startRoundTimer = null;
       }
-      log('Оба игрока подтвердили ходы, начинается просмотр');
-      log('▶ Начало раунда');
+      log(t('both_confirmed'));
+      log('▶ ' + t('round_start'));
       // Log moves object to verify contents
       console.log('start_round moves:', data.moves);
       onStartRound(data.moves);
     }
     if (data.type === 'error') log('⚠ ' + data.message);
-    if (data.type === 'state_ok') log('✔ Ходы совпадают');
-    if (data.type === 'state_mismatch') log('❌ Несовпадение состояний');
+    if (data.type === 'state_ok') log('✔ ' + t('state_ok'));
+    if (data.type === 'state_mismatch') log('❌ ' + t('state_mismatch'));
     if (data.type === 'opponent_left') {
-      log('⚠ Оппонент покинул игру');
+      log('⚠ ' + t('opponent_left_room'));
       cleanupRoom();
       showOpponentLeftModal();
     }
     if (data.type === 'room_expired') {
-      log('⌛ Комната закрыта из-за неактивности');
+      log('⌛ ' + t('room_closed_inactivity'));
       cleanupRoom();
     }
   };
@@ -155,18 +155,18 @@ function joinRoom(roomId) {
 
 function submitMoves(moves) {
   if (!isConnected) {
-    log('⛔ WebSocket ещё не подключён');
+    log('⛔ ' + t('ws_not_connected'));
     return;
   }
   if (!Array.isArray(moves) || moves.length !== 5) {
-    log('⚠ Нужно выбрать ровно 5 ходов');
+    log('⚠ ' + t('need_five_moves'));
     return;
   }
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'submit_moves', moves }));
     if (startRoundTimer) clearTimeout(startRoundTimer);
     startRoundTimer = setTimeout(() => {
-      log('сервер не начал раунд, перепроверьте соединение');
+      log(t('server_no_round'));
       const btn = document.getElementById('confirmBtn');
       if (btn) btn.disabled = false;
     }, 10000);
@@ -198,10 +198,10 @@ function showOpponentLeftModal() {
   const ov = document.createElement('div');
   ov.id = 'leaveOverlay';
   ov.innerHTML =
-    '<div>Оппонент покинул комнату</div>' +
+    `<div>${t('opponent_left_room')}</div>` +
     '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
-    '<button id="leaveToMenu">В меню</button>' +
-    '<button id="leaveCreate">Создать новую</button>' +
+    `<button id="leaveToMenu">${t('toMenu')}</button>` +
+    `<button id="leaveCreate">${t('create_new')}</button>` +
     '</div>';
   document.body.append(ov);
   document.getElementById('leaveToMenu').onclick = () => {
@@ -226,7 +226,7 @@ function showOpponentLeftModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateConnectionStatus('Оффлайн', 'orange');
+  updateConnectionStatus(t('offline'), 'orange');
   resetRoomState();
 });
 
