@@ -192,6 +192,10 @@
   };
 
   let currentLang = 'en';
+  const storedLang = localStorage.getItem('language');
+  if (storedLang && translations[storedLang]) {
+    currentLang = storedLang;
+  }
 
   function t(key) {
     return translations[currentLang][key] || translations.en[key] || key;
