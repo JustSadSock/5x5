@@ -52,7 +52,7 @@ function startNewRound() {
   const MAX_R = 4, STEPS = 5;
   const DXY = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
-  let single = false, aiRand = 0.25, aiSamples = 60;
+  let single = false, aiRand = 0.25, aiSamples = 60, planNoise = 0;
   let round = 1, step = 1, phase = 'planA';
   let plans = { A: [], B: [] };
   let usedMove = { A: new Set(), B: new Set() };
@@ -165,11 +165,11 @@ function startNewRound() {
   rulesClose.onclick = () => rulesOv.style.display = 'none';
   if (rulesTutorial) rulesTutorial.onclick = () => { rulesOv.style.display = 'none'; startTutorial(); };
 
-  ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  aiSamples = 150; ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.expert').onclick = () => { aiRand = 0.05; aiSamples = 300; ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.insane').onclick = () => { aiRand = 0.02; aiSamples = 500; ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  planNoise = 10; ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  planNoise = 5;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  aiSamples = 150; planNoise = 2;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.expert').onclick = () => { aiRand = 0.05; aiSamples = 300; planNoise = 1;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.insane').onclick = () => { aiRand = 0.02; aiSamples = 500; planNoise = 0;  ds.style.display = 'none'; startGame(); };
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
@@ -473,6 +473,9 @@ function startNewRound() {
       }
       candidates.push({ plan, score: scoreState(state) });
     }
+    candidates.forEach(c => {
+      c.score += (Math.random() * 2 - 1) * planNoise;
+    });
     candidates.sort((a, b) => b.score - a.score);
     const nTop = Math.min(candidates.length, Math.max(1, Math.round(1 / aiRand)));
     const choice = candidates[Math.floor(Math.random() * nTop)] || { plan: [] };
