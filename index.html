@@ -367,13 +367,16 @@
       border-radius:6px;
       pointer-events:auto;
     }
-    .speedBtn,
-    #replayPause {
+    .speedBtn {
       background:#444;
       color:#fff;
       border:none;
       padding:4px 8px;
       cursor:pointer;
+    }
+    #replayPause {
+      left:10px;
+      right:auto;
     }
     .speedBtn.active {
       background:#0ff;
@@ -633,6 +636,7 @@
   <div id="replayOverlay">
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
     <button id="saveReplay" data-i18n="saveVideo" data-sound="nav" style="right:90px;top:10px;position:absolute;">Save</button>
+    <button id="replayPause">❚❚</button>
     <input id="replaySeek" type="range" min="0" max="0" step="1" value="0" style="position:absolute;left:10px;right:10px;bottom:60px;pointer-events:auto;">
     <div class="speedControl">
       <button class="speedBtn" data-speed="1">1x</button>
@@ -640,7 +644,6 @@
       <button class="speedBtn" data-speed="3">3x</button>
       <button class="speedBtn" data-speed="4">4x</button>
       <button class="speedBtn" data-speed="5">5x</button>
-      <button id="replayPause">❚❚</button>
     </div>
   </div>
   <div id="tutorialOverlay">
