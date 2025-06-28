@@ -19,7 +19,7 @@ A simple WebSocket-based 5×5 PvP game.
    ```
 
 
-   The game will be served on [https://boom-poised-sawfish.glitch.me](https://boom-poised-sawfish.glitch.me).
+   The game will be served on [https://zippy-scintillating-asp.glitch.me](https://zippy-scintillating-asp.glitch.me).
 
 ### Configuring the WebSocket server
 
