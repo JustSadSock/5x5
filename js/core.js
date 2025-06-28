@@ -822,14 +822,28 @@ function startNewRound() {
     recordedChunks = [];
     recorder = new MediaRecorder(stream);
     recorder.ondataavailable = e => recordedChunks.push(e.data);
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'replay.webm';
-      a.click();
-      URL.revokeObjectURL(url);
+      const file = new File([blob], 'replay.webm', { type: 'video/webm' });
+      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+        } catch (e) {
+          const url = URL.createObjectURL(file);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'replay.webm';
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'replay.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
       recordedChunks = [];
     };
     recorder.start();
