@@ -8,16 +8,19 @@
   <link rel="apple-touch-icon" sizes="512x512" href="assets/icon.png"/>
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#000000"/>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Manrope:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap&subset=cyrillic" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Manrope:wght@400;700&family=Roboto+Mono:wght@400;700&family=PT+Sans:wght@400;700&family=Fira+Sans:wght@400;700&display=swap&subset=cyrillic" rel="stylesheet">
   <style>
     * { box-sizing:border-box; margin:0; padding:0; }
     html,body {
-      width:100%; height:100%; font-family:'Roboto','Manrope',sans-serif;
+      width:100%; height:100%; 
       overflow:hidden;
       background:linear-gradient(135deg,#1e1e1e,#111);
       color:#fff;
       touch-action: manipulation;
     }
+    body.lang-en { font-family: "Roboto","Manrope",sans-serif; }
+    body.lang-ru { font-family: "PT Sans","Roboto","Manrope",sans-serif; }
+    body.lang-uk { font-family: "Fira Sans","Roboto","Manrope",sans-serif; }
 
     /* Первый экран */
     #modeSelect, #difficultySelect {
