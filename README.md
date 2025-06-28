@@ -23,8 +23,7 @@ A simple WebSocket-based 5×5 PvP game.
 
 ### Configuring the WebSocket server
 
-The client connects to the hosted WebSocket server above by default. For local
-development you can point the client at your own server in two ways:
+The client connects to the hosted WebSocket server above by default (wss://zippy-scintillating-asp.glitch.me). For local development you can point the client at your own server in two ways:
 
 1. Define `WS_SERVER_URL` before including `js/socket.js`:
 

@@ -9,7 +9,7 @@ let intentionalClose = false;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
-let WS_SERVER_URL = 'wss://boom-poised-sawfish.glitch.me';
+let WS_SERVER_URL = 'wss://zippy-scintillating-asp.glitch.me';
 if (typeof window !== 'undefined') {
   const params = new URLSearchParams(window.location.search);
   if (window.WS_SERVER_URL) {

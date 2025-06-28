@@ -1,2 +1,2 @@
-Current server link: https://boom-poised-sawfish.glitch.me
+Current server link: https://zippy-scintillating-asp.glitch.me
 The index file (index.html) must be placed in the root folder.
