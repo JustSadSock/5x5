@@ -212,6 +212,11 @@
     currentLang = storedLang;
   }
 
+  document.documentElement.lang = currentLang;
+  if (document.body) {
+    document.body.classList.add('lang-' + currentLang);
+  }
+
   function t(key) {
     return translations[currentLang][key] || translations.en[key] || key;
   }
@@ -230,6 +235,11 @@
   function setLang(lang) {
     if (translations[lang]) {
       currentLang = lang;
+      document.documentElement.lang = lang;
+      if (document.body) {
+        Object.keys(translations).forEach(l => document.body.classList.remove('lang-' + l));
+        document.body.classList.add('lang-' + lang);
+      }
       applyTranslations();
     }
   }
