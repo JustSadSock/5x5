@@ -60,3 +60,12 @@ The confirm button becomes active again so you can resend the moves. This usuall
 If the page manages to reconnect, you will see **«Переподключено, повторный вход…»** and the client will automatically recreate or rejoin the last room.
 
 When your opponent leaves the room you will now see a popup with options to return to the online menu or immediately create a new room. Leaving the online menu (including via the **В меню** button) calls `exitOnlineMode()` which sets the game back to offline mode, resets the room state with `resetRoomState()` and shows the main screen. Exiting the online screen or reloading the page also clears `isOnline` and `playerIndex`.
+
+## Replays and video export
+
+After a match a **Replay** button appears on the scoreboard. Clicking it opens a
+full-screen overlay where you can watch the recorded round. The pause button and
+seek bar let you step through each action, while the numbered buttons adjust the
+playback speed from 1× to 5×. To keep a copy of the match press **Save** and the
+browser will export the replay as a WebM video. Use **Close** to return to the
+game.
