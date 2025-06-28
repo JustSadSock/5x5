@@ -52,7 +52,12 @@ function startNewRound() {
   const MAX_R = 4, STEPS = 5;
   const DXY = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
-  let single = false, aiRand = 0.25, aiSamples = 60, planNoise = 0;
+  // aiRand controls how often the AI ignores optimal actions
+  // aiMistake introduces deliberate suboptimal moves
+  // aiSamples is the number of plans evaluated when autoplanning
+  // planNoise and planNoiseVar add randomness to plan scoring
+  let single = false, aiRand = 0.25, aiSamples = 60, planNoise = 0,
+      aiMistake = 0, planNoiseVar = 0;
   let round = 1, step = 1, phase = 'planA';
   let plans = { A: [], B: [] };
   let usedMove = { A: new Set(), B: new Set() };
@@ -165,11 +170,31 @@ function startNewRound() {
   rulesClose.onclick = () => rulesOv.style.display = 'none';
   if (rulesTutorial) rulesTutorial.onclick = () => { rulesOv.style.display = 'none'; startTutorial(); };
 
-  ds.querySelector('.easy').onclick   = () => { aiRand = 0.6;  aiSamples = 20;  planNoise = 10; ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.medium').onclick = () => { aiRand = 0.3;  aiSamples = 60;  planNoise = 5;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.hard').onclick   = () => { aiRand = 0.1;  aiSamples = 150; planNoise = 2;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.expert').onclick = () => { aiRand = 0.05; aiSamples = 300; planNoise = 1;  ds.style.display = 'none'; startGame(); };
-  ds.querySelector('.insane').onclick = () => { aiRand = 0.02; aiSamples = 500; planNoise = 0;  ds.style.display = 'none'; startGame(); };
+  ds.querySelector('.easy').onclick   = () => {
+    aiRand = 0.6;  aiMistake = 0.5; aiSamples = 20;
+    planNoise = 10; planNoiseVar = 3;
+    ds.style.display = 'none'; startGame();
+  };
+  ds.querySelector('.medium').onclick = () => {
+    aiRand = 0.3;  aiMistake = 0.2; aiSamples = 60;
+    planNoise = 5;  planNoiseVar = 2;
+    ds.style.display = 'none'; startGame();
+  };
+  ds.querySelector('.hard').onclick   = () => {
+    aiRand = 0.1;  aiMistake = 0.05; aiSamples = 150;
+    planNoise = 2;  planNoiseVar = 1;
+    ds.style.display = 'none'; startGame();
+  };
+  ds.querySelector('.expert').onclick = () => {
+    aiRand = 0.05; aiMistake = 0.02; aiSamples = 300;
+    planNoise = 1;  planNoiseVar = 0.5;
+    ds.style.display = 'none'; startGame();
+  };
+  ds.querySelector('.insane').onclick = () => {
+    aiRand = 0.02; aiMistake = 0.01; aiSamples = 500;
+    planNoise = 0;  planNoiseVar = 0;
+    ds.style.display = 'none'; startGame();
+  };
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
@@ -433,20 +458,21 @@ function startNewRound() {
       const [d] = di; return { type: 'attack', dirs: [d] };
     }
     let best = null, bd = Infinity;
+    const opts = [];
     for (const [d, [dx, dy]] of Object.entries(DXY)) {
       if (usedAtkSet.has(d)) continue;
       const nx = me.x + dx, ny = me.y + dy;
       if (nx < 0 || nx > 4 || ny < 0 || ny > 4) continue;
+      opts.push(d);
       const dist = Math.abs(nx - opp.x) + Math.abs(ny - opp.y);
       if (dist < bd) { bd = dist; best = d; }
     }
+    if (best && opts.length > 1 && Math.random() < aiMistake) {
+      const sub = opts.filter(o => o !== best);
+      return sub[Math.floor(Math.random() * sub.length)];
+    }
     if (Math.random() > aiRand && best) return best;
     if (shieldCount < 1 && Math.random() < 0.3) return 'shield';
-    const opts = [];
-    for (const d in DXY) {
-      const [dx, dy] = DXY[d], nx = me.x + dx, ny = me.y + dy;
-      if (nx >= 0 && nx < 5 && ny >= 0 && ny < 5 && !usedAtkSet.has(d)) opts.push(d);
-    }
     if (atkCount < 1) opts.push({ type: 'attack', dirs: [] });
     if (shieldCount < 1) opts.push('shield');
     return opts[Math.floor(Math.random() * opts.length)];
@@ -483,7 +509,8 @@ function startNewRound() {
       candidates.push({ plan, score: scoreState(state) });
     }
     candidates.forEach(c => {
-      c.score += (Math.random() * 2 - 1) * planNoise;
+      const amp = planNoise + Math.random() * planNoiseVar;
+      c.score += (Math.random() * 2 - 1) * amp;
     });
     candidates.sort((a, b) => b.score - a.score);
     const nTop = Math.min(candidates.length, Math.max(1, Math.round(1 / aiRand)));
