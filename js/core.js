@@ -515,7 +515,7 @@ function startNewRound() {
       if (a === 'shield' && usedShield[P] >= 1) b.disabled = true;
     });
     if (single && phase === 'planA') {
-      btnNext.disabled = plans[P].length === 0;
+      btnNext.disabled = plans[P].length !== STEPS;
     } else if (isOnline) {
       if (phase === 'execute') btnNext.disabled = false;
       else btnNext.disabled = plans[P].length !== STEPS;
