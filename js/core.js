@@ -950,6 +950,29 @@ function startNewRound() {
     if (btn) btn.style.display = replayHistory.length ? 'inline-block' : 'none';
   }
 
+  function showSaveSpeedModal() {
+    if (document.getElementById('speedModal')) return;
+    const ov = document.createElement('div');
+    ov.id = 'speedModal';
+    ov.innerHTML =
+      '<div style="margin-bottom:8px;">Select speed</div>' +
+      '<div style="display:flex;gap:8px;justify-content:center;">' +
+      '<button data-speed="1">1x</button>' +
+      '<button data-speed="2">2x</button>' +
+      '<button data-speed="3">3x</button>' +
+      '<button data-speed="4">4x</button>' +
+      '<button data-speed="5">5x</button>' +
+      '</div>';
+    document.body.append(ov);
+    ov.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        replaySpeed = parseFloat(btn.dataset.speed);
+        ov.remove();
+        saveReplayVideo();
+      };
+    });
+  }
+
   function showResult(text) {
     const ov = document.createElement('div');
     ov.id = 'resultOverlay';
@@ -1092,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     replayBtn.onclick = () => startReplay();
     updateReplayButton();
   }
-  if (saveReplayBtn) saveReplayBtn.onclick = () => saveReplayVideo();
+  if (saveReplayBtn) saveReplayBtn.onclick = () => showSaveSpeedModal();
   if (replaySeek) replaySeek.oninput = () => seekReplay(parseInt(replaySeek.value));
   if (speedBtns.length) {
     speedBtns.forEach(btn => {
