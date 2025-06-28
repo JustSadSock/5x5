@@ -225,10 +225,11 @@ function attachWebSocketServer(server) {
 }
 
 if (require.main === module) {
+  const port = process.env.PORT || 8080;
   const server = http.createServer(requestHandler);
   attachWebSocketServer(server);
-  server.listen(8080, () => {
-    console.log('Server running on http://localhost:8080');
+  server.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
   });
 }
 
