@@ -285,24 +285,38 @@
       visibility:hidden;
       position:absolute; top:50%; left:50%;
       transform:translate(-50%,-50%);
-      background:rgba(0,0,0,0.8); padding:10px;
-      display:flex; flex-wrap:wrap; gap:6px;
-      border-radius:6px; z-index:10;
+      background:rgba(0,0,0,0.8); padding:20px;
+      display:grid; gap:8px;
+      grid-template-columns:repeat(3, 70px);
+      grid-template-rows:repeat(3, 70px) auto;
+      grid-template-areas:
+        ". up ."
+        "left . right"
+        ". down ."
+        "confirm confirm confirm";
+      border-radius:10px; z-index:10;
     }
     #atkOverlay button {
       background:#a22;
       color:#fff !important;
       border:none !important;
+      font-size:36px;
+      width:70px; height:70px;
     }
+    #atkOverlay .up    { grid-area: up; }
+    #atkOverlay .down  { grid-area: down; }
+    #atkOverlay .left  { grid-area: left; }
+    #atkOverlay .right { grid-area: right; }
     #atkOverlay .confirm {
       background:#2a2;
       color:#fff !important;
       border:none !important;
-      flex:1 1 100%;
+      grid-area: confirm;
+      height:40px;
     }
 
     .sel {
-      outline:2px solid #ff0;
+      outline:3px solid #ff0;
     }
 
     /* Результат */

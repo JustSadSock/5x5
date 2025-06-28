@@ -230,14 +230,22 @@ function startNewRound() {
   }
 
   function openAttack(P) {
-    atkOv.innerHTML = ''; atkOv.style.visibility = 'visible';
+    atkOv.innerHTML = '';
+    atkOv.style.visibility = 'visible';
     let tmp = [];
-    Object.keys(DXY).filter(d => !usedMove[P].has(d)).forEach(d => {
+    ['up', 'left', 'right', 'down'].forEach(d => {
+      if (usedMove[P].has(d)) return;
       const btn = document.createElement('button');
-      btn.textContent = { up: '↑', down: '↓', left: '←', right: '→' }[d];
+      btn.className = d;
+      btn.textContent = { up: '▲', down: '▼', left: '◀', right: '▶' }[d];
       btn.onclick = () => {
-        if (tmp.includes(d)) { tmp = tmp.filter(x => x !== d); btn.classList.remove('sel'); }
-        else { tmp.push(d); btn.classList.add('sel'); }
+        if (tmp.includes(d)) {
+          tmp = tmp.filter(x => x !== d);
+          btn.classList.remove('sel');
+        } else {
+          tmp.push(d);
+          btn.classList.add('sel');
+        }
       };
       atkOv.append(btn);
     });
