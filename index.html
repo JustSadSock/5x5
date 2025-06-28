@@ -288,12 +288,13 @@
       background:rgba(0,0,0,0.8); padding:20px;
       display:grid; gap:8px;
       grid-template-columns:repeat(3, 70px);
-      grid-template-rows:repeat(3, 70px) auto;
+      grid-template-rows:repeat(3, 70px) auto auto;
       grid-template-areas:
         ". up ."
         "left . right"
         ". down ."
-        "confirm confirm confirm";
+        "confirm confirm confirm"
+        "cancel cancel cancel";
       border-radius:10px; z-index:10;
     }
     #atkOverlay button {
@@ -312,6 +313,13 @@
       color:#fff !important;
       border:none !important;
       grid-area: confirm;
+      height:40px;
+    }
+    #atkOverlay .cancel {
+      background:#844;
+      color:#fff !important;
+      border:none !important;
+      grid-area: cancel;
       height:40px;
     }
 

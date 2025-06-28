@@ -250,13 +250,22 @@ function startNewRound() {
       atkOv.append(btn);
     });
     const ok = document.createElement('button');
-    ok.textContent = 'OK'; ok.className = 'confirm';
+    ok.textContent = t('ok');
+    ok.className = 'confirm';
     ok.onclick = () => {
       record(P, { type: 'attack', dirs: tmp.slice() });
       usedAtk[P]++; tmp.forEach(d => usedAtkDirs[P].add(d));
       atkOv.style.visibility = 'hidden';
     };
     atkOv.append(ok);
+
+    const cancel = document.createElement('button');
+    cancel.textContent = t('cancel');
+    cancel.className = 'cancel';
+    cancel.onclick = () => {
+      atkOv.style.visibility = 'hidden';
+    };
+    atkOv.append(cancel);
   }
 
   function record(P, act) {
