@@ -806,7 +806,14 @@ function startNewRound() {
     function play() {
       if (!isReplaying) return;
       if (replayPaused) { replayTimer = setTimeout(play, 100); return; }
-      if (replayIndex >= replayFrames.length) { endReplay(); return; }
+      if (replayIndex >= replayFrames.length) {
+        replayPaused = true;
+        replayIndex = replayFrames.length - 1;
+        if (seek) seek.value = replayIndex;
+        const pauseBtn = document.getElementById('replayPause');
+        if (pauseBtn) pauseBtn.textContent = '▶';
+        return;
+      }
       const f = replayFrames[replayIndex++];
       renderReplayFrame(f);
       if (seek) seek.value = replayIndex;
