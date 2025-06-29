@@ -51,6 +51,9 @@
       background:linear-gradient(135deg,#f8b500,#e08f00);
       color:#000;
     }
+    .rulesBtn:hover {
+      background:linear-gradient(135deg,#f8b500,#e08f00);
+    }
     #btn1p { background:linear-gradient(135deg,#03d,#037); }
     #btn2p { background:linear-gradient(135deg,#d03,#703); }
     #btnOnline { background:linear-gradient(135deg,#0a8,#064); }
@@ -364,10 +367,6 @@
       pointer-events:auto;
     }
     .speedControl {
-      position:absolute;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
       display:flex;
       align-items:center;
       gap:8px;
@@ -375,6 +374,22 @@
       padding:6px 12px;
       border-radius:6px;
       pointer-events:auto;
+    }
+    .replayControls {
+      position:absolute;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      width:calc(100% - 40px);
+      max-width:360px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      pointer-events:auto;
+    }
+    .replayControls input[type=range] {
+      width:100%;
     }
     .speedBtn {
       background:#444;
@@ -663,13 +678,15 @@
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
     <button id="saveReplay" data-i18n="saveVideo" data-sound="nav" style="right:90px;top:10px;position:absolute;">Save</button>
     <button id="replayPause">❚❚</button>
-    <input id="replaySeek" type="range" min="0" max="0" step="1" value="0" style="position:absolute;left:10px;right:10px;bottom:60px;pointer-events:auto;">
-    <div class="speedControl">
-      <button class="speedBtn" data-speed="1">1x</button>
-      <button class="speedBtn" data-speed="2">2x</button>
-      <button class="speedBtn" data-speed="3">3x</button>
-      <button class="speedBtn" data-speed="4">4x</button>
-      <button class="speedBtn" data-speed="5">5x</button>
+    <div id="replayControls" class="replayControls">
+      <input id="replaySeek" type="range" min="0" max="0" step="1" value="0">
+      <div class="speedControl">
+        <button class="speedBtn" data-speed="1">1x</button>
+        <button class="speedBtn" data-speed="2">2x</button>
+        <button class="speedBtn" data-speed="3">3x</button>
+        <button class="speedBtn" data-speed="4">4x</button>
+        <button class="speedBtn" data-speed="5">5x</button>
+      </div>
     </div>
   </div>
   <div id="tutorialOverlay">
