@@ -950,6 +950,8 @@ function startNewRound() {
     if (btn) btn.style.display = replayHistory.length ? 'inline-block' : 'none';
   }
 
+  window.updateReplayButton = updateReplayButton;
+
   function showSaveSpeedModal() {
     if (document.getElementById('speedModal')) return;
     const ov = document.createElement('div');
