@@ -672,7 +672,7 @@ function startNewRound() {
         sendState(JSON.stringify({ units, round, step }));
       }
       round++;
-      if (round > MAX_R) { showResult('Изнурённые — ничья.'); return; }
+      if (round > MAX_R) { showResult(t('exhaustedDraw')); return; }
       phase = 'planA'; step = 1;
       edgesCollapsed = false;
       plans = { A: [], B: [] };
@@ -713,8 +713,9 @@ function startNewRound() {
     else if (!units.A.alive && units.B.alive) win = 'B';
     else if (step > STEPS && round >= MAX_R) win = 'DRAW';
     if (sim || win) {
-      const txt = sim ? 'Смерть с обеих сторон: ничья.' :
-        win === 'DRAW' ? 'Изнурённые — ничья.' : `Игрок ${win} победил!`;
+      const txt = sim ? t('bothDieDraw') :
+        win === 'DRAW' ? t('exhaustedDraw') :
+        (win === 'A' ? t('playerA_wins') : t('playerB_wins'));
       if (win === 'A' || win === 'B') { score[win]++; updateScore(); playSound('win'); }
       finalizeRound();
       showResult(txt); return true;
@@ -848,9 +849,9 @@ function startNewRound() {
       stream = document.body.captureStream();
     } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
       try { stream = await navigator.mediaDevices.getDisplayMedia({ video: true }); }
-      catch (e) { alert('Recording not supported'); return; }
+      catch (e) { alert(t('recordingNotSupported')); return; }
     } else {
-      alert('Recording not supported');
+      alert(t('recordingNotSupported'));
       return;
     }
     recordedChunks = [];
@@ -957,7 +958,7 @@ function startNewRound() {
     const ov = document.createElement('div');
     ov.id = 'speedModal';
     ov.innerHTML =
-      '<div style="margin-bottom:8px;">Select speed</div>' +
+      `<div style="margin-bottom:8px;">${t('selectSpeed')}</div>` +
       '<div style="display:flex;gap:8px;justify-content:center;">' +
       '<button data-speed="1">1x</button>' +
       '<button data-speed="2">2x</button>' +
