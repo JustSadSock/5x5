@@ -52,6 +52,12 @@
       state_ok: 'Moves match',
       state_mismatch: 'State mismatch',
       room_closed_inactivity: 'Room closed due to inactivity'
+      ,bothDieDraw: 'Both players died: draw.'
+      ,exhaustedDraw: 'Exhausted \u2014 draw.'
+      ,playerA_wins: 'Player A won!'
+      ,playerB_wins: 'Player B won!'
+      ,selectSpeed: 'Select speed'
+      ,recordingNotSupported: 'Recording not supported'
       ,rulesHeader: 'Game Concept and Rules'
       ,rulesGeneral: 'Overview'
       ,rulesIntro: 'This is a turn-based 5\u00d75 PvP arena for two players. Up to three rounds are played. If nobody wins, sudden death starts on the central 3\u00d73 grid.'
@@ -120,6 +126,12 @@
       state_ok: 'Ходы совпадают',
       state_mismatch: 'Несовпадение состояний',
       room_closed_inactivity: 'Комната закрыта из-за неактивности',
+      bothDieDraw: 'Смерть с обеих сторон: ничья.',
+      exhaustedDraw: 'Изнурённые \u2014 ничья.',
+      playerA_wins: 'Игрок A победил!',
+      playerB_wins: 'Игрок B победил!',
+      selectSpeed: 'Выберите скорость',
+      recordingNotSupported: 'Запись не поддерживается',
       rulesHeader: 'Концепция и правила игры',
       rulesGeneral: 'Общее',
       rulesIntro: 'Это пошаговая PvP-арена 5\u00d75 для двух игроков. Игра идёт три раунда, затем в отсутствие победителя начинается \u00abвнезапная смерть\u00bb в центре 3\u00d73.',
@@ -188,6 +200,12 @@
       state_ok: 'Ходи збігаються',
       state_mismatch: 'Неспівпадіння станів',
       room_closed_inactivity: 'Кімната закрита через неактивність',
+      bothDieDraw: 'Смерть обох гравців: нічия.',
+      exhaustedDraw: 'Виснаження \u2014 нічия.',
+      playerA_wins: 'Гравець A переміг!',
+      playerB_wins: 'Гравець B переміг!',
+      selectSpeed: 'Виберіть швидкість',
+      recordingNotSupported: 'Запис не підтримується',
       rulesHeader: 'Концепція та правила гри',
       rulesGeneral: 'Загальне',
       rulesIntro: 'Це покрокова PvP-арена 5\u00d75 для двох гравців. Після трьох раундів за відсутності переможця починається \u00abраптова смерть\u00bb у центрі 3\u00d73.',
