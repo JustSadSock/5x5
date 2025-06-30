@@ -1,0 +1,9 @@
+Signaling server for WebRTC connections:
+https://hypnotic-brassy-forest.glitch.me
+
+All messages use JSON format:
+{
+  "type": "join" | "signal" | "disconnect",
+  "room": "room-id",
+  "payload": { }
+}
