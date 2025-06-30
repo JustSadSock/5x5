@@ -79,3 +79,7 @@ answers and ICE candidates. The first peer in the room creates the offer and the
 second responds. To close the connection call `disconnectPeer()` which cleans up
 both the WebRTC channel and the WebSocket. See `p2p-server-info.txt` for the
 message format.
+
+You can point the client at a different signaling server in the same way as the
+main WebSocket connection: either define `SIGNAL_SERVER_URL` before loading
+`js/p2p.js` or supply a `signal` query parameter in the page URL.
