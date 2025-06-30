@@ -86,6 +86,8 @@ function startNewRound() {
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
   const roomInput = document.getElementById('roomInput');
+  const p2pConnect = document.getElementById('p2pConnect');
+  const p2pRoomInput = document.getElementById('p2pRoomInput');
   const board = document.getElementById('board');
   const ui = document.getElementById('ui');
   const phaseEl = document.getElementById('phase');
@@ -198,6 +200,11 @@ function startNewRound() {
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
+  if (p2pConnect) {
+    p2pConnect.onclick = () => {
+      if (p2pRoomInput) connectToRoom(p2pRoomInput.value.trim());
+    };
+  }
 
   function startGame() {
     board.style.visibility = 'visible';
@@ -334,8 +341,15 @@ function startNewRound() {
     if (isOnline && phase !== 'execute') {
       const moves = plans[mySide()];
       if (moves.length === STEPS) {
-        submitMoves(moves);
-        btnNext.disabled = true;
+        if (window.peer) {
+          sendPeerData({ type: 'moves', moves });
+          sentMoves = true;
+          btnNext.disabled = true;
+          maybeStartPeerRound();
+        } else {
+          submitMoves(moves);
+          btnNext.disabled = true;
+        }
       }
       return;
     }
@@ -1034,6 +1048,35 @@ function startNewRound() {
     startNewRound();
   };
 
+  let peerMoves = null;
+  let sentMoves = false;
+  window.onPeerConnect = function(initiator) {
+    window.startOnlineGame(initiator ? 0 : 1);
+  };
+
+  window.onPeerMessage = function(msg) {
+    if (msg.type === 'moves') {
+      peerMoves = msg.moves;
+      maybeStartPeerRound();
+    }
+  };
+
+  window.onPeerClose = function() {
+    peerMoves = null;
+    sentMoves = false;
+    returnToMenu();
+  };
+
+  function maybeStartPeerRound() {
+    const myMoves = plans[mySide()];
+    if (peerMoves && sentMoves && myMoves.length === STEPS) {
+      const moves = playerIndex === 0 ? [myMoves, peerMoves] : [peerMoves, myMoves];
+      peerMoves = null;
+      sentMoves = false;
+      onStartRound(moves);
+    }
+  }
+
   function exitOnlineMode() {
     isOnline = false;
     playerIndex = null;
@@ -1045,6 +1088,7 @@ function startNewRound() {
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+    if (typeof window.disconnectPeer === 'function') window.disconnectPeer();
     exitOnlineMode();
     ms.style.display = 'flex';
     if (ds) ds.style.display = 'none';

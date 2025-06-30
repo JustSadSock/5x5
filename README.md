@@ -68,3 +68,14 @@ seek bar let you step through each action, while the numbered buttons adjust the
 playback speed from 1× to 5×. To keep a copy of the match press **Save** and the
 browser will export the replay as a WebM video. Use **Close** to return to the
 game.
+
+### P2P mode
+
+The client can establish a direct WebRTC connection using a small signaling
+server hosted at [https://hypnotic-brassy-forest.glitch.me](https://hypnotic-brassy-forest.glitch.me).
+Clients join a room by sending `{ type: 'join', room: '<id>' }` and then
+exchange `{ type: 'signal', payload: ... }` messages containing WebRTC offers,
+answers and ICE candidates. The first peer in the room creates the offer and the
+second responds. To close the connection call `disconnectPeer()` which cleans up
+both the WebRTC channel and the WebSocket. See `p2p-server-info.txt` for the
+message format.
