@@ -316,7 +316,7 @@ function startNewRound() {
   }
 
   function deleteLast() {
-    const P = isOnline ? mySide() : (plans.A.length === STEPS && plans.B.length < STEPS ? 'B' : 'A');
+    const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
     if (!plans[P].length) return;
     const a = plans[P].pop();
     if (typeof a === 'string') {
@@ -688,7 +688,6 @@ function startNewRound() {
       round++;
       if (round > MAX_R) { showResult(t('exhaustedDraw')); return; }
       phase = 'planA'; step = 1;
-      edgesCollapsed = false;
       plans = { A: [], B: [] };
       window.plans = plans;
       usedMove = { A: new Set(), B: new Set() };
