@@ -224,10 +224,45 @@ function attachWebSocketServer(server) {
   return wss;
 }
 
+// Simple WebRTC signaling server used for P2P mode
+const signalRooms = {};
+function attachSignalServer(server) {
+  const wss = new WebSocket.Server({ server, path: '/p2p' });
+
+  wss.on('connection', ws => {
+    ws.on('message', msg => {
+      let data;
+      try { data = JSON.parse(msg); } catch (e) { return; }
+      if (data.type === 'join') {
+        ws.room = data.room;
+        if (!signalRooms[ws.room]) signalRooms[ws.room] = [];
+        if (!signalRooms[ws.room].includes(ws)) signalRooms[ws.room].push(ws);
+      } else if (data.type === 'signal') {
+        const peers = signalRooms[data.room] || [];
+        peers.forEach(p => {
+          if (p !== ws && p.readyState === WebSocket.OPEN) {
+            p.send(JSON.stringify({ type: 'signal', payload: data.payload }));
+          }
+        });
+      }
+    });
+    ws.on('close', () => {
+      const room = ws.room;
+      if (room && signalRooms[room]) {
+        signalRooms[room] = signalRooms[room].filter(p => p !== ws);
+        if (signalRooms[room].length === 0) delete signalRooms[room];
+      }
+    });
+  });
+
+  return wss;
+}
+
 if (require.main === module) {
   const port = process.env.PORT || 8080;
   const server = http.createServer(requestHandler);
   attachWebSocketServer(server);
+  attachSignalServer(server);
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
   });
@@ -236,5 +271,6 @@ if (require.main === module) {
 module.exports = {
   isValidMove,
   attachWebSocketServer,
+  attachSignalServer,
   requestHandler
 };
