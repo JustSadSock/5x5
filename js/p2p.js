@@ -1,13 +1,15 @@
 // WebRTC P2P connection logic using SimplePeer
 // Connects to signaling server and exchanges signaling data via WebSocket
 
-let SIGNAL_SERVER_URL = 'wss://hypnotic-brassy-forest.glitch.me';
+let SIGNAL_SERVER_URL = 'ws://localhost:8080/p2p';
 if (typeof window !== 'undefined') {
   const params = new URLSearchParams(window.location.search);
   if (window.SIGNAL_SERVER_URL) {
     SIGNAL_SERVER_URL = window.SIGNAL_SERVER_URL;
   } else if (params.get('signal')) {
     SIGNAL_SERVER_URL = params.get('signal');
+  } else if (window.location) {
+    SIGNAL_SERVER_URL = window.location.origin.replace(/^http/, 'ws') + '/p2p';
   }
 }
 let signalSocket;

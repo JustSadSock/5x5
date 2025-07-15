@@ -1,5 +1,6 @@
 Signaling server for WebRTC connections:
-https://hypnotic-brassy-forest.glitch.me
+Use the same host as the game server with path `/p2p`, e.g.
+ws://localhost:8080/p2p
 
 All messages use JSON format:
 {
