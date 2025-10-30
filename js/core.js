@@ -87,6 +87,7 @@ function startNewRound() {
   let roundReportUnread = false;
   let lastStepSummary = null;
   let autoRoundReport = true;
+  let displayedRound = 0;
   const storedRoundReportPref = localStorage.getItem('roundReportAuto');
   if (storedRoundReportPref === '0') autoRoundReport = false;
 
@@ -121,9 +122,9 @@ function startNewRound() {
   const shieldButton = acts.find(b => b.dataset.act === 'shield');
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
-  const attackConfirmBar = document.getElementById('attackConfirmBar');
-  const attackConfirmBtn = document.getElementById('attackConfirm');
-  const attackCancelBtn = document.getElementById('attackCancel');
+  const scoreboard = document.getElementById('scoreboard');
+  const roundBadge = document.getElementById('roundBadge');
+  const roundNumberEl = roundBadge ? roundBadge.querySelector('.round-number') : null;
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
@@ -171,12 +172,6 @@ function startNewRound() {
       shieldButton.classList.remove('blocked');
       shieldButton.disabled = false;
     }
-    if (attackConfirmBar) {
-      attackConfirmBar.classList.remove('show');
-      attackConfirmBar.setAttribute('aria-hidden', 'true');
-    }
-    if (attackConfirmBtn) attackConfirmBtn.onclick = null;
-    if (attackCancelBtn) attackCancelBtn.onclick = null;
     if (!options || !options.silent) {
       updateUI();
     }
@@ -570,6 +565,11 @@ function startNewRound() {
     hideAttackOverlay();
     board.style.visibility = 'visible';
     ui.classList.add('show');
+    if (scoreboard) scoreboard.classList.add('scoreboard-hidden');
+    if (roundBadge) {
+      roundBadge.classList.remove('visible', 'bump');
+      displayedRound = 0;
+    }
     buildBoard(); bindUI(); render(); updateUI();
     updateScore();
     edgesCollapsed = false;
@@ -610,18 +610,29 @@ function startNewRound() {
       };
     });
     btnDel.onclick = () => {
-      if (attackMode) return;
+      if (attackMode) {
+        hideAttackOverlay();
+        return;
+      }
       if (phase.startsWith('plan')) deleteLast();
     };
     btnNext.onclick = () => {
-      if (attackMode) return;
+      if (attackMode) {
+        confirmAttackSelection();
+        return;
+      }
       nextStep();
     };
 
     document.addEventListener('keydown', e => {
       if (attackMode) {
-        if (e.key === 'Escape' && attackCancelBtn && typeof attackCancelBtn.onclick === 'function') {
-          attackCancelBtn.click();
+        if (e.key === 'Escape') {
+          hideAttackOverlay();
+          e.preventDefault();
+          return;
+        }
+        if (e.key === 'Enter') {
+          confirmAttackSelection();
           e.preventDefault();
           return;
         }
@@ -673,25 +684,7 @@ function startNewRound() {
       shieldButton.disabled = true;
       shieldButton.classList.add('blocked');
     }
-    if (attackConfirmBar) {
-      attackConfirmBar.classList.add('show');
-      attackConfirmBar.setAttribute('aria-hidden', 'false');
-    }
-    if (attackConfirmBtn) {
-      attackConfirmBtn.textContent = t('ok');
-      attackConfirmBtn.onclick = () => {
-        record(P, { type: 'attack', dirs: pendingAttackDirs.slice() });
-        usedAtk[P]++;
-        pendingAttackDirs.forEach(d => usedAtkDirs[P].add(d));
-        hideAttackOverlay();
-      };
-    }
-    if (attackCancelBtn) {
-      attackCancelBtn.textContent = t('cancel');
-      attackCancelBtn.onclick = () => {
-        hideAttackOverlay();
-      };
-    }
+    updateUI();
   }
 
   function toggleAttackDirection(dir) {
@@ -705,6 +698,20 @@ function startNewRound() {
       pendingAttackDirs.push(dir);
       btn.classList.add('attack-selected');
     }
+    updateUI();
+  }
+
+  function confirmAttackSelection() {
+    if (!attackMode) return;
+    if (!pendingAttackDirs.length) {
+      playSound('ui');
+      return;
+    }
+    const owner = attackModeOwner || (isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B'));
+    record(owner, { type: 'attack', dirs: pendingAttackDirs.slice() });
+    usedAtk[owner]++;
+    pendingAttackDirs.forEach(d => usedAtkDirs[owner].add(d));
+    hideAttackOverlay();
   }
 
   function record(P, act) {
@@ -959,10 +966,32 @@ function startNewRound() {
     if (attackMode && phase === 'execute') {
       hideAttackOverlay({ silent: true });
     }
-    phaseEl.textContent =
-      `${t('round')} ${round}/${MAX_R}, ${P}: ` +
-      (phase === 'execute' ? t('turn') : t('plan')) +
-      ` ${phase === 'execute' ? step : plans[P].length}/${STEPS}`;
+    const executing = phase === 'execute';
+    const locked = isOnline && !executing && onlineConfirmed[mySide()];
+    if (phaseEl) {
+      if (executing) {
+        phaseEl.textContent = t('phaseExecuting', { step });
+      } else {
+        const playerLabel = P === 'A' ? t('playerA') : t('playerB');
+        phaseEl.textContent = t('phasePlanning', { player: playerLabel });
+      }
+    }
+    if (roundBadge && roundNumberEl) {
+      if (!ui.classList.contains('show')) {
+        roundBadge.classList.remove('visible', 'bump');
+      } else {
+        if (!roundBadge.classList.contains('visible')) {
+          roundBadge.classList.add('visible');
+        }
+        if (displayedRound !== round) {
+          displayedRound = round;
+          roundNumberEl.textContent = String(round);
+          roundBadge.classList.remove('bump');
+          void roundBadge.offsetWidth;
+          roundBadge.classList.add('bump');
+        }
+      }
+    }
     const activeIdx = phase === 'execute'
       ? Math.max(0, Math.min(STEPS - 1, step - 1))
       : Math.max(0, Math.min(STEPS - 1, plans[P].length));
@@ -979,8 +1008,6 @@ function startNewRound() {
       }
       cell.classList.toggle('current', i === activeIdx);
     });
-    const executing = phase === 'execute';
-    const locked = isOnline && !executing && onlineConfirmed[mySide()];
     acts.forEach(b => {
       const a = b.dataset.act;
       b.disabled = false; b.classList.remove('blocked');
@@ -1010,29 +1037,6 @@ function startNewRound() {
       if (a === 'attack' && usedAtk[P] >= 1) b.disabled = true;
       if (a === 'shield' && usedShield[P] >= 1) b.disabled = true;
     });
-    if (single && phase === 'planA') {
-      btnNext.textContent = t('nextBtn');
-      btnNext.disabled = plans[P].length !== STEPS;
-    } else if (isOnline) {
-      if (executing) {
-        btnNext.textContent = t('revealBtn');
-        btnNext.disabled = !revealReady;
-      } else if (locked) {
-        btnNext.textContent = waitingForServer ? t('confirmPendingBtn') : t('confirmBtn');
-        btnNext.disabled = true;
-      } else {
-        btnNext.textContent = t('confirmBtn');
-        btnNext.disabled = plans[P].length !== STEPS;
-      }
-    } else {
-      btnNext.textContent = executing ? t('executeBtn') : t('nextBtn');
-      btnNext.disabled = plans[P].length < STEPS && !executing;
-    }
-    if (attackMode) {
-      btnNext.disabled = true;
-    }
-    btnDel.disabled = executing || locked || attackMode;
-    btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
     document.querySelectorAll('.cell').forEach(c => {
       const x = +c.id[1], y = +c.id[2], edge = x === 0 || x === 4 || y === 0 || y === 4;
       c.classList.remove('cracked', 'lava');
@@ -1042,6 +1046,43 @@ function startNewRound() {
         c.classList.add('lava');
       }
     });
+    if (attackMode) {
+      btnDel.style.visibility = 'visible';
+      btnDel.disabled = false;
+      btnDel.textContent = t('cancel');
+      btnDel.setAttribute('data-i18n', 'cancel');
+      btnNext.textContent = t('ok');
+      btnNext.setAttribute('data-i18n', 'ok');
+      btnNext.disabled = pendingAttackDirs.length === 0;
+      return;
+    }
+
+    btnDel.setAttribute('data-i18n', 'deleteBtn');
+    btnDel.textContent = t('deleteBtn');
+    btnDel.disabled = executing || locked;
+    btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
+
+    let nextKey = 'nextBtn';
+    if (single && phase === 'planA') {
+      nextKey = 'nextBtn';
+      btnNext.disabled = plans[P].length !== STEPS;
+    } else if (isOnline) {
+      if (executing) {
+        nextKey = 'revealBtn';
+        btnNext.disabled = !revealReady;
+      } else if (locked) {
+        nextKey = waitingForServer ? 'confirmPendingBtn' : 'confirmBtn';
+        btnNext.disabled = true;
+      } else {
+        nextKey = 'confirmBtn';
+        btnNext.disabled = plans[P].length !== STEPS;
+      }
+    } else {
+      nextKey = executing ? 'executeBtn' : 'nextBtn';
+      btnNext.disabled = plans[P].length < STEPS && !executing;
+    }
+    btnNext.textContent = t(nextKey);
+    btnNext.setAttribute('data-i18n', nextKey);
   }
 
   function drawPlan(P) {
@@ -1823,6 +1864,11 @@ function startNewRound() {
     hideRoundReport(false);
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
+    if (scoreboard) scoreboard.classList.remove('scoreboard-hidden');
+    if (roundBadge) {
+      roundBadge.classList.remove('visible', 'bump');
+      displayedRound = 0;
+    }
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
     if (typeof window.disconnectPeer === 'function') window.disconnectPeer();
     exitOnlineMode();

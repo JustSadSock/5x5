@@ -211,17 +211,55 @@
       padding-bottom:40px;
     }
     #onlineMenu input {
-      padding:10px 14px;
-      border-radius:10px;
+      padding:12px 16px;
+      border-radius:12px;
       border:1px solid var(--color-input-border);
       background:var(--color-input-bg);
       color:var(--color-text-primary);
+      font-size:16px;
+      letter-spacing:1px;
+      text-transform:uppercase;
+      width:160px;
+      text-align:center;
     }
     #onlineMenu input.input-error {
       border-color:var(--color-danger);
       box-shadow:0 0 0 2px rgba(239,68,68,0.35);
     }
     #onlineMenu input::placeholder { color:var(--color-text-muted); }
+
+    .room-display {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:14px;
+      padding:12px 18px;
+      min-height:48px;
+      font-family:'Roboto Mono', monospace;
+      font-size:22px;
+      letter-spacing:4px;
+      text-transform:uppercase;
+      color:var(--color-heading);
+    }
+    .room-display.empty { color:var(--color-text-muted); letter-spacing:2px; }
+    #roomCode { min-width:0; }
+    #copyRoomCode {
+      background:var(--color-surface-alt);
+      border:1px solid var(--color-border);
+      border-radius:10px;
+      width:40px;
+      height:40px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      cursor:pointer;
+      transition:background .2s ease, transform .2s ease;
+    }
+    #copyRoomCode:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
 
     #connectionStatus {
       display:flex;
@@ -306,7 +344,7 @@
     #board {
       visibility:hidden;
       display:grid; grid-template:repeat(5,60px)/repeat(5,60px);
-      gap:3px; margin:40px auto;
+      gap:3px; margin:24px auto 12px;
       padding:8px; background:var(--color-surface-alt);
       border:1px solid var(--color-border); border-radius:16px;
       box-shadow:0 16px 32px rgba(15,23,42,0.35);
@@ -341,50 +379,83 @@
     #ui {
       visibility:hidden; opacity:0; transform:translateY(20px);
       width:100%; max-width:360px;
-      margin:10px auto;
+      margin:8px auto 4px;
       background:var(--color-surface-alt);
-      padding:14px; display:flex;
-      flex-direction:column; gap:10px;
+      padding:12px; display:flex;
+      flex-direction:column; gap:8px;
       border-radius:12px;
       border:1px solid var(--color-border);
       box-shadow:0 12px 28px rgba(15,23,42,0.35);
       transition:opacity .3s ease, transform .3s ease;
     }
     #ui.show { visibility:visible; opacity:1; transform:translateY(0); }
-    #phase { text-align:center; color:var(--color-heading); min-height:24px; }
-    #planIndicator { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
-    #planLegend {
-      text-align:center;
-      font-size:14px;
-      color:var(--color-subtle);
-      letter-spacing:1px;
-    }
-    #planCells { display:flex; justify-content:space-between; gap:10px; }
+    #phase { text-align:center; color:var(--color-heading); min-height:24px; font-weight:600; letter-spacing:0.4px; font-size:16px; }
+    #planIndicator { display:flex; justify-content:center; margin-bottom:4px; }
+    #planCells { display:flex; justify-content:space-between; gap:8px; width:100%; }
     .planCell {
       flex:1;
       min-width:0;
       background:var(--color-surface);
       border:2px solid var(--color-border);
       border-radius:12px;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      padding:8px 6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px 8px;
       transition:border-color .2s ease, box-shadow .2s ease;
     }
     .planCell.current {
       border-color:var(--color-accent);
       box-shadow:0 0 12px rgba(56,189,248,0.35);
     }
-    .planStepIndex {
-      font-size:13px;
-      color:var(--color-subtle);
-      margin-bottom:4px;
-    }
     .planStepValue {
-      font-size:26px;
+      font-size:28px;
       color:var(--color-heading);
       line-height:28px;
       min-height:28px;
+    }
+
+    #roundBadge {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 14px;
+      border-radius:999px;
+      border:1px solid var(--color-border);
+      background:var(--color-surface-alt);
+      color:var(--color-heading);
+      font-size:14px;
+      font-weight:600;
+      letter-spacing:1px;
+      box-shadow:0 12px 24px rgba(15,23,42,0.25);
+      opacity:0;
+      transform:translateY(-12px) scale(0.9);
+      transition:opacity .3s ease, transform .3s ease;
+      pointer-events:none;
+    }
+    #roundBadge.visible {
+      opacity:1;
+      transform:translateY(0) scale(1);
+    }
+    #roundBadge.bump {
+      animation:roundBadgePop .5s ease;
+    }
+    .round-label {
+      text-transform:uppercase;
+      font-size:12px;
+      letter-spacing:2px;
+      color:var(--color-text-muted);
+    }
+    .round-number {
+      font-size:24px;
+      font-weight:700;
+      color:var(--color-heading);
+    }
+    @keyframes roundBadgePop {
+      0% { transform:translateY(0) scale(1); }
+      30% { transform:translateY(-4px) scale(1.1); }
+      60% { transform:translateY(2px) scale(0.96); }
+      100% { transform:translateY(0) scale(1); }
     }
 
     #actions {
@@ -713,37 +784,6 @@
     /* Панель направления атаки перенесена в блок действий */
     #atkOverlay { display:none; }
 
-    #attackConfirmBar {
-      display:none;
-      gap:10px;
-      margin-top:8px;
-      margin-bottom:12px;
-      justify-content:center;
-      align-items:center;
-    }
-    #attackConfirmBar.show { display:flex; }
-    #attackConfirmBar button {
-      font-size:14px;
-      padding:6px 14px;
-      border-radius:999px;
-      border:1px solid transparent;
-      cursor:pointer;
-      transition:background .2s ease, transform .2s ease;
-    }
-    #attackConfirmBar button:hover { transform:translateY(-1px); }
-    #attackConfirm {
-      background:var(--color-accent);
-      color:var(--color-button-text);
-      border-color:transparent;
-    }
-    #attackConfirm:hover { background:var(--color-accent-strong); }
-    #attackCancel {
-      background:var(--color-surface);
-      color:var(--color-text-primary);
-      border-color:var(--color-border);
-    }
-    #attackCancel:hover { background:var(--color-surface-hover); }
-
     .sel {
       outline:3px solid #ff0;
     }
@@ -961,6 +1001,7 @@
       z-index:5;
       width:min(100%, 560px);
     }
+    #scoreboard.scoreboard-hidden { display:none !important; }
     #scoreboard .scoreboard-scores {
       display:flex;
       align-items:center;
@@ -1340,7 +1381,7 @@
 
     /* Мелкие правки для широких экранов */
     @media (min-width: 600px) {
-      #board { margin-top:60px; }
+      #board { margin-top:36px; }
     }
 
     @media (max-width: 720px) {
@@ -1418,7 +1459,7 @@
         gap:14px 20px;
       }
       #board {
-        margin-top:70px;
+        margin-top:44px;
       }
       #ui {
         max-width:420px;
@@ -1465,13 +1506,25 @@
   </div>
 
   <div id="onlineMenu">
-    <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
-    <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты" style="padding:6px;max-width:140px;">
-    <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
-    <div id="roomCode"></div>
-    <div id="connectionStatus" style="font-family:'Roboto Mono',monospace;font-size:12px;"></div>
-    <div id="log" style="font-family:'Roboto Mono', monospace; font-size: 12px;"></div>
+    <div class="online-shell">
+      <div class="online-card">
+        <div class="online-actions">
+          <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
+          <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
+        </div>
+        <div class="online-form">
+          <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
+          <div class="room-display empty" id="roomDisplay" aria-live="polite">
+            <span id="roomCode">----</span>
+            <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
+          </div>
+        </div>
+        <div id="connectionStatus"></div>
+        <div id="log"></div>
+      </div>
+    </div>
   </div>
+  <div class="online-toasts" id="onlineToasts" aria-live="assertive" aria-atomic="true"></div>
 
   <div id="scoreboard">
     <div class="scoreboard-scores" aria-live="polite">
@@ -1540,56 +1593,50 @@
   </div>
 
   <div id="gameArea">
+    <div id="roundBadge" aria-live="polite">
+      <span class="round-label" data-i18n="roundShort">Раунд</span>
+      <span class="round-number">1</span>
+    </div>
     <div id="board"></div>
     <div id="atkOverlay"><div class="ring"></div></div>
-    <div id="attackConfirmBar" aria-hidden="true">
-      <button id="attackConfirm" data-i18n="ok" data-sound="nav">OK</button>
-      <button id="attackCancel" data-i18n="cancel" data-sound="nav">Cancel</button>
-    </div>
 
     <div id="ui">
       <div id="phase"></div>
       <div id="planIndicator">
-        <div id="planLegend">1 → 2 → 3 → 4 → 5</div>
         <div id="planCells">
           <div class="planCell" id="pc0">
-            <span class="planStepIndex">1</span>
             <span class="planStepValue"></span>
           </div>
           <div class="planCell" id="pc1">
-            <span class="planStepIndex">2</span>
             <span class="planStepValue"></span>
           </div>
           <div class="planCell" id="pc2">
-            <span class="planStepIndex">3</span>
             <span class="planStepValue"></span>
           </div>
           <div class="planCell" id="pc3">
-            <span class="planStepIndex">4</span>
             <span class="planStepValue"></span>
           </div>
           <div class="planCell" id="pc4">
-            <span class="planStepIndex">5</span>
             <span class="planStepValue"></span>
           </div>
         </div>
       </div>
-    <div id="actions">
-      <button data-act="attack" class="atkBtn action-attack" data-sound="attack">⚔</button>
-      <button data-act="up" class="moveBtn action-up" data-sound="move">↑</button>
-      <button data-act="shield" class="shieldBtn action-shield" data-sound="shield">🛡</button>
-      <button data-act="left" class="moveBtn action-left" data-sound="move">←</button>
-      <div class="action-spacer action-center"></div>
-      <button data-act="right" class="moveBtn action-right" data-sound="move">→</button>
-      <div class="action-spacer action-pad"></div>
-      <button data-act="down" class="moveBtn action-down" data-sound="move">↓</button>
-      <div class="action-spacer action-pad2"></div>
+      <div id="actions">
+        <button data-act="attack" class="atkBtn action-attack" data-sound="attack">⚔</button>
+        <button data-act="up" class="moveBtn action-up" data-sound="move">↑</button>
+        <button data-act="shield" class="shieldBtn action-shield" data-sound="shield">🛡</button>
+        <button data-act="left" class="moveBtn action-left" data-sound="move">←</button>
+        <div class="action-spacer action-center"></div>
+        <button data-act="right" class="moveBtn action-right" data-sound="move">→</button>
+        <div class="action-spacer action-pad"></div>
+        <button data-act="down" class="moveBtn action-down" data-sound="move">↓</button>
+        <div class="action-spacer action-pad2"></div>
+      </div>
+      <div id="navButtons">
+        <button id="btn-del" data-i18n="deleteBtn" data-sound="nav">← Удалить</button>
+        <button id="btn-next" data-i18n="nextBtn" data-sound="nav">▶ Далее</button>
+      </div>
     </div>
-    <div id="navButtons">
-      <button id="btn-del" data-i18n="deleteBtn" data-sound="nav">← Удалить</button>
-      <button id="btn-next" data-i18n="nextBtn" data-sound="nav">▶ Далее</button>
-    </div>
-  </div>
   </div>
 
   <div id="confirmToast"></div>

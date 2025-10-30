@@ -19,6 +19,11 @@ const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_BACKOFF_FACTOR = 1.5;
 const RECONNECT_MAX_DELAY_MS = 20000;
 const LOG_LIMIT = 200;
+const TOAST_LIFETIME = 4200;
+
+const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
+const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
+const onlineToasts = typeof document !== 'undefined' ? document.getElementById('onlineToasts') : null;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
@@ -73,14 +78,48 @@ function updateConnectionStatus(text, color, state) {
   }
 }
 
+function showOnlineToast(type, message) {
+  if (!onlineToasts || !message) return;
+  const toast = document.createElement('div');
+  toast.className = `online-toast ${type || 'info'}`;
+  toast.style.transition = 'opacity .25s ease, transform .25s ease';
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'toast-icon';
+  iconSpan.textContent = ({ success: '✨', error: '⚠️', info: 'ℹ️' })[type] || 'ℹ️';
+  const textSpan = document.createElement('span');
+  textSpan.className = 'toast-text';
+  textSpan.textContent = message;
+  toast.append(iconSpan, textSpan);
+  onlineToasts.append(toast);
+  setTimeout(() => {
+    toast.classList.add('dismiss');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, TOAST_LIFETIME);
+  while (onlineToasts.childNodes.length > 4) {
+    onlineToasts.removeChild(onlineToasts.firstChild);
+  }
+}
+
+function setRoomCodeDisplay(code) {
+  const codeEl = document.getElementById('roomCode');
+  if (codeEl) {
+    codeEl.textContent = code ? code : '----';
+  }
+  if (roomDisplay) {
+    roomDisplay.classList.toggle('empty', !code);
+  }
+  if (copyRoomCodeBtn) {
+    copyRoomCodeBtn.disabled = !code;
+  }
+}
+
 function resetRoomState() {
   lastRoomId = null;
   wasCreator = false;
 }
 
 function clearRoomUI() {
-  const codeEl = document.getElementById('roomCode');
-  if (codeEl) codeEl.innerText = '';
+  setRoomCodeDisplay(null);
   const logEl = document.getElementById('log');
   if (logEl) logEl.innerHTML = '';
   const btn = document.getElementById('btn-next');
@@ -163,6 +202,7 @@ function initSocket(onReady) {
     if (!socket || socket.readyState === WebSocket.OPEN) return;
     log('⛔ ' + t('serverUnavailable'));
     updateConnectionStatus(t('serverUnavailable'), 'red', 'error');
+    showOnlineToast('error', t('serverUnavailable'));
     try {
       socket.close();
     } catch (err) {}
@@ -175,6 +215,7 @@ function initSocket(onReady) {
       connectionWatchdog = null;
     }
     log('✅ ' + t('onlineStatus')); // connection established
+    showOnlineToast('success', t('connectedToast'));
     if (typeof socket.pong === 'function') {
       socket.addEventListener('ping', () => {
         try { socket.pong(); } catch (e) {}
@@ -198,12 +239,14 @@ function initSocket(onReady) {
     if (!isConnected) {
       log('⛔ ' + t('serverUnavailable'));
       updateConnectionStatus(t('serverUnavailable'), 'red', 'error');
+      showOnlineToast('error', t('serverUnavailable'));
     }
   });
   handleClose = function handleClose(event) {
     if (event.target !== socket) return;  // ignore old sockets
     isConnected = false;
     log('⚠ ' + t('connection_lost'));
+    showOnlineToast('error', t('connection_lost'));
     if (connectionWatchdog) {
       clearTimeout(connectionWatchdog);
       connectionWatchdog = null;
@@ -215,6 +258,7 @@ function initSocket(onReady) {
       return;
     }
     updateConnectionStatus(t('reconnecting'), 'orange', 'reconnecting');
+    showOnlineToast('info', t('reconnecting'));
     clearReconnectTimer();
     const attempt = Math.min(reconnectAttempts + 1, 20);
     reconnectAttempts = attempt;
@@ -244,10 +288,10 @@ function initSocket(onReady) {
       return;
     }
     if (data.type === 'room_created') {
-      const el = document.getElementById('roomCode');
-      if (el) el.innerText = `${t('room')}: ${data.roomId}`;
+      setRoomCodeDisplay(data.roomId);
       lastRoomId = data.roomId;
       clearPendingRoomAction('create');
+      showOnlineToast('success', t('roomCreatedToast', { code: data.roomId }));
     }
     if (data.type === 'start_game') {
       clearPendingRoomAction('join');
@@ -282,17 +326,23 @@ function initSocket(onReady) {
       else if (data.message === 'Waiting for opponent') messageKey = 'waitingForOpponent';
       else if (data.message === 'Moves already confirmed') messageKey = 'movesAlreadyConfirmed';
       else if (data.message === 'Must send exactly 5 moves') messageKey = 'mustSendFiveMoves';
-      log('⚠ ' + (messageKey ? t(messageKey) : data.message));
+      const msg = messageKey ? t(messageKey) : data.message;
+      log('⚠ ' + msg);
+      showOnlineToast('error', msg);
     }
     if (data.type === 'state_ok') log('✔ ' + t('state_ok'));
     if (data.type === 'state_mismatch') log('❌ ' + t('state_mismatch'));
     if (data.type === 'opponent_left') {
-      log('⚠ ' + t('opponent_left_room'));
+      const msg = t('opponent_left_room');
+      log('⚠ ' + msg);
+      showOnlineToast('info', msg);
       cleanupRoom();
       showOpponentLeftModal();
     }
     if (data.type === 'room_expired') {
-      log('⌛ ' + t('room_closed_inactivity'));
+      const msg = t('room_closed_inactivity');
+      log('⌛ ' + msg);
+      showOnlineToast('info', msg);
       cleanupRoom();
     }
   };
@@ -316,6 +366,7 @@ function joinRoom(roomId) {
   const normalized = (roomId || '').toUpperCase();
   if (!ROOM_CODE_PATTERN.test(normalized)) {
     log('⚠ ' + t('invalidRoomCode'));
+    showOnlineToast('error', t('invalidRoomCode'));
     if (input) input.classList.add('input-error');
     return;
   }
@@ -422,6 +473,36 @@ function showOpponentLeftModal() {
 document.addEventListener('DOMContentLoaded', () => {
   updateConnectionStatus(t('offline'), 'orange', 'offline');
   resetRoomState();
+  setRoomCodeDisplay(null);
+  if (copyRoomCodeBtn) {
+    copyRoomCodeBtn.disabled = true;
+    copyRoomCodeBtn.addEventListener('click', async () => {
+      const code = (document.getElementById('roomCode')?.textContent || '').trim();
+      if (!code || code === '----') {
+        showOnlineToast('info', t('copyUnavailable'));
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(code);
+        } else {
+          const tmp = document.createElement('textarea');
+          tmp.value = code;
+          tmp.setAttribute('readonly', '');
+          tmp.style.position = 'absolute';
+          tmp.style.opacity = '0';
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+        }
+        showOnlineToast('success', t('copySuccess'));
+      } catch (err) {
+        console.warn('Copy failed', err);
+        showOnlineToast('error', t('copyFail'));
+      }
+    });
+  }
 });
 
 window.resetRoomState = resetRoomState;
