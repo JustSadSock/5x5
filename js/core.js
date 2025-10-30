@@ -1037,6 +1037,29 @@ function startNewRound() {
     startReplay();
   }
 
+  function saveReplayToStorage(resultText) {
+    if (!replayHistory.length) return false;
+    try {
+      const raw = localStorage.getItem('savedReplays');
+      const saved = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(saved) ? saved : [];
+      const entry = {
+        id: `replay-${Date.now()}`,
+        savedAt: new Date().toISOString(),
+        result: resultText,
+        language: window.i18n ? window.i18n.lang : 'en',
+        history: JSON.parse(JSON.stringify(replayHistory))
+      };
+      list.push(entry);
+      if (list.length > 20) list.splice(0, list.length - 20);
+      localStorage.setItem('savedReplays', JSON.stringify(list));
+      return true;
+    } catch (err) {
+      console.error('Failed to save replay', err);
+      return false;
+    }
+  }
+
   function animateReplayActions(acts) {
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     ['A', 'B'].forEach(pl => {
@@ -1135,24 +1158,49 @@ function startNewRound() {
       `<div>${text}</div>` +
       '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
       `<button id="resReplay">${t('replay')}</button>` +
+      `<button id="resSaveReplay">${t('saveReplay')}</button>` +
       `<button id="resMenu">${t('toMenu')}</button>` +
       `<button id="resOk">${t('ok')}</button>` +
-      '</div>';
+      '</div>' +
+      '<div id="replaySaveStatus" class="resultStatus" role="status" aria-live="polite"></div>';
     document.body.append(ov);
-    document.getElementById('resOk').onclick = () => {
-      ov.remove();
-      resetGame();
-      if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
-      if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
-    };
-    document.getElementById('resMenu').onclick = () => {
-      ov.remove();
-      returnToMenu();
-    };
-    document.getElementById('resReplay').onclick = () => {
-      ov.remove();
-      startReplay();
-    };
+    const resOk = ov.querySelector('#resOk');
+    const resMenu = ov.querySelector('#resMenu');
+    const resReplay = ov.querySelector('#resReplay');
+    const resSave = ov.querySelector('#resSaveReplay');
+    const statusEl = ov.querySelector('#replaySaveStatus');
+    if (resOk) {
+      resOk.onclick = () => {
+        ov.remove();
+        resetGame();
+        if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
+        if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+      };
+    }
+    if (resMenu) {
+      resMenu.onclick = () => {
+        ov.remove();
+        returnToMenu();
+      };
+    }
+    if (resReplay) {
+      resReplay.onclick = () => {
+        ov.remove();
+        startReplay();
+      };
+    }
+    if (resSave) {
+      if (!replayHistory.length) resSave.disabled = true;
+      resSave.onclick = () => {
+        const saved = saveReplayToStorage(text);
+        if (statusEl) {
+          statusEl.textContent = saved ? t('replaySaved') : t('replaySaveFailed');
+          statusEl.classList.remove('success', 'error');
+          statusEl.classList.add(saved ? 'success' : 'error');
+        }
+        if (saved) resSave.disabled = true;
+      };
+    }
   }
 
   function resetGame() {

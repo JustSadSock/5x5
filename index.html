@@ -47,6 +47,8 @@
       --color-warning-strong: #ea580c;
       --color-danger: #ef4444;
       --color-danger-strong: #dc2626;
+      --color-success: #22c55e;
+      --color-success-strong: #16a34a;
       --color-info: #3b82f6;
       --color-info-strong: #1d4ed8;
       --color-button-text: #ffffff;
@@ -71,6 +73,8 @@
       --color-warning-strong: #b45309;
       --color-danger: #dc2626;
       --color-danger-strong: #b91c1c;
+      --color-success: #16a34a;
+      --color-success-strong: #15803d;
       --color-info: #2563eb;
       --color-info-strong: #1e3a8a;
       --color-button-text: #ffffff;
@@ -690,6 +694,13 @@
     #leaveOverlay button:hover,
     #speedModal button:hover,
     #resultOverlay button:hover { background:var(--color-accent-strong); }
+    #resultOverlay .resultStatus {
+      margin-top:12px;
+      font-size:14px;
+      color:var(--color-text-muted);
+    }
+    #resultOverlay .resultStatus.success { color:var(--color-success); }
+    #resultOverlay .resultStatus.error { color:var(--color-danger); }
 
     /* Счёт */
     #scoreboard {
