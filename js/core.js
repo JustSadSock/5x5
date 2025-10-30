@@ -1391,6 +1391,7 @@ function startNewRound() {
   window.exitOnlineMode = exitOnlineMode;
   function returnToMenu() {
     resetGame();
+    hideAttackOverlay();
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
