@@ -9,6 +9,10 @@
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#000000"/>
   <!-- CROSSLINE_RUNTIME_ENV -->
+  <script>
+    window.CROSSLINE_API_URL = 'https://visually-definite-frog.ngrok-free.app';
+    window.CROSSLINE_WS_URL = 'wss://visually-definite-frog.ngrok-free.app';
+  </script>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Manrope:wght@400;700&family=Roboto+Mono:wght@400;700&family=PT+Sans:wght@400;700&family=Fira+Sans:wght@400;700&family=Orbitron:wght@400;700&family=Russo+One&display=swap&subset=cyrillic,latin" rel="stylesheet">
   <style>
     * { box-sizing:border-box; margin:0; padding:0; }
@@ -601,8 +605,6 @@
     <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
     <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты" style="padding:6px;max-width:140px;">
     <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
-    <input id="p2pRoomInput" placeholder="P2P" style="padding:6px;max-width:140px;">
-    <div id="p2pConnect" class="panel modeBtn" data-i18n="p2pConnect" data-sound="nav">P2P Connect</div>
     <div id="roomCode"></div>
     <div id="connectionStatus" style="font-family:'Roboto Mono',monospace;font-size:12px;"></div>
     <div id="log" style="font-family:'Roboto Mono', monospace; font-size: 12px;"></div>
@@ -703,8 +705,6 @@
   <script src="js/core.js"></script>
   <script src="scripts/runtime-config.js"></script>
   <script src="js/socket.js"></script>
-  <script src="js/simplepeer.min.js"></script>
-  <script src="js/p2p.js"></script>
   <script>
     const taglines = [
       t('tagline1'),

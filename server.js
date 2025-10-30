@@ -2,11 +2,64 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const ngrok = require('@ngrok/ngrok');
 
 const publicDir = __dirname;
 const jsDir = path.join(__dirname, 'js');
 const scriptsDir = path.join(__dirname, 'scripts');
 const indexFile = path.join(__dirname, 'index.html');
+
+const NGROK_DOMAIN = process.env.NGROK_DOMAIN || 'visually-definite-frog.ngrok-free.app';
+const NGROK_RESERVED_DOMAIN_ID = process.env.NGROK_RESERVED_DOMAIN_ID || 'rd_316tC8xtchhzP72B8Hxm02e93Xe';
+
+let activeNgrokListener = null;
+
+async function startNgrokTunnel(port) {
+  if (activeNgrokListener) {
+    return activeNgrokListener;
+  }
+
+  if (!NGROK_DOMAIN) {
+    console.warn('[ngrok] No domain configured, skipping tunnel start.');
+    return null;
+  }
+
+  if (!process.env.NGROK_AUTHTOKEN && !process.env.NGROK_AUTHTOKEN_FILE && !process.env.NGROK_CONFIG) {
+    console.warn('[ngrok] NGROK_AUTHTOKEN (or NGROK_CONFIG) not provided. Tunnel will not start.');
+    return null;
+  }
+
+  try {
+    const listener = await ngrok.connect({
+      authtoken_from_env: true,
+      addr: port,
+      domain: NGROK_DOMAIN,
+      metadata: NGROK_RESERVED_DOMAIN_ID ? `reserved_domain_id=${NGROK_RESERVED_DOMAIN_ID}` : undefined
+    });
+
+    activeNgrokListener = listener;
+    const url = listener.url();
+    console.log(`[ngrok] Tunnel established at ${url}`);
+    console.log(`[ngrok] Reserved domain: https://${NGROK_DOMAIN}`);
+    process.env.CROSSLINE_API_URL = `https://${NGROK_DOMAIN}`;
+    process.env.CROSSLINE_WS_URL = `wss://${NGROK_DOMAIN}`;
+    return listener;
+  } catch (error) {
+    console.error('[ngrok] Failed to start tunnel:', error.message || error);
+    return null;
+  }
+}
+
+async function stopNgrokTunnel() {
+  if (!activeNgrokListener) return;
+  try {
+    await activeNgrokListener.close();
+  } catch (error) {
+    console.error('[ngrok] Failed to close tunnel:', error.message || error);
+  } finally {
+    activeNgrokListener = null;
+  }
+}
 
 const ALLOWED_ORIGINS = (process.env.CROSSLINE_CORS_ORIGIN || '')
   .split(',')
@@ -378,8 +431,25 @@ if (require.main === module) {
   const server = http.createServer(requestHandler);
   attachWebSocketServer(server);
   attachSignalServer(server);
+  server.on('close', () => {
+    stopNgrokTunnel();
+  });
+
+  const handleShutdown = async signal => {
+    console.log(`\nReceived ${signal}, shutting down...`);
+    await stopNgrokTunnel();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 5000);
+  };
+
+  process.once('SIGINT', () => handleShutdown('SIGINT'));
+  process.once('SIGTERM', () => handleShutdown('SIGTERM'));
+
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
+    startNgrokTunnel(port).catch(err => {
+      console.error('[ngrok] Unexpected error while starting tunnel:', err);
+    });
   });
 }
 
