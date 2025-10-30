@@ -22,15 +22,24 @@ if defined NGROK_EXE (
   set "NGROK_CMD=%NGROK_CMD:\"=%"
   set "NGROK_CMD=%NGROK_CMD:'=%"
   if not exist "%NGROK_CMD%" (
+    for /f "delims=" %%I in ('where %NGROK_CMD% 2^>nul') do (
+      set "NGROK_CMD=%%I"
+      goto :ngrok_ok
+    )
     echo Provided NGROK_EXE path was not found: %NGROK_CMD%
     goto :fail
   )
+  goto :ngrok_ok
 ) else (
-  where ngrok >nul 2>nul || (
-    echo ngrok was not found. Install it or set NGROK_EXE to the full path.
-    goto :fail
+  for /f "delims=" %%I in ('where ngrok 2^>nul') do (
+    set "NGROK_CMD=%%I"
+    goto :ngrok_ok
   )
+  echo ngrok was not found. Install it or set NGROK_EXE to the full path.
+  goto :fail
 )
+
+:ngrok_ok
 if defined NGROK_AUTHTOKEN (
   echo Applying ngrok auth token...
   "%NGROK_CMD%" config add-authtoken %NGROK_AUTHTOKEN% >nul 2>&1
@@ -41,7 +50,7 @@ start "5x5-local-server" cmd /k "cd /d %~dp0 && set PORT=%PORT% && npm run start
 
 set "NGROK_ARGS=http %PORT% --scheme=https"
 echo Launching ngrok tunnel (%NGROK_CMD% %NGROK_ARGS%)...
-start "5x5-ngrok" cmd /k "\"%NGROK_CMD%\" %NGROK_ARGS%"
+start "5x5-ngrok" cmd /k call "%NGROK_CMD%" %NGROK_ARGS%
 
 echo Waiting for ngrok to initialise...
 set "TUNNEL_URL="
