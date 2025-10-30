@@ -5,7 +5,24 @@ const WebSocket = require('ws');
 
 const publicDir = __dirname;
 const jsDir = path.join(__dirname, 'js');
+const scriptsDir = path.join(__dirname, 'scripts');
 const indexFile = path.join(__dirname, 'index.html');
+
+const ALLOWED_ORIGINS = (process.env.CROSSLINE_CORS_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+function resolveCorsOrigin(req) {
+  if (ALLOWED_ORIGINS.length === 0) {
+    return '*';
+  }
+  const origin = req.headers.origin;
+  if (!origin) {
+    return null;
+  }
+  return ALLOWED_ORIGINS.includes(origin) ? origin : null;
+}
 
 function requestHandler(req, res) {
   let rawPath;
@@ -19,12 +36,32 @@ function requestHandler(req, res) {
     res.writeHead(400);
     return res.end('Bad request');
   }
+  const corsOrigin = resolveCorsOrigin(req);
+  if (req.method === 'OPTIONS') {
+    if (ALLOWED_ORIGINS.length && !corsOrigin) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      return res.end('Forbidden');
+    }
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': corsOrigin || '*',
+      'Access-Control-Allow-Methods': 'GET,HEAD,OPTIONS',
+      'Access-Control-Allow-Headers': req.headers['access-control-request-headers'] || 'Content-Type',
+      'Access-Control-Max-Age': '86400'
+    });
+    return res.end();
+  }
+  if (ALLOWED_ORIGINS.length && !corsOrigin && req.headers.origin) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    return res.end('Forbidden');
+  }
   const urlPath = new URL(rawPath, `http://${req.headers.host}`).pathname;
   let filePath;
   if (urlPath === '/' || urlPath === '/index.html') {
     filePath = indexFile;
   } else if (urlPath.startsWith('/js/')) {
     filePath = path.join(jsDir, urlPath.slice(4));
+  } else if (urlPath.startsWith('/scripts/')) {
+    filePath = path.join(scriptsDir, urlPath.slice(9));
   } else {
     filePath = path.resolve(publicDir, '.' + urlPath);
     if (!filePath.startsWith(publicDir)) {
@@ -34,21 +71,27 @@ function requestHandler(req, res) {
   }
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404);
+      res.writeHead(404, {
+        'Content-Type': 'text/plain',
+        'Access-Control-Allow-Origin': corsOrigin || '*'
+      });
       res.end('Not found');
-    } else {
-      const ext = path.extname(filePath);
-      const types = {
-        '.js': 'text/javascript',
-        '.html': 'text/html',
-        '.css': 'text/css',
-        '.png': 'image/png',
-        '.ico': 'image/x-icon',
-        '.json': 'application/json'
-      };
-      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
-      res.end(data);
+      return;
     }
+    const ext = path.extname(filePath);
+    const types = {
+      '.js': 'text/javascript',
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.png': 'image/png',
+      '.ico': 'image/x-icon',
+      '.json': 'application/json'
+    };
+    res.writeHead(200, {
+      'Content-Type': types[ext] || 'application/octet-stream',
+      'Access-Control-Allow-Origin': corsOrigin || '*'
+    });
+    res.end(data);
   });
 }
 
@@ -71,6 +114,7 @@ function removeFromRoom(ws) {
     delete rooms[roomId];
   } else {
     room.pendingMoves = { 0: null, 1: null };
+    room.confirmed = { 0: false, 1: false };
     if (room.expireTimer) clearTimeout(room.expireTimer);
     room.expireTimer = setTimeout(() => {
       const r = rooms[roomId];
@@ -141,7 +185,13 @@ function attachWebSocketServer(server) {
         removeFromRoom(ws);
         let code;
         do { code = genCode(); } while (rooms[code]);
-        rooms[code] = { players: [ws], states: [null, null], pendingMoves: { 0: null, 1: null }, expireTimer: null };
+        rooms[code] = {
+          players: [ws],
+          states: [null, null],
+          pendingMoves: { 0: null, 1: null },
+          confirmed: { 0: false, 1: false },
+          expireTimer: null
+        };
         ws.roomId = code;
         ws.playerIndex = 0;
         ws.send(JSON.stringify({ type: 'room_created', roomId: code }));
@@ -169,6 +219,14 @@ function attachWebSocketServer(server) {
       } else if (data.type === 'submit_moves') {
         const room = rooms[ws.roomId];
         if (!room) return;
+        if (room.players.length < 2) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Waiting for opponent' }));
+          return;
+        }
+        if (room.confirmed[ws.playerIndex]) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Moves already confirmed' }));
+          return;
+        }
         if (!Array.isArray(data.moves) || data.moves.length !== 5) {
           ws.send(JSON.stringify({ type: 'error', message: 'Must send exactly 5 moves' }));
           console.log(`Player ${ws.playerIndex} sent invalid moves in room ${ws.roomId}`);
@@ -184,6 +242,7 @@ function attachWebSocketServer(server) {
           data.moves
         );
         room.pendingMoves[ws.playerIndex] = data.moves.slice(0, 5);
+        room.confirmed[ws.playerIndex] = true;
         room.players.forEach(p =>
           p.send(JSON.stringify({ type: 'player_confirmed', playerIndex: ws.playerIndex }))
         );
@@ -196,10 +255,17 @@ function attachWebSocketServer(server) {
               room.pendingMoves[0]
             )}, Player 1 moves: ${JSON.stringify(room.pendingMoves[1])}`
           );
-          room.players.forEach(p =>
-            p.send(JSON.stringify({ type: 'start_round', moves: room.pendingMoves }))
-          );
+          const payload = [
+            room.pendingMoves[0].slice(0, 5),
+            room.pendingMoves[1].slice(0, 5)
+          ];
+          room.players.forEach(p => {
+            if (p.readyState === WebSocket.OPEN) {
+              p.send(JSON.stringify({ type: 'start_round', moves: payload }));
+            }
+          });
           room.pendingMoves = { 0: null, 1: null };
+          room.confirmed = { 0: false, 1: false };
         } else {
           console.log(
             `Room ${ws.roomId} waiting for moves: P0 ${Array.isArray(room.pendingMoves[0]) ? room.pendingMoves[0].length : 'none'}, P1 ${Array.isArray(room.pendingMoves[1]) ? room.pendingMoves[1].length : 'none'}`

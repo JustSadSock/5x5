@@ -66,6 +66,9 @@ function startNewRound() {
   let simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
   let units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
   let score = { A: 0, B: 0 };
+  let onlineConfirmed = { A: false, B: false };
+  let waitingForServer = false;
+  let revealReady = false;
   let edgesCollapsed = false;
   let replayHistory = [];
   let currentReplay = null;
@@ -104,6 +107,12 @@ function startNewRound() {
     { trigger: 'afterMove', key: 'tutorial2' },
     { trigger: 'afterConfirm', key: 'tutorial3' }
   ];
+
+  function resetOnlineFlags() {
+    onlineConfirmed = { A: false, B: false };
+    waitingForServer = false;
+    revealReady = false;
+  }
 
   function showTutorial(event) {
     if (!isTutorial) return;
@@ -301,6 +310,9 @@ function startNewRound() {
   }
 
   function record(P, act) {
+    if (isOnline && phase !== 'execute' && onlineConfirmed[mySide()]) {
+      return;
+    }
     plans[P].push(act);
     if (typeof act === 'string') {
       if (act === 'shield') usedShield[P]++;
@@ -316,6 +328,7 @@ function startNewRound() {
   }
 
   function deleteLast() {
+    if (isOnline && phase !== 'execute' && onlineConfirmed[mySide()]) return;
     const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
     if (!plans[P].length) return;
     const a = plans[P].pop();
@@ -339,18 +352,26 @@ function startNewRound() {
 
   function nextStep() {
     if (isOnline && phase !== 'execute') {
-      const moves = plans[mySide()];
+      const side = mySide();
+      if (onlineConfirmed[side]) return;
+      const moves = plans[side];
       if (moves.length === STEPS) {
+        waitingForServer = true;
         if (window.peer) {
           sendPeerData({ type: 'moves', moves });
           sentMoves = true;
+          if (typeof window.onMovesSubmitted === 'function') window.onMovesSubmitted();
           btnNext.disabled = true;
           maybeStartPeerRound();
         } else {
           submitMoves(moves);
           btnNext.disabled = true;
         }
+        updateUI();
       }
+      return;
+    }
+    if (isOnline && phase === 'execute' && !revealReady) {
       return;
     }
   if (phase === 'planA' && single) {
@@ -546,9 +567,16 @@ function startNewRound() {
           : { up: '↑', down: '↓', left: '←', right: '→' }[a]
         : '';
     });
+    const executing = phase === 'execute';
+    const locked = isOnline && !executing && onlineConfirmed[mySide()];
     acts.forEach(b => {
       const a = b.dataset.act;
       b.disabled = false; b.classList.remove('blocked');
+      if (executing || locked) {
+        b.disabled = true;
+        b.classList.add('blocked');
+        return;
+      }
       if (DXY[a] && usedAtkDirs[P].has(a)) {
         b.disabled = true; b.classList.add('blocked');
       }
@@ -556,13 +584,24 @@ function startNewRound() {
       if (a === 'shield' && usedShield[P] >= 1) b.disabled = true;
     });
     if (single && phase === 'planA') {
+      btnNext.textContent = t('nextBtn');
       btnNext.disabled = plans[P].length !== STEPS;
     } else if (isOnline) {
-      if (phase === 'execute') btnNext.disabled = false;
-      else btnNext.disabled = plans[P].length !== STEPS;
+      if (executing) {
+        btnNext.textContent = t('revealBtn');
+        btnNext.disabled = !revealReady;
+      } else if (locked) {
+        btnNext.textContent = waitingForServer ? t('confirmPendingBtn') : t('confirmBtn');
+        btnNext.disabled = true;
+      } else {
+        btnNext.textContent = t('confirmBtn');
+        btnNext.disabled = plans[P].length !== STEPS;
+      }
     } else {
-      btnNext.disabled = (plans[P].length < STEPS && phase !== 'execute');
+      btnNext.textContent = executing ? t('executeBtn') : t('nextBtn');
+      btnNext.disabled = plans[P].length < STEPS && !executing;
     }
+    btnDel.disabled = executing || locked;
     btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
     document.querySelectorAll('.cell').forEach(c => {
       const x = +c.id[1], y = +c.id[2], edge = x === 0 || x === 4 || y === 0 || y === 4;
@@ -695,6 +734,7 @@ function startNewRound() {
       usedAtk = { A: 0, B: 0 }; usedShield = { A: 0, B: 0 };
       simPos = { A: { x: units.A.x, y: units.A.y }, B: { x: units.B.x, y: units.B.y } };
       btnNext.textContent = t('nextBtn');
+      if (isOnline) resetOnlineFlags();
       startNewRound();
     }
     updateUI();
@@ -1026,6 +1066,7 @@ function startNewRound() {
     simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
+    resetOnlineFlags();
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     render(); btnNext.textContent = t('nextBtn'); updateUI();
@@ -1056,6 +1097,9 @@ function startNewRound() {
   window.onPeerMessage = function(msg) {
     if (msg.type === 'moves') {
       peerMoves = msg.moves;
+      if (typeof window.onPlayerConfirmed === 'function') {
+        window.onPlayerConfirmed(playerIndex === 0 ? 1 : 0);
+      }
       maybeStartPeerRound();
     }
   };
@@ -1064,6 +1108,26 @@ function startNewRound() {
     peerMoves = null;
     sentMoves = false;
     returnToMenu();
+  };
+
+  window.onMovesSubmitted = function() {
+    if (!isOnline || playerIndex === null) return;
+    onlineConfirmed[mySide()] = true;
+    waitingForServer = true;
+    updateUI();
+  };
+
+  window.onPlayerConfirmed = function(index) {
+    if (!isOnline) return;
+    const side = index === 0 ? 'A' : 'B';
+    onlineConfirmed[side] = true;
+    updateUI();
+  };
+
+  window.onOnlineDisconnected = function() {
+    if (!isOnline) return;
+    resetOnlineFlags();
+    updateUI();
   };
 
   function maybeStartPeerRound() {
@@ -1079,6 +1143,7 @@ function startNewRound() {
   function exitOnlineMode() {
     isOnline = false;
     playerIndex = null;
+    resetOnlineFlags();
   }
 
   window.exitOnlineMode = exitOnlineMode;
@@ -1107,9 +1172,12 @@ function startNewRound() {
     const next = document.getElementById('btn-next');
     if (next) {
       next.style.display = 'inline-block';
-      next.textContent = t('executeBtn');
+      next.textContent = t('revealBtn');
       next.disabled = false;
     }
+    revealReady = true;
+    waitingForServer = false;
+    onlineConfirmed = { A: false, B: false };
     clearPlan();
     updateUI();
   };

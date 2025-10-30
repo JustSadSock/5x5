@@ -9,13 +9,22 @@ let intentionalClose = false;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
-let WS_SERVER_URL = 'wss://zippy-scintillating-asp.glitch.me';
+let WS_SERVER_URL = 'ws://localhost:3000';
 if (typeof window !== 'undefined') {
   const params = new URLSearchParams(window.location.search);
-  if (window.WS_SERVER_URL) {
-    WS_SERVER_URL = window.WS_SERVER_URL;
-  } else if (params.get('ws')) {
+  const runtime = window.__CROSSLINE_RUNTIME__ || window.__CROSSLINE_CONFIG__;
+  if (params.get('ws')) {
     WS_SERVER_URL = params.get('ws');
+  } else if (runtime && runtime.wsUrl) {
+    WS_SERVER_URL = runtime.wsUrl;
+  } else if (window.WS_SERVER_URL) {
+    WS_SERVER_URL = window.WS_SERVER_URL;
+  } else if (runtime && runtime.apiOrigin) {
+    const origin = runtime.apiOrigin.replace(/\/$/, '');
+    WS_SERVER_URL = origin.replace(/^http/i, 'ws');
+  } else if (window.location && window.location.origin) {
+    const isSecure = window.location.protocol === 'https:';
+    WS_SERVER_URL = `${isSecure ? 'wss' : 'ws'}://${window.location.host}`;
   }
 }
 
@@ -57,6 +66,9 @@ function cleanupRoom() {
   updateConnectionStatus(t('offline'), 'orange');
   resetRoomState();
   clearRoomUI();
+  if (typeof window.onOnlineDisconnected === 'function') {
+    window.onOnlineDisconnected();
+  }
   if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
 }
 
@@ -129,6 +141,9 @@ function initSocket(onReady) {
       const who = data.playerIndex === 0 ? t('playerA') : t('playerB');
       showConfirmMessage(who + ' ' + t('confirmed'));
       log(who + ' ' + t('confirmed'));
+      if (typeof window.onPlayerConfirmed === 'function') {
+        window.onPlayerConfirmed(data.playerIndex);
+      }
     }
     if (data.type === 'start_round') {
       if (startRoundTimer) {
@@ -185,15 +200,18 @@ function submitMoves(moves) {
     log('⚠ ' + t('need_five_moves'));
     return;
   }
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: 'submit_moves', moves }));
-    if (startRoundTimer) clearTimeout(startRoundTimer);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'submit_moves', moves }));
+      if (typeof window.onMovesSubmitted === 'function') {
+        window.onMovesSubmitted();
+      }
+      if (startRoundTimer) clearTimeout(startRoundTimer);
       startRoundTimer = setTimeout(() => {
         log(t('server_no_round'));
         const btn = document.getElementById('btn-next');
         if (btn) btn.disabled = false;
       }, 10000);
-  }
+    }
 }
 
 function sendState(state) {
