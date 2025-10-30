@@ -200,7 +200,37 @@
       background:var(--color-input-bg);
       color:var(--color-text-primary);
     }
+    #onlineMenu input.input-error {
+      border-color:var(--color-danger);
+      box-shadow:0 0 0 2px rgba(239,68,68,0.35);
+    }
     #onlineMenu input::placeholder { color:var(--color-text-muted); }
+
+    #connectionStatus {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-height:18px;
+    }
+    #connectionStatus::before {
+      content:'';
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      border:2px solid currentColor;
+      border-right-color:transparent;
+      animation:connection-spin 1s linear infinite;
+      display:none;
+    }
+    #connectionStatus[data-state="connecting"]::before,
+    #connectionStatus[data-state="reconnecting"]::before {
+      display:inline-block;
+    }
+
+    @keyframes connection-spin {
+      from { transform:rotate(0deg); }
+      to { transform:rotate(360deg); }
+    }
 
     #title {
       font-size:48px;

@@ -90,6 +90,11 @@ function startNewRound() {
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
   const roomInput = document.getElementById('roomInput');
+  if (roomInput) {
+    roomInput.addEventListener('input', () => {
+      roomInput.classList.remove('input-error');
+    });
+  }
   const board = document.getElementById('board');
   const gameArea = document.getElementById('gameArea');
   const ui = document.getElementById('ui');
