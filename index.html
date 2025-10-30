@@ -301,14 +301,39 @@
     }
     #ui.show { visibility:visible; opacity:1; transform:translateY(0); }
     #phase { text-align:center; color:var(--color-heading); min-height:24px; }
-    #planCells { display:flex; justify-content:space-between; margin-bottom:6px; gap:8px; }
+    #planIndicator { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+    #planLegend {
+      text-align:center;
+      font-size:14px;
+      color:var(--color-subtle);
+      letter-spacing:1px;
+    }
+    #planCells { display:flex; justify-content:space-between; gap:10px; }
     .planCell {
-      width:18%; height:32px;
+      flex:1;
+      min-width:0;
       background:var(--color-surface);
-      border:1px solid var(--color-border);
-      border-radius:8px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:18px; color:var(--color-heading);
+      border:2px solid var(--color-border);
+      border-radius:12px;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:8px 6px;
+      transition:border-color .2s ease, box-shadow .2s ease;
+    }
+    .planCell.current {
+      border-color:var(--color-accent);
+      box-shadow:0 0 12px rgba(56,189,248,0.35);
+    }
+    .planStepIndex {
+      font-size:13px;
+      color:var(--color-subtle);
+      margin-bottom:4px;
+    }
+    .planStepValue {
+      font-size:26px;
+      color:var(--color-heading);
+      line-height:28px;
+      min-height:28px;
     }
 
     #actions {
@@ -985,13 +1010,31 @@
 
     <div id="ui">
       <div id="phase"></div>
-    <div id="planCells">
-      <div class="planCell" id="pc0"></div>
-      <div class="planCell" id="pc1"></div>
-      <div class="planCell" id="pc2"></div>
-      <div class="planCell" id="pc3"></div>
-      <div class="planCell" id="pc4"></div>
-    </div>
+      <div id="planIndicator">
+        <div id="planLegend">1 → 2 → 3 → 4 → 5</div>
+        <div id="planCells">
+          <div class="planCell" id="pc0">
+            <span class="planStepIndex">1</span>
+            <span class="planStepValue"></span>
+          </div>
+          <div class="planCell" id="pc1">
+            <span class="planStepIndex">2</span>
+            <span class="planStepValue"></span>
+          </div>
+          <div class="planCell" id="pc2">
+            <span class="planStepIndex">3</span>
+            <span class="planStepValue"></span>
+          </div>
+          <div class="planCell" id="pc3">
+            <span class="planStepIndex">4</span>
+            <span class="planStepValue"></span>
+          </div>
+          <div class="planCell" id="pc4">
+            <span class="planStepIndex">5</span>
+            <span class="planStepValue"></span>
+          </div>
+        </div>
+      </div>
     <div id="actions">
       <button data-act="up" class="moveBtn" data-sound="move">↑</button>
       <button data-act="down" class="moveBtn" data-sound="move">↓</button>

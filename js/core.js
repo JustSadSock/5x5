@@ -94,7 +94,8 @@ function startNewRound() {
   const gameArea = document.getElementById('gameArea');
   const ui = document.getElementById('ui');
   const phaseEl = document.getElementById('phase');
-  const pcs = [...Array(STEPS)].map((_, i) => document.getElementById('pc' + i));
+  const planCells = [...Array(STEPS)].map((_, i) => document.getElementById('pc' + i));
+  const planValues = planCells.map(cell => cell ? cell.querySelector('.planStepValue') : null);
   const acts = Array.from(document.querySelectorAll('#actions button'));
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
@@ -649,13 +650,21 @@ function startNewRound() {
       `${t('round')} ${round}/${MAX_R}, ${P}: ` +
       (phase === 'execute' ? t('turn') : t('plan')) +
       ` ${phase === 'execute' ? step : plans[P].length}/${STEPS}`;
-    pcs.forEach((pc, i) => {
+    const activeIdx = phase === 'execute'
+      ? Math.max(0, Math.min(STEPS - 1, step - 1))
+      : Math.max(0, Math.min(STEPS - 1, plans[P].length));
+    planCells.forEach((cell, i) => {
+      if (!cell) return;
       const a = plans[P][i];
-      pc.textContent = a
-        ? typeof a === 'object' ? '⚔'
-          : a === 'shield' ? '🛡'
-          : { up: '↑', down: '↓', left: '←', right: '→' }[a]
-        : '';
+      const valEl = planValues[i];
+      if (valEl) {
+        valEl.textContent = a
+          ? typeof a === 'object' ? '⚔'
+            : a === 'shield' ? '🛡'
+            : { up: '↑', down: '↓', left: '←', right: '→' }[a]
+          : '';
+      }
+      cell.classList.toggle('current', i === activeIdx);
     });
     const executing = phase === 'execute';
     const locked = isOnline && !executing && onlineConfirmed[mySide()];
