@@ -138,7 +138,7 @@ function startNewRound() {
     { trigger: 'afterMove', key: 'tutorial2' },
     { trigger: 'afterConfirm', key: 'tutorial3' }
   ];
-  const themeToggle = document.getElementById('themeToggle');
+  const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
   let pendingAttackDirs = [];
 
   function resetOnlineFlags() {
@@ -452,13 +452,14 @@ function startNewRound() {
   };
 
   function updateThemeToggle(theme) {
-    if (!themeToggle) return;
+    if (!themeToggleButtons.length) return;
     const normalized = theme === 'light' ? 'light' : 'dark';
-    const target = normalized === 'light' ? 'dark' : 'light';
-    themeToggle.textContent = normalized === 'light' ? '🌙' : '☀️';
-    const label = target === 'light' ? 'Switch to light theme' : 'Switch to dark theme';
-    themeToggle.setAttribute('aria-label', label);
-    themeToggle.setAttribute('title', label);
+    const label = typeof t === 'function' ? t('themeTooltip') : 'Switch theme';
+    themeToggleButtons.forEach(btn => {
+      btn.textContent = normalized === 'light' ? '🌙' : '☀️';
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    });
   }
 
   function applyTheme(theme) {
@@ -472,13 +473,15 @@ function startNewRound() {
     updateThemeToggle(normalized);
   }
 
-  if (themeToggle) {
+  if (themeToggleButtons.length) {
     const initial = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
     updateThemeToggle(initial);
-    themeToggle.addEventListener('click', () => {
-      const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-      const next = current === 'light' ? 'dark' : 'light';
-      applyTheme(next);
+    themeToggleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+        const next = current === 'light' ? 'dark' : 'light';
+        applyTheme(next);
+      });
     });
   }
 
@@ -1663,9 +1666,10 @@ function startNewRound() {
     ov.id = 'resultOverlay';
     ov.innerHTML =
       `<div>${text}</div>` +
-      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
+      '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">' +
       `<button id="resReplay">${t('replay')}</button>` +
       `<button id="resSaveReplay">${t('saveReplay')}</button>` +
+      `<button id="resRoundReport">${t('roundReportButton')}</button>` +
       `<button id="resMenu">${t('toMenu')}</button>` +
       `<button id="resOk">${t('ok')}</button>` +
       '</div>' +
@@ -1675,6 +1679,7 @@ function startNewRound() {
     const resMenu = ov.querySelector('#resMenu');
     const resReplay = ov.querySelector('#resReplay');
     const resSave = ov.querySelector('#resSaveReplay');
+    const resRoundReport = ov.querySelector('#resRoundReport');
     const statusEl = ov.querySelector('#replaySaveStatus');
     if (resOk) {
       resOk.onclick = () => {
@@ -1706,6 +1711,15 @@ function startNewRound() {
           statusEl.classList.add(saved ? 'success' : 'error');
         }
         if (saved) resSave.disabled = true;
+      };
+    }
+    if (resRoundReport) {
+      if (!lastRoundSummary) {
+        resRoundReport.disabled = true;
+      }
+      resRoundReport.onclick = () => {
+        if (!lastRoundSummary) return;
+        showRoundReport(lastRoundSummary);
       };
     }
   }
@@ -1843,6 +1857,7 @@ function startNewRound() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settingsBtn');
+  const menuSettingsBtn = document.getElementById('menuSettingsBtn');
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
@@ -1857,8 +1872,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveReplayBtn = document.getElementById('saveReplay');
   const replaySeek = document.getElementById('replaySeek');
 
+  const openSettings = () => { if (settingsModal) settingsModal.style.display = 'block'; };
   if (settingsBtn && settingsModal) {
-    settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
+    settingsBtn.onclick = openSettings;
+  }
+  if (menuSettingsBtn && settingsModal) {
+    menuSettingsBtn.onclick = openSettings;
   }
   if (settingsClose && settingsModal) {
     settingsClose.onclick = () => { settingsModal.style.display = 'none'; };
