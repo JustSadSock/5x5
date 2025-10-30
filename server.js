@@ -10,7 +10,29 @@ const scriptsDir = path.join(__dirname, 'scripts');
 const indexFile = path.join(__dirname, 'index.html');
 
 const NGROK_DOMAIN = process.env.NGROK_DOMAIN || 'visually-definite-frog.ngrok-free.app';
-const NGROK_COMMAND = process.env.NGROK_COMMAND || process.env.NGROK_EXE || 'ngrok';
+
+function resolveNgrokCommand() {
+  const envCommand = process.env.NGROK_COMMAND || process.env.NGROK_EXE;
+  if (envCommand && envCommand.trim()) {
+    return envCommand.trim();
+  }
+
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData) {
+      const wingetPath = path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'ngrok.exe');
+      if (fs.existsSync(wingetPath)) {
+        return wingetPath;
+      }
+      const programsPath = path.join(localAppData, 'Programs', 'ngrok', 'ngrok.exe');
+      if (fs.existsSync(programsPath)) {
+        return programsPath;
+      }
+    }
+  }
+
+  return 'ngrok';
+}
 
 let ngrokProcess = null;
 
@@ -25,7 +47,7 @@ function startNgrokTunnel(port) {
   }
 
   const args = ['http', '--domain', NGROK_DOMAIN, String(port)];
-  const command = NGROK_COMMAND;
+  const command = resolveNgrokCommand();
 
   console.log(`[ngrok] Launching CLI: ${command} ${args.join(' ')}`);
   try {
