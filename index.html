@@ -250,6 +250,7 @@
       display:flex;
       flex-direction:column;
       align-items:center;
+      position:relative;
     }
     #board {
       visibility:hidden;
@@ -258,6 +259,7 @@
       padding:8px; background:var(--color-surface-alt);
       border:1px solid var(--color-border); border-radius:16px;
       box-shadow:0 16px 32px rgba(15,23,42,0.35);
+      position:relative;
     }
     .cell {
       width:60px; height:60px;
@@ -454,54 +456,89 @@
     /* Оверлей атаки */
     #atkOverlay {
       visibility:hidden;
-      position:absolute; top:50%; left:50%;
+      position:absolute;
+      width:150px; height:150px;
       transform:translate(-50%,-50%);
-      background:var(--color-overlay); padding:20px;
-      display:grid; gap:8px;
-      grid-template-columns:repeat(3, 70px);
-      grid-template-rows:repeat(3, 70px) auto auto;
-      grid-template-areas:
-        ". up ."
-        "left . right"
-        ". down ."
-        "confirm confirm confirm"
-        "cancel cancel cancel";
-      border-radius:14px; z-index:10;
+      background:radial-gradient(circle at center, rgba(239,68,68,0.15), transparent 75%);
       border:1px solid var(--color-border);
-      box-shadow:0 20px 44px rgba(15,23,42,0.35);
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      z-index:20;
+    }
+    #atkOverlay .ring {
+      position:absolute;
+      width:100%; height:100%;
+      border-radius:50%;
+      box-shadow:0 12px 28px rgba(15,23,42,0.35);
+      border:1px solid rgba(239,68,68,0.25);
     }
     #atkOverlay button {
+      pointer-events:auto;
+      position:absolute;
+      width:42px; height:42px;
+      border-radius:50%;
+      border:1px solid rgba(239,68,68,0.45);
       background:var(--color-danger);
-      color:var(--color-button-text) !important;
-      border:none !important;
-      font-size:32px;
-      width:70px; height:70px;
-      border-radius:12px;
-      box-shadow:0 6px 14px rgba(15,23,42,0.3);
+      color:var(--color-button-text);
+      font-size:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 6px 16px rgba(15,23,42,0.32);
+      transition:transform .2s ease, background .2s ease;
     }
-    #atkOverlay button:hover { background:var(--color-danger-strong); }
-    #atkOverlay .up    { grid-area: up; }
-    #atkOverlay .down  { grid-area: down; }
-    #atkOverlay .left  { grid-area: left; }
-    #atkOverlay .right { grid-area: right; }
-    #atkOverlay .confirm {
+    #atkOverlay button:hover {
+      background:var(--color-danger-strong);
+      transform:scale(1.08);
+    }
+    #atkOverlay button.sel {
+      background:var(--color-danger-strong);
+      border-color:rgba(239,68,68,0.75);
+      transform:scale(1.12);
+    }
+    #atkOverlay button:disabled {
+      opacity:0.4;
+      cursor:default;
+      transform:none;
+    }
+    #atkOverlay .up { top:14px; left:50%; transform:translate(-50%,0); }
+    #atkOverlay .down { bottom:14px; left:50%; transform:translate(-50%,0); }
+    #atkOverlay .left { left:14px; top:50%; transform:translate(0,-50%); }
+    #atkOverlay .right { right:14px; top:50%; transform:translate(0,-50%); }
+
+    #attackConfirmBar {
+      display:none;
+      gap:10px;
+      margin-top:8px;
+      margin-bottom:12px;
+      justify-content:center;
+      align-items:center;
+    }
+    #attackConfirmBar.show { display:flex; }
+    #attackConfirmBar button {
+      font-size:14px;
+      padding:6px 14px;
+      border-radius:999px;
+      border:1px solid transparent;
+      cursor:pointer;
+      transition:background .2s ease, transform .2s ease;
+    }
+    #attackConfirmBar button:hover { transform:translateY(-1px); }
+    #attackConfirm {
       background:var(--color-accent);
-      color:var(--color-button-text) !important;
-      border:none !important;
-      grid-area: confirm;
-      height:40px;
-      border-radius:10px;
+      color:var(--color-button-text);
+      border-color:transparent;
     }
-    #atkOverlay .confirm:hover { background:var(--color-accent-strong); }
-    #atkOverlay .cancel {
+    #attackConfirm:hover { background:var(--color-accent-strong); }
+    #attackCancel {
       background:var(--color-surface);
-      color:var(--color-text-primary) !important;
-      border:1px solid var(--color-border) !important;
-      grid-area: cancel;
-      height:40px;
-      border-radius:10px;
+      color:var(--color-text-primary);
+      border-color:var(--color-border);
     }
-    #atkOverlay .cancel:hover { background:var(--color-surface-hover); }
+    #attackCancel:hover { background:var(--color-surface-hover); }
 
     .sel {
       outline:3px solid #ff0;
@@ -940,6 +977,11 @@
 
   <div id="gameArea">
     <div id="board"></div>
+    <div id="atkOverlay"><div class="ring"></div></div>
+    <div id="attackConfirmBar" aria-hidden="true">
+      <button id="attackConfirm" data-i18n="ok" data-sound="nav">OK</button>
+      <button id="attackCancel" data-i18n="cancel" data-sound="nav">Cancel</button>
+    </div>
 
     <div id="ui">
       <div id="phase"></div>
@@ -965,7 +1007,6 @@
   </div>
   </div>
 
-  <div id="atkOverlay"></div>
   <div id="confirmToast"></div>
   <div id="replayOverlay">
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
