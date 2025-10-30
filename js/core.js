@@ -89,8 +89,6 @@ function startNewRound() {
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
   const roomInput = document.getElementById('roomInput');
-  const p2pConnect = document.getElementById('p2pConnect');
-  const p2pRoomInput = document.getElementById('p2pRoomInput');
   const board = document.getElementById('board');
   const ui = document.getElementById('ui');
   const phaseEl = document.getElementById('phase');
@@ -209,12 +207,6 @@ function startNewRound() {
 
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
-  if (p2pConnect) {
-    p2pConnect.onclick = () => {
-      if (p2pRoomInput) connectToRoom(p2pRoomInput.value.trim());
-    };
-  }
-
   function startGame() {
     board.style.visibility = 'visible';
     ui.classList.add('show');

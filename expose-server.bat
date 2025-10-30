@@ -3,6 +3,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 pushd "%~dp0"
 
 if not defined PORT set "PORT=3000"
+if not defined NGROK_DOMAIN set "NGROK_DOMAIN=visually-definite-frog.ngrok-free.app"
 
 echo Checking Node.js and npm...
 where node >nul 2>nul || (echo Node.js was not found in PATH.& goto :fail)
@@ -48,7 +49,7 @@ if defined NGROK_AUTHTOKEN (
 echo Starting local server on port %PORT%...
 start "5x5-local-server" cmd /k "cd /d %~dp0 && set PORT=%PORT% && npm run start"
 
-set "NGROK_ARGS=http %PORT% --scheme=https"
+set "NGROK_ARGS=http --domain %NGROK_DOMAIN% %PORT%"
 echo Launching ngrok tunnel (%NGROK_CMD% %NGROK_ARGS%)...
 start "5x5-ngrok" cmd /k call "%NGROK_CMD%" %NGROK_ARGS%
 

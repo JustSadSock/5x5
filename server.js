@@ -2,11 +2,104 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const { spawn } = require('child_process');
 
 const publicDir = __dirname;
 const jsDir = path.join(__dirname, 'js');
 const scriptsDir = path.join(__dirname, 'scripts');
 const indexFile = path.join(__dirname, 'index.html');
+
+const NGROK_DOMAIN = process.env.NGROK_DOMAIN || 'visually-definite-frog.ngrok-free.app';
+
+function resolveNgrokCommand() {
+  const envCommand = process.env.NGROK_COMMAND || process.env.NGROK_EXE;
+  if (envCommand && envCommand.trim()) {
+    return envCommand.trim();
+  }
+
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData) {
+      const wingetPath = path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'ngrok.exe');
+      if (fs.existsSync(wingetPath)) {
+        return wingetPath;
+      }
+      const programsPath = path.join(localAppData, 'Programs', 'ngrok', 'ngrok.exe');
+      if (fs.existsSync(programsPath)) {
+        return programsPath;
+      }
+    }
+  }
+
+  return 'ngrok';
+}
+
+let ngrokProcess = null;
+
+function startNgrokTunnel(port) {
+  if (ngrokProcess) {
+    return;
+  }
+
+  if (!NGROK_DOMAIN) {
+    console.warn('[ngrok] No domain configured, skipping tunnel start.');
+    return;
+  }
+
+  const args = ['http', '--domain', NGROK_DOMAIN, String(port)];
+  const command = resolveNgrokCommand();
+
+  console.log(`[ngrok] Launching CLI: ${command} ${args.join(' ')}`);
+  try {
+    ngrokProcess = spawn(command, args, {
+      stdio: 'inherit',
+      env: process.env
+    });
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      console.error(`[ngrok] Command "${command}" not found. Install ngrok or set NGROK_COMMAND.`);
+    } else {
+      console.error('[ngrok] Failed to spawn ngrok CLI:', error.message || error);
+    }
+    ngrokProcess = null;
+    return;
+  }
+
+  ngrokProcess.once('error', error => {
+    if (error && error.code === 'ENOENT') {
+      console.error(`[ngrok] Command "${command}" not found. Install ngrok or set NGROK_COMMAND.`);
+    } else {
+      console.error('[ngrok] Process error:', error.message || error);
+    }
+  });
+
+  ngrokProcess.once('exit', code => {
+    if (code === 0) {
+      console.log('[ngrok] Tunnel closed.');
+    } else {
+      console.warn(`[ngrok] Tunnel exited with code ${code}`);
+    }
+    ngrokProcess = null;
+  });
+
+  process.env.CROSSLINE_API_URL = `https://${NGROK_DOMAIN}`;
+  process.env.CROSSLINE_WS_URL = `wss://${NGROK_DOMAIN}`;
+}
+
+function stopNgrokTunnel() {
+  if (!ngrokProcess) return;
+  const proc = ngrokProcess;
+  ngrokProcess = null;
+  if (proc.exitCode !== null) return;
+  if (!proc.killed) {
+    const signal = process.platform === 'win32' ? 'SIGINT' : 'SIGTERM';
+    try {
+      proc.kill(signal);
+    } catch (err) {
+      console.warn('[ngrok] Unable to terminate tunnel process:', err.message || err);
+    }
+  }
+}
 
 const ALLOWED_ORIGINS = (process.env.CROSSLINE_CORS_ORIGIN || '')
   .split(',')
@@ -378,8 +471,27 @@ if (require.main === module) {
   const server = http.createServer(requestHandler);
   attachWebSocketServer(server);
   attachSignalServer(server);
+  server.on('close', () => {
+    stopNgrokTunnel();
+  });
+
+  const handleShutdown = async signal => {
+    console.log(`\nReceived ${signal}, shutting down...`);
+    await stopNgrokTunnel();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 5000);
+  };
+
+  process.once('SIGINT', () => handleShutdown('SIGINT'));
+  process.once('SIGTERM', () => handleShutdown('SIGTERM'));
+
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
+    try {
+      startNgrokTunnel(port);
+    } catch (err) {
+      console.error('[ngrok] Unexpected error while starting tunnel:', err);
+    }
   });
 }
 

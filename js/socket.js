@@ -9,6 +9,23 @@ let intentionalClose = false;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
+const NGROK_SUFFIXES = ['.ngrok.app', '.ngrok-free.app'];
+
+function addNgrokBypassParam(url) {
+  if (!url) return url;
+  try {
+    const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost';
+    const parsed = new URL(url, base);
+    if (NGROK_SUFFIXES.some(suffix => parsed.hostname.endsWith(suffix))) {
+      parsed.searchParams.set('ngrok-skip-browser-warning', '1');
+      return parsed.toString();
+    }
+  } catch (err) {
+    console.warn('[socket] Failed to normalise WebSocket URL:', err);
+  }
+  return url;
+}
+
 let WS_SERVER_URL = 'ws://localhost:3000';
 if (typeof window !== 'undefined') {
   const params = new URLSearchParams(window.location.search);
@@ -27,6 +44,8 @@ if (typeof window !== 'undefined') {
     WS_SERVER_URL = `${isSecure ? 'wss' : 'ws'}://${window.location.host}`;
   }
 }
+
+WS_SERVER_URL = addNgrokBypassParam(WS_SERVER_URL);
 
 function updateConnectionStatus(text, color) {
   const el = document.getElementById('connectionStatus');
@@ -81,7 +100,7 @@ function initSocket(onReady) {
     if (onReady) socket.addEventListener('open', onReady, { once: true });
     return;
   }
-  socket = new WebSocket(WS_SERVER_URL);
+  socket = new WebSocket(addNgrokBypassParam(WS_SERVER_URL));
   updateConnectionStatus(t('connecting'), 'yellow');
   socket.addEventListener('open', () => {
     isConnected = true;
