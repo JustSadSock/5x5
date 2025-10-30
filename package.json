@@ -10,7 +10,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@ngrok/ngrok": "^1.5.2",
     "ws": "^8.17.0"
   },
   "devDependencies": {

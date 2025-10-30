@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
-const ngrok = require('@ngrok/ngrok');
+const { spawn } = require('child_process');
 
 const publicDir = __dirname;
 const jsDir = path.join(__dirname, 'js');
@@ -10,54 +10,72 @@ const scriptsDir = path.join(__dirname, 'scripts');
 const indexFile = path.join(__dirname, 'index.html');
 
 const NGROK_DOMAIN = process.env.NGROK_DOMAIN || 'visually-definite-frog.ngrok-free.app';
-const NGROK_RESERVED_DOMAIN_ID = process.env.NGROK_RESERVED_DOMAIN_ID || 'rd_316tC8xtchhzP72B8Hxm02e93Xe';
+const NGROK_COMMAND = process.env.NGROK_COMMAND || process.env.NGROK_EXE || 'ngrok';
 
-let activeNgrokListener = null;
+let ngrokProcess = null;
 
-async function startNgrokTunnel(port) {
-  if (activeNgrokListener) {
-    return activeNgrokListener;
+function startNgrokTunnel(port) {
+  if (ngrokProcess) {
+    return;
   }
 
   if (!NGROK_DOMAIN) {
     console.warn('[ngrok] No domain configured, skipping tunnel start.');
-    return null;
+    return;
   }
 
-  if (!process.env.NGROK_AUTHTOKEN && !process.env.NGROK_AUTHTOKEN_FILE && !process.env.NGROK_CONFIG) {
-    console.warn('[ngrok] NGROK_AUTHTOKEN (or NGROK_CONFIG) not provided. Tunnel will not start.');
-    return null;
-  }
+  const args = ['http', '--domain', NGROK_DOMAIN, String(port)];
+  const command = NGROK_COMMAND;
 
+  console.log(`[ngrok] Launching CLI: ${command} ${args.join(' ')}`);
   try {
-    const listener = await ngrok.connect({
-      authtoken_from_env: true,
-      addr: port,
-      domain: NGROK_DOMAIN,
-      metadata: NGROK_RESERVED_DOMAIN_ID ? `reserved_domain_id=${NGROK_RESERVED_DOMAIN_ID}` : undefined
+    ngrokProcess = spawn(command, args, {
+      stdio: 'inherit',
+      env: process.env
     });
-
-    activeNgrokListener = listener;
-    const url = listener.url();
-    console.log(`[ngrok] Tunnel established at ${url}`);
-    console.log(`[ngrok] Reserved domain: https://${NGROK_DOMAIN}`);
-    process.env.CROSSLINE_API_URL = `https://${NGROK_DOMAIN}`;
-    process.env.CROSSLINE_WS_URL = `wss://${NGROK_DOMAIN}`;
-    return listener;
   } catch (error) {
-    console.error('[ngrok] Failed to start tunnel:', error.message || error);
-    return null;
+    if (error && error.code === 'ENOENT') {
+      console.error(`[ngrok] Command "${command}" not found. Install ngrok or set NGROK_COMMAND.`);
+    } else {
+      console.error('[ngrok] Failed to spawn ngrok CLI:', error.message || error);
+    }
+    ngrokProcess = null;
+    return;
   }
+
+  ngrokProcess.once('error', error => {
+    if (error && error.code === 'ENOENT') {
+      console.error(`[ngrok] Command "${command}" not found. Install ngrok or set NGROK_COMMAND.`);
+    } else {
+      console.error('[ngrok] Process error:', error.message || error);
+    }
+  });
+
+  ngrokProcess.once('exit', code => {
+    if (code === 0) {
+      console.log('[ngrok] Tunnel closed.');
+    } else {
+      console.warn(`[ngrok] Tunnel exited with code ${code}`);
+    }
+    ngrokProcess = null;
+  });
+
+  process.env.CROSSLINE_API_URL = `https://${NGROK_DOMAIN}`;
+  process.env.CROSSLINE_WS_URL = `wss://${NGROK_DOMAIN}`;
 }
 
-async function stopNgrokTunnel() {
-  if (!activeNgrokListener) return;
-  try {
-    await activeNgrokListener.close();
-  } catch (error) {
-    console.error('[ngrok] Failed to close tunnel:', error.message || error);
-  } finally {
-    activeNgrokListener = null;
+function stopNgrokTunnel() {
+  if (!ngrokProcess) return;
+  const proc = ngrokProcess;
+  ngrokProcess = null;
+  if (proc.exitCode !== null) return;
+  if (!proc.killed) {
+    const signal = process.platform === 'win32' ? 'SIGINT' : 'SIGTERM';
+    try {
+      proc.kill(signal);
+    } catch (err) {
+      console.warn('[ngrok] Unable to terminate tunnel process:', err.message || err);
+    }
   }
 }
 
@@ -447,9 +465,11 @@ if (require.main === module) {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
-    startNgrokTunnel(port).catch(err => {
+    try {
+      startNgrokTunnel(port);
+    } catch (err) {
       console.error('[ngrok] Unexpected error while starting tunnel:', err);
-    });
+    }
   });
 }
 
