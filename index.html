@@ -883,26 +883,82 @@
       #board { margin-top:60px; }
     }
 
-    /* Адаптивные правки для портретной ориентации */
-    @media (orientation: portrait) {
+    /* Адаптивные правки */
+    @media (max-width: 540px) {
+      #scoreboard {
+        padding:12px 16px;
+        gap:12px 16px;
+        border-radius:20px;
+        max-width:94vw;
+      }
+      #scoreboard .scoreboard-scores {
+        font-size:24px;
+        width:100%;
+        justify-content:center;
+      }
+      #scoreboard .scoreboard-actions {
+        width:100%;
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+      }
+      #scoreboard .scoreboard-actions button {
+        min-width:0;
+        font-size:14px;
+        padding:10px 12px;
+      }
+      #scoreboard .scoreboard-quick {
+        width:100%;
+        justify-content:center;
+        gap:14px;
+      }
+      #scoreboard .scoreboard-quick button {
+        width:40px;
+        height:40px;
+      }
+
       #board {
-        grid-template: repeat(5,50px)/repeat(5,50px);
-        margin-top:20px;
+        grid-template:repeat(5,48px)/repeat(5,48px);
+        gap:2px;
+        padding:6px;
+        margin:24px auto 16px;
       }
       .cell {
-        width:50px;
-        height:50px;
+        width:48px;
+        height:48px;
       }
       #ui {
         max-width:300px;
+        padding:12px;
         gap:8px;
+      }
+      #actions {
+        gap:6px;
+      }
+      #actions button,
+      #btn-del,
+      #btn-next {
+        padding:10px;
+        font-size:18px;
       }
       #navButtons {
         flex-direction:column;
       }
     }
-    @media (max-width: 480px) {
-      #board { margin-top:60px; }
+
+    @media (min-width: 768px) {
+      #scoreboard {
+        padding:20px 32px;
+        gap:20px 28px;
+      }
+      #board {
+        margin-top:70px;
+      }
+      #ui {
+        max-width:420px;
+        padding:18px;
+        gap:14px;
+      }
     }
   </style>
 </head>
