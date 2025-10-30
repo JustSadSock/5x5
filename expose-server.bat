@@ -17,7 +17,20 @@ if not exist node_modules (
 )
 
 set "NGROK_CMD=ngrok"
-if defined NGROK_EXE set "NGROK_CMD=%NGROK_EXE%"
+if defined NGROK_EXE (
+  set "NGROK_CMD=%NGROK_EXE%"
+  set "NGROK_CMD=%NGROK_CMD:\"=%"
+  set "NGROK_CMD=%NGROK_CMD:'=%"
+  if not exist "%NGROK_CMD%" (
+    echo Provided NGROK_EXE path was not found: %NGROK_CMD%
+    goto :fail
+  )
+) else (
+  where ngrok >nul 2>nul || (
+    echo ngrok was not found. Install it or set NGROK_EXE to the full path.
+    goto :fail
+  )
+)
 if defined NGROK_AUTHTOKEN (
   echo Applying ngrok auth token...
   "%NGROK_CMD%" config add-authtoken %NGROK_AUTHTOKEN% >nul 2>&1
@@ -31,9 +44,14 @@ echo Launching ngrok tunnel (%NGROK_CMD% %NGROK_ARGS%)...
 start "5x5-ngrok" cmd /k "\"%NGROK_CMD%\" %NGROK_ARGS%"
 
 echo Waiting for ngrok to initialise...
-timeout /t 6 >nul
+set "TUNNEL_URL="
+for /L %%S in (1,1,15) do (
+  timeout /t 2 >nul
+  for /f "usebackq tokens=* delims=" %%I in (`powershell -NoLogo -NoProfile -Command "Try { $resp = Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:4040/api/tunnels'; ($resp.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1).public_url } Catch { '' }"`) do set "TUNNEL_URL=%%I"
+  if defined TUNNEL_URL goto :got_tunnel
+)
 
-for /f "usebackq tokens=* delims=" %%I in (`powershell -NoLogo -NoProfile -Command "Try { $resp = Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:4040/api/tunnels'; ($resp.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1).public_url } Catch { '' }"`) do set "TUNNEL_URL=%%I"
+:got_tunnel
 
 if defined TUNNEL_URL (
   set "WS_URL=!TUNNEL_URL:https://=wss://!"

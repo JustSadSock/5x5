@@ -98,6 +98,40 @@ function requestHandler(req, res) {
 const rooms = {};
 const ROOM_TIMEOUT_MS = 300000; // 5 minutes
 
+const primaryServers = new WeakMap();
+const signalServers = new WeakMap();
+const upgradeHandlers = new WeakMap();
+
+function ensureUpgradeHandler(server) {
+  if (upgradeHandlers.has(server)) return;
+  const handler = (req, socket, head) => {
+    let pathname = '/';
+    try {
+      pathname = new URL(req.url, 'http://localhost').pathname;
+    } catch (err) {}
+
+    if (pathname === '/p2p' && signalServers.has(server)) {
+      const target = signalServers.get(server);
+      target.handleUpgrade(req, socket, head, ws => {
+        target.emit('connection', ws, req);
+      });
+      return;
+    }
+
+    if (primaryServers.has(server)) {
+      const target = primaryServers.get(server);
+      target.handleUpgrade(req, socket, head, ws => {
+        target.emit('connection', ws, req);
+      });
+      return;
+    }
+
+    socket.destroy();
+  };
+  server.on('upgrade', handler);
+  upgradeHandlers.set(server, handler);
+}
+
 function removeFromRoom(ws) {
   const roomId = ws.roomId;
   if (!roomId) return;
@@ -158,8 +192,16 @@ const PING_INTERVAL_MS = 10000;
 const PING_TIMEOUT_MS = 30000;
 
 function attachWebSocketServer(server) {
-  const wss = new WebSocket.Server({ server });
+  if (primaryServers.has(server)) {
+    return primaryServers.get(server);
+  }
+
+  ensureUpgradeHandler(server);
+
+  const wss = new WebSocket.Server({ noServer: true, perMessageDeflate: false });
   wss.rooms = rooms;
+
+  primaryServers.set(server, wss);
 
   wss.pingInterval = setInterval(() => {
     wss.clients.forEach(client => {
@@ -293,7 +335,14 @@ function attachWebSocketServer(server) {
 // Simple WebRTC signaling server used for P2P mode
 const signalRooms = {};
 function attachSignalServer(server) {
-  const wss = new WebSocket.Server({ server, path: '/p2p' });
+  if (signalServers.has(server)) {
+    return signalServers.get(server);
+  }
+
+  ensureUpgradeHandler(server);
+
+  const wss = new WebSocket.Server({ noServer: true, perMessageDeflate: false });
+  signalServers.set(server, wss);
 
   wss.on('connection', ws => {
     ws.on('message', msg => {
@@ -325,7 +374,7 @@ function attachSignalServer(server) {
 }
 
 if (require.main === module) {
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || 3000;
   const server = http.createServer(requestHandler);
   attachWebSocketServer(server);
   attachSignalServer(server);
