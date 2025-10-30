@@ -9,10 +9,16 @@ let intentionalClose = false;
 let connectionWatchdog = null;
 let pendingRoomActionTimer = null;
 let pendingRoomAction = null;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
 
 const CONNECT_TIMEOUT_MS = 10000;
 const ROOM_ACTION_TIMEOUT_MS = 8000;
 const ROOM_CODE_PATTERN = /^[A-Z0-9]{4}$/;
+const RECONNECT_BASE_DELAY_MS = 2000;
+const RECONNECT_BACKOFF_FACTOR = 1.5;
+const RECONNECT_MAX_DELAY_MS = 20000;
+const LOG_LIMIT = 200;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
@@ -89,6 +95,18 @@ function clearPendingRoomAction(action) {
   }
 }
 
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function resetReconnectBackoff() {
+  reconnectAttempts = 0;
+  clearReconnectTimer();
+}
+
 function startRoomActionWatch(action) {
   clearPendingRoomAction();
   pendingRoomAction = action;
@@ -105,6 +123,7 @@ function cleanupRoom() {
     startRoundTimer = null;
   }
   clearPendingRoomAction();
+  resetReconnectBackoff();
   if (socket) {
     socket.removeEventListener('close', handleClose);
     socket.removeEventListener('message', handleMessage);
@@ -135,6 +154,7 @@ function initSocket(onReady) {
     if (onReady) socket.addEventListener('open', onReady, { once: true });
     return;
   }
+  clearReconnectTimer();
   socket = new WebSocket(addNgrokBypassParam(WS_SERVER_URL));
   updateConnectionStatus(t('connecting'), 'yellow', 'connecting');
   if (connectionWatchdog) clearTimeout(connectionWatchdog);
@@ -149,6 +169,7 @@ function initSocket(onReady) {
   }, CONNECT_TIMEOUT_MS);
   socket.addEventListener('open', () => {
     isConnected = true;
+    resetReconnectBackoff();
     if (connectionWatchdog) {
       clearTimeout(connectionWatchdog);
       connectionWatchdog = null;
@@ -194,7 +215,19 @@ function initSocket(onReady) {
       return;
     }
     updateConnectionStatus(t('reconnecting'), 'orange', 'reconnecting');
-    setTimeout(() => initSocket(), 2000);
+    clearReconnectTimer();
+    const attempt = Math.min(reconnectAttempts + 1, 20);
+    reconnectAttempts = attempt;
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(RECONNECT_BACKOFF_FACTOR, attempt - 1),
+      RECONNECT_MAX_DELAY_MS
+    );
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      if (!socket || socket.readyState === WebSocket.CLOSED) {
+        initSocket();
+      }
+    }, delay);
   };
   socket.addEventListener('close', handleClose);
   handleMessage = function handleMessage(event) {
@@ -332,7 +365,16 @@ function sendState(state) {
 
 function log(text) {
   const el = document.getElementById('log');
-  if (el) el.innerHTML += text + '<br>';
+  if (!el) return;
+  const entry = document.createElement('div');
+  entry.textContent = text;
+  el.appendChild(entry);
+  while (el.childNodes.length > LOG_LIMIT) {
+    el.removeChild(el.firstChild);
+  }
+  if (typeof el.scrollTop === 'number') {
+    el.scrollTop = el.scrollHeight;
+  }
 }
 
 function showConfirmMessage(text) {
