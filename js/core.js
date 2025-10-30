@@ -5,6 +5,10 @@ let canPlay = false;
 let isOnline = false;
 let soundVolume = parseFloat(localStorage.getItem('volume'));
 if (isNaN(soundVolume)) soundVolume = 1;
+soundVolume = Math.min(Math.max(soundVolume, 0), 1);
+const storedMuted = localStorage.getItem('soundMuted');
+let soundMuted = storedMuted === '1';
+if (storedMuted === null && soundVolume === 0) soundMuted = true;
 let replaySpeed = 1;
 let replayFrames = [];
 let replayIndex = 0;
@@ -190,6 +194,7 @@ function startNewRound() {
   let audioCtx;
 
   function playSound(type) {
+    if (soundMuted || soundVolume <= 0) return;
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -755,6 +760,7 @@ function startNewRound() {
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     const [aA, aB] = [plans.A[step - 1], plans.B[step - 1]];
+    const prevUnits = { A: { ...units.A }, B: { ...units.B } };
     const moved = { A: false, B: false };
     ['A', 'B'].forEach(pl => {
       const r = pl === 'A' ? aA : aB;
@@ -768,16 +774,18 @@ function startNewRound() {
           showDeath(nx, ny);
           playSound('death');
         } else {
-          units[pl].x = nx; units[pl].y = ny; playSound('move');
-          moved[pl] = true;
+          if (prevUnits[pl].x !== nx || prevUnits[pl].y !== ny) {
+            units[pl].x = nx; units[pl].y = ny;
+            playSound('move');
+            moved[pl] = true;
+          }
         }
       }
     });
     render();
     Object.keys(moved).forEach(pl => {
       if (moved[pl]) {
-        const el = document.querySelector(`#c${units[pl].x}${units[pl].y} .player${pl}`);
-        if (el) el.classList.add('moveAnim');
+        animateUnitMove(pl, prevUnits[pl]);
       }
     });
     ['A', 'B'].forEach(pl => {
@@ -844,6 +852,31 @@ function startNewRound() {
     updateUI();
   }
 
+  function animateUnitMove(player, prev) {
+    const current = units[player];
+    if (!current || !current.alive) return;
+    if (prev.x === current.x && prev.y === current.y) return;
+    const newCell = document.getElementById(`c${current.x}${current.y}`);
+    const oldCell = document.getElementById(`c${prev.x}${prev.y}`);
+    if (!newCell || !oldCell) return;
+    const unitEl = newCell.querySelector(player === 'A' ? '.playerA' : '.playerB');
+    if (!unitEl) return;
+    const fromRect = oldCell.getBoundingClientRect();
+    const toRect = newCell.getBoundingClientRect();
+    const dx = fromRect.left - toRect.left;
+    const dy = fromRect.top - toRect.top;
+    requestAnimationFrame(() => {
+      unitEl.style.setProperty('--fromX', `${dx}px`);
+      unitEl.style.setProperty('--fromY', `${dy}px`);
+      unitEl.classList.add('moveAnim');
+      unitEl.addEventListener('animationend', () => {
+        unitEl.classList.remove('moveAnim');
+        unitEl.style.removeProperty('--fromX');
+        unitEl.style.removeProperty('--fromY');
+      }, { once: true });
+    });
+  }
+
   function render() {
     if (!document.getElementById('c00')) return;
     document.querySelectorAll('.playerA,.playerB,.playerHalf').forEach(e => e.remove());
@@ -887,7 +920,12 @@ function startNewRound() {
       if (x === 0 || x === 4 || y === 0 || y === 4) {
         c.classList.remove('cracked');
         c.classList.add('collapse');
-        setTimeout(() => { c.classList.remove('collapse'); c.classList.add('lava'); }, 600);
+        c.classList.add('cell-shatter');
+        setTimeout(() => {
+          c.classList.remove('collapse');
+          c.classList.remove('cell-shatter');
+          c.classList.add('lava');
+        }, 600);
       }
     });
     ['A', 'B'].forEach(pl => {
@@ -1100,7 +1138,7 @@ function startNewRound() {
     });
     setTimeout(() => {
       document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
-    }, 500);
+    }, 700);
   }
 
   function showDeath(x, y) {
@@ -1109,6 +1147,8 @@ function startNewRound() {
     const ov = document.createElement('div');
     ov.className = 'death';
     cell.append(ov);
+    cell.classList.add('cell-shatter');
+    setTimeout(() => cell.classList.remove('cell-shatter'), 600);
   }
 
   function endReplay() {
@@ -1340,6 +1380,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
+  const volumeValue = document.getElementById('volumeValue');
+  const soundToggle = document.getElementById('soundToggle');
   const langSelect = document.getElementById('langSelect');
   const menuBtn = document.getElementById('menuBtn');
   const replayClose = document.getElementById('replayClose');
@@ -1355,13 +1397,51 @@ document.addEventListener('DOMContentLoaded', () => {
   if (settingsClose && settingsModal) {
     settingsClose.onclick = () => { settingsModal.style.display = 'none'; };
   }
+  const syncSoundControls = () => {
+    if (volumeSlider) {
+      volumeSlider.value = soundVolume;
+      volumeSlider.dataset.muted = soundMuted ? '1' : '0';
+    }
+    if (volumeValue) {
+      volumeValue.textContent = `${Math.round(soundVolume * 100)}%`;
+    }
+    if (soundToggle) {
+      soundToggle.checked = !soundMuted;
+    }
+  };
+
   if (volumeSlider) {
     volumeSlider.value = soundVolume;
-    volumeSlider.oninput = () => {
-      soundVolume = parseFloat(volumeSlider.value);
-      localStorage.setItem('volume', soundVolume);
-    };
+    volumeSlider.addEventListener('input', () => {
+      const parsed = parseFloat(volumeSlider.value);
+      if (!isNaN(parsed)) {
+        soundVolume = Math.min(Math.max(parsed, 0), 1);
+        localStorage.setItem('volume', soundVolume.toString());
+        if (soundVolume === 0) {
+          if (!soundMuted) {
+            soundMuted = true;
+            localStorage.setItem('soundMuted', '1');
+          }
+        } else if (soundMuted) {
+          soundMuted = false;
+          localStorage.setItem('soundMuted', '0');
+        }
+        syncSoundControls();
+      }
+    });
   }
+  if (soundToggle) {
+    soundToggle.checked = !soundMuted;
+    soundToggle.addEventListener('change', () => {
+      soundMuted = !soundToggle.checked;
+      localStorage.setItem('soundMuted', soundMuted ? '1' : '0');
+      syncSoundControls();
+      if (!soundMuted && soundVolume > 0) {
+        playSound('ui');
+      }
+    });
+  }
+  syncSoundControls();
   if (langSelect) {
     langSelect.dataset.value = window.i18n ? window.i18n.lang : 'en';
   }
