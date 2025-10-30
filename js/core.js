@@ -80,6 +80,13 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
+  let roundEventLog = [];
+  let lastRoundSummary = null;
+  let roundReportUnread = false;
+  let lastStepSummary = null;
+  let autoRoundReport = true;
+  const storedRoundReportPref = localStorage.getItem('roundReportAuto');
+  if (storedRoundReportPref === '0') autoRoundReport = false;
 
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -115,6 +122,12 @@ function startNewRound() {
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
+  const roundReportBtn = document.getElementById('roundReportBtn');
+  const roundReportPanel = document.getElementById('roundReportPanel');
+  const roundReportBody = document.getElementById('roundReportBody');
+  const roundReportClose = document.getElementById('roundReportClose');
+  const roundReportAutoToggle = document.getElementById('roundReportAutoToggle');
+  const roundReportTitleEl = document.getElementById('roundReportTitle');
   const tutorialScript = [
     { trigger: 'start', key: 'tutorial1' },
     { trigger: 'afterMove', key: 'tutorial2' },
@@ -149,6 +162,182 @@ function startNewRound() {
     if (attackCancelBtn) attackCancelBtn.onclick = null;
   }
 
+  function updateRoundReportButton() {
+    if (!roundReportBtn) return;
+    roundReportBtn.disabled = !lastRoundSummary;
+    roundReportBtn.classList.toggle('has-unread', Boolean(lastRoundSummary && roundReportUnread));
+  }
+
+  function hideRoundReport(resetUnread) {
+    if (!roundReportPanel) return;
+    roundReportPanel.classList.remove('show');
+    roundReportPanel.setAttribute('aria-hidden', 'true');
+    if (resetUnread) {
+      roundReportUnread = false;
+      updateRoundReportButton();
+    }
+  }
+
+  function formatCell(cell) {
+    if (!cell) return '';
+    const cx = typeof cell.x === 'number' ? cell.x : 0;
+    const cy = typeof cell.y === 'number' ? cell.y : 0;
+    return `(${cx + 1}, ${cy + 1})`;
+  }
+
+  function playerName(pl) {
+    return pl === 'A' ? t('playerA') : t('playerB');
+  }
+
+  function describeAttackDirs(dirs) {
+    if (!Array.isArray(dirs) || !dirs.length) {
+      return t('roundReportCenter');
+    }
+    const dirLabels = dirs.map(d => t(`dir_${d}`)).join(t('roundReportDirsJoin'));
+    return `${t('roundReportCenter')} + ${dirLabels}`;
+  }
+
+  function formatPlayerEvents(playerKey, info) {
+    const lines = [];
+    if (!info || !Array.isArray(info.events)) return lines;
+    info.events.forEach(evt => {
+      switch (evt.type) {
+        case 'inactive':
+          lines.push(t('roundReportEliminatedEarlier'));
+          break;
+        case 'move':
+          lines.push(t('roundReportMoved', {
+            dir: t(`dir_${evt.dir}`),
+            cell: formatCell(evt.to || info.endCell)
+          }));
+          break;
+        case 'wait':
+          lines.push(t('roundReportHeld', { cell: formatCell(evt.at || info.endCell) }));
+          break;
+        case 'attack':
+          lines.push(t('roundReportAttack', { dirs: describeAttackDirs(evt.dirs || []) }));
+          break;
+        case 'shield': {
+          const blocks = Array.isArray(evt.blocks) ? evt.blocks : [];
+          if (evt.blocked && blocks.length) {
+            blocks.forEach(block => {
+              lines.push(t('roundReportShieldBlocked', {
+                player: playerName(block.source || (playerKey === 'A' ? 'B' : 'A')),
+                cell: formatCell(block.cell || info.endCell)
+              }));
+            });
+          } else {
+            lines.push(t('roundReportShieldReady'));
+          }
+          break;
+        }
+        case 'damage':
+          if (evt.cause === 'attack') {
+            lines.push(t('roundReportDamageAttack', {
+              cell: formatCell(evt.cell || info.endCell),
+              player: playerName(evt.source || (playerKey === 'A' ? 'B' : 'A'))
+            }));
+          } else if (evt.cause === 'collapse') {
+            lines.push(t('roundReportDamageCollapse', {
+              cell: formatCell(evt.cell || info.endCell)
+            }));
+          }
+          break;
+        default:
+          break;
+      }
+    });
+    return lines;
+  }
+
+  function buildRoundSummary(roundNumber) {
+    const steps = roundEventLog.map(entry => {
+      const players = ['A', 'B'].map(pl => {
+        const info = entry.perPlayer[pl];
+        const events = formatPlayerEvents(pl, info);
+        return {
+          key: pl,
+          name: playerName(pl),
+          events,
+          info
+        };
+      });
+      return {
+        step: entry.step,
+        players
+      };
+    });
+    return { round: roundNumber, steps };
+  }
+
+  function renderRoundReport(summary) {
+    if (!roundReportBody) return;
+    roundReportBody.innerHTML = '';
+    if (!summary || !summary.steps || !summary.steps.length) {
+      const empty = document.createElement('div');
+      empty.className = 'roundReportEmpty';
+      empty.textContent = t('roundReportEmpty');
+      roundReportBody.append(empty);
+      if (roundReportTitleEl) {
+        roundReportTitleEl.textContent = t('roundReportTitle');
+      }
+      return;
+    }
+    if (roundReportTitleEl) {
+      roundReportTitleEl.textContent = `${t('roundReportTitle')} · ${t('round')} ${summary.round}`;
+    }
+    summary.steps.forEach(stepInfo => {
+      const stepEl = document.createElement('div');
+      stepEl.className = 'roundReportStep';
+      const stepTitle = document.createElement('h4');
+      stepTitle.textContent = t('roundReportStep', { step: stepInfo.step });
+      stepEl.append(stepTitle);
+      const playersWrap = document.createElement('div');
+      playersWrap.className = 'roundReportPlayers';
+      stepInfo.players.forEach(player => {
+        const playerEl = document.createElement('div');
+        playerEl.className = 'roundReportPlayer';
+        const name = document.createElement('h5');
+        name.textContent = player.name;
+        playerEl.append(name);
+        const list = document.createElement('ul');
+        player.events.forEach(text => {
+          const li = document.createElement('li');
+          li.textContent = text;
+          list.append(li);
+        });
+        playerEl.append(list);
+        playersWrap.append(playerEl);
+      });
+      stepEl.append(playersWrap);
+      roundReportBody.append(stepEl);
+    });
+  }
+
+  function showRoundReport(summary, autoOpen = false) {
+    if (!roundReportPanel || !summary) return;
+    renderRoundReport(summary);
+    roundReportPanel.classList.add('show');
+    roundReportPanel.setAttribute('aria-hidden', 'false');
+    roundReportUnread = false;
+    updateRoundReportButton();
+    if (roundReportAutoToggle) {
+      roundReportAutoToggle.checked = autoRoundReport;
+    }
+    if (!autoOpen && roundReportClose) {
+      roundReportClose.focus();
+    }
+  }
+
+  window.refreshRoundReport = function() {
+    if (roundReportPanel && roundReportPanel.classList.contains('show')) {
+      const summary = lastRoundSummary || buildRoundSummary(round);
+      showRoundReport(summary, true);
+    } else if (lastRoundSummary && roundReportTitleEl) {
+      renderRoundReport(lastRoundSummary);
+    }
+  };
+
   function positionAttackOverlay() {
     if (!atkOv || !gameArea || !attackAnchorCell) return;
     const hostRect = gameArea.getBoundingClientRect();
@@ -165,9 +354,7 @@ function startNewRound() {
       if (tutorialProgress) {
         const total = tutorialScript.length;
         const current = Math.min(tutorialIndex + 1, total);
-        tutorialProgress.textContent = t('tutorialStepLabel')
-          .replace('{current}', current)
-          .replace('{total}', total);
+        tutorialProgress.textContent = t('tutorialStepLabel', { current, total });
       }
       if (tutorialHint) tutorialHint.textContent = t('tutorialNextHint');
       tutOv.classList.add('show');
@@ -282,6 +469,36 @@ function startNewRound() {
       applyTheme(next);
     });
   }
+
+  if (roundReportBtn) {
+    roundReportBtn.addEventListener('click', () => {
+      if (!lastRoundSummary) return;
+      showRoundReport(lastRoundSummary);
+    });
+  }
+  if (roundReportClose) {
+    roundReportClose.addEventListener('click', () => hideRoundReport(true));
+  }
+  if (roundReportPanel) {
+    roundReportPanel.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        hideRoundReport(true);
+      }
+    });
+  }
+  if (roundReportAutoToggle) {
+    roundReportAutoToggle.checked = autoRoundReport;
+    roundReportAutoToggle.addEventListener('change', () => {
+      autoRoundReport = roundReportAutoToggle.checked;
+      try {
+        localStorage.setItem('roundReportAuto', autoRoundReport ? '1' : '0');
+      } catch (err) {
+        /* ignore storage errors */
+      }
+    });
+  }
+  updateRoundReportButton();
 
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
@@ -809,69 +1026,190 @@ function startNewRound() {
   function execStep() {
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
-    const [aA, aB] = [plans.A[step - 1], plans.B[step - 1]];
+    const actions = { A: plans.A[step - 1], B: plans.B[step - 1] };
     const prevUnits = { A: { ...units.A }, B: { ...units.B } };
+    const executedStep = step;
+    const stepSummary = {
+      step: executedStep,
+      perPlayer: {
+        A: {
+          action: actions.A,
+          events: [],
+          startedAlive: prevUnits.A.alive,
+          endAlive: prevUnits.A.alive,
+          startCell: { x: prevUnits.A.x, y: prevUnits.A.y },
+          endCell: { x: prevUnits.A.x, y: prevUnits.A.y }
+        },
+        B: {
+          action: actions.B,
+          events: [],
+          startedAlive: prevUnits.B.alive,
+          endAlive: prevUnits.B.alive,
+          startCell: { x: prevUnits.B.x, y: prevUnits.B.y },
+          endCell: { x: prevUnits.B.x, y: prevUnits.B.y }
+        }
+      }
+    };
+    lastStepSummary = stepSummary;
+
+    const ensureShieldEvent = info => {
+      let shieldEvt = info.events.find(evt => evt.type === 'shield');
+      if (!shieldEvt) {
+        shieldEvt = { type: 'shield', blocked: false, blocks: [], cell: { ...info.endCell } };
+        info.events.push(shieldEvt);
+      }
+      if (!Array.isArray(shieldEvt.blocks)) shieldEvt.blocks = [];
+      return shieldEvt;
+    };
+
+    ['A', 'B'].forEach(pl => {
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) {
+        info.events.push({ type: 'inactive', cell: { ...info.startCell } });
+        return;
+      }
+      const act = actions[pl];
+      if (act === 'shield') {
+        info.events.push({ type: 'shield', blocked: false, blocks: [], cell: { ...info.startCell } });
+      } else if (typeof act === 'object') {
+        info.events.push({ type: 'attack', dirs: Array.isArray(act.dirs) ? act.dirs.slice() : [] });
+      }
+    });
+
     const moved = { A: false, B: false };
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB;
-      if (typeof r === 'string' && DXY[r]) {
-        let nx = units[pl].x + DXY[r][0];
-        let ny = units[pl].y + DXY[r][1];
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) return;
+      const act = actions[pl];
+      if (typeof act === 'string' && DXY[act]) {
+        let nx = units[pl].x + DXY[act][0];
+        let ny = units[pl].y + DXY[act][1];
         nx = Math.max(0, Math.min(4, nx));
         ny = Math.max(0, Math.min(4, ny));
         if (edgesCollapsed && (nx === 0 || nx === 4 || ny === 0 || ny === 4)) {
+          info.events.push({ type: 'damage', cause: 'collapse', cell: { x: nx, y: ny }, attemptedMove: act });
+          info.endAlive = false;
           units[pl].alive = false;
           showDeath(nx, ny);
           playSound('death');
         } else {
           if (prevUnits[pl].x !== nx || prevUnits[pl].y !== ny) {
-            units[pl].x = nx; units[pl].y = ny;
+            info.events.push({ type: 'move', dir: act, from: { ...prevUnits[pl] }, to: { x: nx, y: ny } });
+            units[pl].x = nx;
+            units[pl].y = ny;
+            info.endCell = { x: nx, y: ny };
             playSound('move');
             moved[pl] = true;
           }
         }
       }
     });
+
     render();
     Object.keys(moved).forEach(pl => {
       if (moved[pl]) {
         animateUnitMove(pl, prevUnits[pl]);
       }
     });
+
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB, other = pl === 'A' ? 'B' : 'A';
-      if (typeof r === 'object') {
-        const u = units[pl], tx = u.x, ty = u.y;
-        const sh = plans[other][step - 1] === 'shield';
-        const cellS = document.getElementById(`c${tx}${ty}`), ovS = document.createElement('div');
-        ovS.className = 'attack'; cellS.append(ovS);
-        if (!sh && units[other].x === tx && units[other].y === ty) {
-          units[other].alive = false;
-          showDeath(tx, ty);
-          playSound('death');
+      const info = stepSummary.perPlayer[pl];
+      if (info.startedAlive) {
+        info.endCell = { x: units[pl].x, y: units[pl].y };
+      }
+    });
+
+    ['A', 'B'].forEach(pl => {
+      const act = actions[pl];
+      const other = pl === 'A' ? 'B' : 'A';
+      if (typeof act === 'object') {
+        const u = units[pl];
+        const tx = u.x;
+        const ty = u.y;
+        const otherInfo = stepSummary.perPlayer[other];
+        const sh = actions[other] === 'shield';
+        const cellS = document.getElementById(`c${tx}${ty}`);
+        if (cellS) {
+          const ovS = document.createElement('div');
+          ovS.className = 'attack';
+          cellS.append(ovS);
         }
-        r.dirs.forEach(d => {
-          const [dx, dy] = DXY[d], nx = tx + dx, ny = ty + dy;
-          if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
-          const cell2 = document.getElementById(`c${nx}${ny}`), ov2 = document.createElement('div');
-          ov2.className = 'attack'; cell2.append(ov2);
-          if (!sh && units[other].x === nx && units[other].y === ny) {
+        if (units[other].x === tx && units[other].y === ty && units[other].alive) {
+          if (sh && otherInfo.startedAlive) {
+            const shieldEvt = ensureShieldEvent(otherInfo);
+            shieldEvt.blocked = true;
+            shieldEvt.blocks.push({ source: pl, cell: { x: tx, y: ty } });
+          } else {
             units[other].alive = false;
-            showDeath(nx, ny);
+            otherInfo.events.push({ type: 'damage', cause: 'attack', source: pl, cell: { x: tx, y: ty } });
+            otherInfo.endAlive = false;
+            showDeath(tx, ty);
             playSound('death');
           }
-        });
+        }
+        if (Array.isArray(act.dirs)) {
+          act.dirs.forEach(d => {
+            const delta = DXY[d];
+            if (!delta) return;
+            const nx = tx + delta[0];
+            const ny = ty + delta[1];
+            if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
+            const cell2 = document.getElementById(`c${nx}${ny}`);
+            if (cell2) {
+              const ov2 = document.createElement('div');
+              ov2.className = 'attack';
+              cell2.append(ov2);
+            }
+            if (units[other].alive && units[other].x === nx && units[other].y === ny) {
+              if (sh && otherInfo.startedAlive) {
+                const shieldEvt = ensureShieldEvent(otherInfo);
+                shieldEvt.blocked = true;
+                shieldEvt.blocks.push({ source: pl, cell: { x: nx, y: ny } });
+              } else {
+                units[other].alive = false;
+                otherInfo.events.push({ type: 'damage', cause: 'attack', source: pl, cell: { x: nx, y: ny } });
+                otherInfo.endAlive = false;
+                showDeath(nx, ny);
+                playSound('death');
+              }
+            }
+          });
+        }
         playSound('attack');
       }
     });
+
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB;
-      if (r === 'shield') {
-        const u = units[pl], ov = document.createElement('div');
-        ov.className = 'shield'; document.getElementById(`c${u.x}${u.y}`).append(ov);
+      const act = actions[pl];
+      if (act === 'shield' && units[pl].alive) {
+        const u = units[pl];
+        const cell = document.getElementById(`c${u.x}${u.y}`);
+        if (cell) {
+          const ov = document.createElement('div');
+          ov.className = 'shield';
+          cell.append(ov);
+        }
         playSound('shield');
       }
     });
+
+    ['A', 'B'].forEach(pl => {
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) return;
+      info.endAlive = units[pl].alive;
+      info.endCell = { x: units[pl].x, y: units[pl].y };
+      const hasMoveOrDamage = info.events.some(evt => evt.type === 'move' || evt.type === 'damage');
+      if (!hasMoveOrDamage) {
+        info.events.push({ type: 'wait', at: { ...info.endCell } });
+      }
+      const shieldEvt = info.events.find(evt => evt.type === 'shield');
+      if (shieldEvt) {
+        shieldEvt.cell = { ...info.endCell };
+      }
+    });
+
+    roundEventLog.push(stepSummary);
+
     render();
     recordState();
 
@@ -984,6 +1322,13 @@ function startNewRound() {
         u.alive = false;
         showDeath(u.x, u.y);
         playSound('death');
+        if (lastStepSummary && lastStepSummary.perPlayer && lastStepSummary.perPlayer[pl]) {
+          const info = lastStepSummary.perPlayer[pl];
+          info.events = info.events.filter(evt => evt.type !== 'wait');
+          info.events.push({ type: 'damage', cause: 'collapse', cell: { x: u.x, y: u.y } });
+          info.endAlive = false;
+          info.endCell = { x: u.x, y: u.y };
+        }
       }
     });
     render();
@@ -1004,6 +1349,8 @@ function startNewRound() {
   }
 
   function startRecordingRound() {
+    roundEventLog = [];
+    lastStepSummary = null;
     currentReplay = {
       actions: {
         A: JSON.parse(JSON.stringify(plans.A)),
@@ -1021,6 +1368,20 @@ function startNewRound() {
       replayHistory.push(currentReplay);
       currentReplay = null;
     }
+    const summary = buildRoundSummary(round);
+    if (summary.steps.length || roundEventLog.length) {
+      lastRoundSummary = summary;
+      const panelOpen = roundReportPanel && roundReportPanel.classList.contains('show');
+      const shouldShow = autoRoundReport || panelOpen;
+      if (shouldShow) {
+        showRoundReport(summary, true);
+      } else {
+        roundReportUnread = true;
+      }
+    }
+    updateRoundReportButton();
+    roundEventLog = [];
+    lastStepSummary = null;
     updateReplayButton();
   }
 
@@ -1308,6 +1669,8 @@ function startNewRound() {
     simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
+    roundEventLog = [];
+    lastStepSummary = null;
     resetOnlineFlags();
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
@@ -1392,6 +1755,7 @@ function startNewRound() {
   function returnToMenu() {
     resetGame();
     hideAttackOverlay();
+    hideRoundReport(false);
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();

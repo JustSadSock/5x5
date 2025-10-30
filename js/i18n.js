@@ -48,6 +48,26 @@
       replaySaved: 'Replay saved!',
       replaySaveFailed: 'Unable to save replay.',
       saveVideo: 'Save video',
+      roundReportTitle: 'Round analysis',
+      roundReportButton: 'Round report',
+      roundReportAutoLabel: 'Show automatically',
+      roundReportEmpty: 'No actions recorded this round.',
+      roundReportStep: 'Step {step}',
+      roundReportMoved: 'Moved {dir} to {cell}',
+      roundReportHeld: 'Held position at {cell}',
+      roundReportAttack: 'Attacked {dirs}',
+      roundReportShieldReady: 'Raised shield',
+      roundReportShieldBlocked: 'Shield blocked attack from {player} at {cell}',
+      roundReportDamageAttack: 'Defeated at {cell} by {player}',
+      roundReportDamageCollapse: 'Eliminated by collapse at {cell}',
+      roundReportEliminatedEarlier: 'Eliminated earlier',
+      roundReportCenter: 'center',
+      roundReportDirsJoin: ', ',
+      roundReportDirsNone: 'no directions',
+      dir_up: 'up',
+      dir_down: 'down',
+      dir_left: 'left',
+      dir_right: 'right',
       opponent_left_room: 'Opponent left the room',
       create_new: 'Create new',
       offline: 'Offline',
@@ -153,6 +173,26 @@
       replaySaved: 'Повтор сохранён!',
       replaySaveFailed: 'Не удалось сохранить повтор.',
       saveVideo: 'Сохранить видео',
+      roundReportTitle: 'Анализ раунда',
+      roundReportButton: 'Анализ раунда',
+      roundReportAutoLabel: 'Показывать автоматически',
+      roundReportEmpty: 'В этом раунде не было действий.',
+      roundReportStep: 'Шаг {step}',
+      roundReportMoved: 'Переместился {dir} к {cell}',
+      roundReportHeld: 'Остался на позиции {cell}',
+      roundReportAttack: 'Атаковал: {dirs}',
+      roundReportShieldReady: 'Поднял щит',
+      roundReportShieldBlocked: 'Щит заблокировал атаку от {player} на {cell}',
+      roundReportDamageAttack: 'Поражение на {cell} от {player}',
+      roundReportDamageCollapse: 'Погиб из-за обвала на {cell}',
+      roundReportEliminatedEarlier: 'Уничтожен ранее',
+      roundReportCenter: 'центр',
+      roundReportDirsJoin: ', ',
+      roundReportDirsNone: 'без направлений',
+      dir_up: 'вверх',
+      dir_down: 'вниз',
+      dir_left: 'влево',
+      dir_right: 'вправо',
       opponent_left_room: 'Оппонент покинул комнату',
       create_new: 'Создать новую',
       offline: 'Оффлайн',
@@ -258,6 +298,26 @@
       replaySaved: 'Повтор збережено!',
       replaySaveFailed: 'Не вдалося зберегти повтор.',
       saveVideo: 'Зберегти відео',
+      roundReportTitle: 'Аналіз раунду',
+      roundReportButton: 'Аналіз раунду',
+      roundReportAutoLabel: 'Показувати автоматично',
+      roundReportEmpty: 'У цьому раунді не було дій.',
+      roundReportStep: 'Крок {step}',
+      roundReportMoved: 'Пересунувся {dir} до {cell}',
+      roundReportHeld: 'Залишився на позиції {cell}',
+      roundReportAttack: 'Атакував: {dirs}',
+      roundReportShieldReady: 'Підняв щит',
+      roundReportShieldBlocked: 'Щит зупинив атаку від {player} на {cell}',
+      roundReportDamageAttack: 'Поразка на {cell} від {player}',
+      roundReportDamageCollapse: 'Знищено обвалом на {cell}',
+      roundReportEliminatedEarlier: 'Знищено раніше',
+      roundReportCenter: 'центр',
+      roundReportDirsJoin: ', ',
+      roundReportDirsNone: 'без напрямів',
+      dir_up: 'вгору',
+      dir_down: 'вниз',
+      dir_left: 'вліво',
+      dir_right: 'вправо',
       opponent_left_room: 'Опонент покинув кімнату',
       create_new: 'Створити нову',
       offline: 'Офлайн',
@@ -328,8 +388,17 @@
     document.body.classList.add('lang-' + currentLang);
   }
 
-  function t(key) {
-    return translations[currentLang][key] || translations.en[key] || key;
+  function t(key, params) {
+    let str = (translations[currentLang] && translations[currentLang][key])
+      ?? (translations.en && translations.en[key])
+      ?? key;
+    if (params && typeof str === 'string') {
+      Object.keys(params).forEach(param => {
+        const value = params[param];
+        str = str.replace(new RegExp(`\\{${param}\\}`, 'g'), value);
+      });
+    }
+    return str;
   }
 
   function applyTranslations() {
@@ -349,6 +418,9 @@
       const key = el.getAttribute('data-i18n-aria');
       el.setAttribute('aria-label', t(key));
     });
+    if (typeof window.refreshRoundReport === 'function') {
+      window.refreshRoundReport();
+    }
   }
 
   function setLang(lang) {

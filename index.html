@@ -936,6 +936,20 @@
       align-items:center;
       gap:12px;
     }
+    #roundReportBtn {
+      position:relative;
+    }
+    #roundReportBtn.has-unread::after {
+      content:'';
+      position:absolute;
+      top:6px;
+      right:6px;
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:var(--color-accent);
+      box-shadow:0 0 8px rgba(14,165,233,0.6);
+    }
     #scoreboard .scoreboard-actions {
       flex-wrap:wrap;
       justify-content:center;
@@ -984,9 +998,107 @@
     }
     #replayBtn:hover { background:var(--color-accent-strong); }
     #themeToggle { font-size:18px; }
+    #roundReportPanel {
+      position:fixed;
+      right:24px;
+      bottom:100px;
+      width:320px;
+      max-width:calc(100% - 32px);
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:16px;
+      box-shadow:0 20px 40px rgba(15,23,42,0.35);
+      padding:18px 20px 16px;
+      display:none;
+      gap:12px;
+      flex-direction:column;
+      z-index:1200;
+    }
+    #roundReportPanel.show { display:flex; }
+    #roundReportPanel header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    #roundReportPanel header h3 {
+      font-size:18px;
+      font-weight:700;
+      color:var(--color-heading);
+    }
+    #roundReportClose {
+      width:32px;
+      height:32px;
+      border-radius:8px;
+      font-size:18px;
+    }
+    #roundReportBody {
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      max-height:240px;
+      overflow:auto;
+      padding-right:4px;
+    }
+    .roundReportStep {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background:var(--color-surface-alt);
+      border:1px solid var(--color-border);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .roundReportStep h4 {
+      font-size:14px;
+      font-weight:600;
+      color:var(--color-heading);
+    }
+    .roundReportPlayers {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+    }
+    .roundReportPlayer {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .roundReportPlayer h5 {
+      font-size:13px;
+      font-weight:600;
+      color:var(--color-accent);
+    }
+    .roundReportPlayer ul {
+      list-style:disc;
+      padding-left:18px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:13px;
+      color:var(--color-text-muted);
+    }
+    .roundReportEmpty {
+      font-size:14px;
+      color:var(--color-text-muted);
+      text-align:center;
+      padding:12px 0 4px;
+    }
+    .roundReportAuto {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      color:var(--color-text-muted);
+    }
+    .roundReportAuto input {
+      width:16px;
+      height:16px;
+    }
     #scoreboard #scoreReset,
     #scoreboard #menuBtn,
-    #scoreboard #replayBtn {
+    #scoreboard #replayBtn,
+    #scoreboard #roundReportBtn {
       border:none;
     }
 
@@ -1199,6 +1311,19 @@
       #board { margin-top:60px; }
     }
 
+    @media (max-width: 720px) {
+      #roundReportPanel {
+        right:16px;
+        left:16px;
+        bottom:120px;
+        width:auto;
+        max-height:50vh;
+      }
+      .roundReportPlayers {
+        grid-template-columns:1fr;
+      }
+    }
+
     /* Адаптивные правки */
     @media (max-width: 540px) {
       #scoreboard {
@@ -1331,6 +1456,7 @@
     <div class="scoreboard-actions">
       <button id="scoreReset" data-i18n="resetScore" data-sound="nav">Сбросить счёт</button>
       <button id="replayBtn" data-i18n="replay" data-sound="nav" style="display:none;">Повтор</button>
+      <button id="roundReportBtn" data-i18n="roundReportButton" data-sound="nav" disabled>Анализ раунда</button>
       <button id="menuBtn" data-i18n="toMenu" data-sound="nav">В меню</button>
     </div>
     <div class="scoreboard-quick">
@@ -1438,6 +1564,17 @@
   </div>
 
   <div id="confirmToast"></div>
+  <div id="roundReportPanel" aria-hidden="true" role="dialog" aria-modal="false" aria-labelledby="roundReportTitle">
+    <header>
+      <h3 id="roundReportTitle" data-i18n="roundReportTitle">Анализ раунда</h3>
+      <button id="roundReportClose" data-i18n="close" data-sound="nav">Закрыть</button>
+    </header>
+    <div id="roundReportBody" role="document"></div>
+    <label class="roundReportAuto">
+      <input type="checkbox" id="roundReportAutoToggle">
+      <span data-i18n="roundReportAutoLabel">Показывать автоматически</span>
+    </label>
+  </div>
   <div id="replayOverlay">
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
     <button id="saveReplay" data-i18n="saveVideo" data-sound="nav" style="right:90px;top:10px;position:absolute;">Save</button>
