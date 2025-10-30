@@ -16,6 +16,8 @@ let replayTimer = null;
 let replayPaused = false;
 let recorder = null;
 let recordedChunks = [];
+let attackMode = false;
+let attackModeOwner = null;
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
@@ -27,7 +29,7 @@ function placeSymbol(x, y, who) {
 }
 
 function onCellClick(x, y) {
-  if (atkOv && atkOv.style.visibility === 'visible') return;
+  if (attackMode) return;
   if (!canPlay) return;
   if (localMoves.length >= 5) return;
   localMoves.push({ x, y });
@@ -113,9 +115,12 @@ function startNewRound() {
   const planCells = [...Array(STEPS)].map((_, i) => document.getElementById('pc' + i));
   const planValues = planCells.map(cell => cell ? cell.querySelector('.planStepValue') : null);
   const acts = Array.from(document.querySelectorAll('#actions button'));
+  const actionGrid = document.getElementById('actions');
+  const moveButtons = acts.filter(b => DXY[b.dataset.act]);
+  const attackButton = acts.find(b => b.dataset.act === 'attack');
+  const shieldButton = acts.find(b => b.dataset.act === 'shield');
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
-  const atkOv = document.getElementById('atkOverlay');
   const attackConfirmBar = document.getElementById('attackConfirmBar');
   const attackConfirmBtn = document.getElementById('attackConfirm');
   const attackCancelBtn = document.getElementById('attackCancel');
@@ -134,7 +139,6 @@ function startNewRound() {
     { trigger: 'afterConfirm', key: 'tutorial3' }
   ];
   const themeToggle = document.getElementById('themeToggle');
-  let attackAnchorCell = null;
   let pendingAttackDirs = [];
 
   function resetOnlineFlags() {
@@ -144,22 +148,38 @@ function startNewRound() {
   }
 
   function clearAttackButtons() {
-    if (!atkOv) return;
-    atkOv.querySelectorAll('button').forEach(btn => btn.remove());
+    pendingAttackDirs = [];
+    moveButtons.forEach(btn => {
+      btn.classList.remove('attack-selected', 'attack-disabled');
+      btn.disabled = false;
+    });
+    if (actionGrid) {
+      actionGrid.classList.remove('attack-mode');
+    }
   }
 
-  function hideAttackOverlay() {
-    if (!atkOv) return;
+  function hideAttackOverlay(options = {}) {
+    attackMode = false;
+    attackModeOwner = null;
     clearAttackButtons();
-    atkOv.style.visibility = 'hidden';
-    attackAnchorCell = null;
     pendingAttackDirs = [];
+    if (attackButton) {
+      attackButton.classList.remove('blocked');
+      attackButton.disabled = false;
+    }
+    if (shieldButton) {
+      shieldButton.classList.remove('blocked');
+      shieldButton.disabled = false;
+    }
     if (attackConfirmBar) {
       attackConfirmBar.classList.remove('show');
       attackConfirmBar.setAttribute('aria-hidden', 'true');
     }
     if (attackConfirmBtn) attackConfirmBtn.onclick = null;
     if (attackCancelBtn) attackCancelBtn.onclick = null;
+    if (!options || !options.silent) {
+      updateUI();
+    }
   }
 
   function updateRoundReportButton() {
@@ -337,14 +357,6 @@ function startNewRound() {
       renderRoundReport(lastRoundSummary);
     }
   };
-
-  function positionAttackOverlay() {
-    if (!atkOv || !gameArea || !attackAnchorCell) return;
-    const hostRect = gameArea.getBoundingClientRect();
-    const cellRect = attackAnchorCell.getBoundingClientRect();
-    atkOv.style.left = `${cellRect.left - hostRect.left + cellRect.width / 2}px`;
-    atkOv.style.top = `${cellRect.top - hostRect.top + cellRect.height / 2}px`;
-  }
 
   function showTutorial(event) {
     if (!isTutorial) return;
@@ -577,10 +589,17 @@ function startNewRound() {
   function bindUI() {
     acts.forEach(b => {
       b.onclick = () => {
-        if (atkOv && atkOv.style.visibility === 'visible') return;
-        const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
-        if (phase === 'execute' || plans[P].length >= STEPS) return;
         const act = b.dataset.act;
+        const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
+        if (attackMode) {
+          if (attackModeOwner && attackModeOwner !== P) return;
+          if (!DXY[act]) return;
+          if (b.disabled || b.classList.contains('attack-disabled')) return;
+          toggleAttackDirection(act);
+          return;
+        }
+        if (b.disabled) return;
+        if (phase === 'execute' || plans[P].length >= STEPS) return;
         if (DXY[act] && usedAtkDirs[P].has(act)) return;
         if (act === 'attack' && usedAtk[P] >= 1) return;
         if (act === 'shield' && usedShield[P] >= 1) return;
@@ -588,20 +607,28 @@ function startNewRound() {
       };
     });
     btnDel.onclick = () => {
-      if (atkOv && atkOv.style.visibility === 'visible') return;
+      if (attackMode) return;
       if (phase.startsWith('plan')) deleteLast();
     };
     btnNext.onclick = () => {
-      if (atkOv && atkOv.style.visibility === 'visible') return;
+      if (attackMode) return;
       nextStep();
     };
 
     document.addEventListener('keydown', e => {
-      if (atkOv && atkOv.style.visibility === 'visible') {
+      if (attackMode) {
         if (e.key === 'Escape' && attackCancelBtn && typeof attackCancelBtn.onclick === 'function') {
           attackCancelBtn.click();
+          e.preventDefault();
+          return;
         }
-        return;
+        const attackMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+        if (attackMap[e.key]) {
+          const btn = moveButtons.find(x => x.dataset.act === attackMap[e.key]);
+          if (btn && !btn.disabled && !btn.classList.contains('attack-disabled')) btn.click();
+          e.preventDefault();
+          return;
+        }
       }
       const map = {
         ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
@@ -619,43 +646,30 @@ function startNewRound() {
     });
   }
 
-  window.addEventListener('resize', () => {
-    if (atkOv && atkOv.style.visibility === 'visible') positionAttackOverlay();
-  });
-
   function openAttack(P) {
-    if (!atkOv) return;
     clearAttackButtons();
-    if (!atkOv.querySelector('.ring')) {
-      const ring = document.createElement('div');
-      ring.className = 'ring';
-      atkOv.prepend(ring);
-    }
-    const cell = document.getElementById(`c${simPos[P].x}${simPos[P].y}`);
-    if (!cell) return;
-    attackAnchorCell = cell;
+    attackMode = true;
+    attackModeOwner = P;
     pendingAttackDirs = [];
-    ['up', 'right', 'down', 'left'].forEach(d => {
-      const btn = document.createElement('button');
-      btn.className = d;
-      btn.textContent = { up: '▲', down: '▼', left: '◀', right: '▶' }[d];
-      if (usedMove[P].has(d)) {
-        btn.disabled = true;
-      } else {
-        btn.onclick = () => {
-          if (pendingAttackDirs.includes(d)) {
-            pendingAttackDirs = pendingAttackDirs.filter(x => x !== d);
-            btn.classList.remove('sel');
-          } else {
-            pendingAttackDirs.push(d);
-            btn.classList.add('sel');
-          }
-        };
-      }
-      atkOv.append(btn);
+    if (actionGrid) {
+      actionGrid.classList.add('attack-mode');
+    }
+    moveButtons.forEach(btn => {
+      const dir = btn.dataset.act;
+      if (!DXY[dir]) return;
+      const locked = usedMove[P].has(dir);
+      btn.disabled = locked;
+      btn.classList.toggle('attack-disabled', locked);
+      btn.classList.remove('attack-selected');
     });
-    positionAttackOverlay();
-    atkOv.style.visibility = 'visible';
+    if (attackButton) {
+      attackButton.disabled = true;
+      attackButton.classList.add('blocked');
+    }
+    if (shieldButton) {
+      shieldButton.disabled = true;
+      shieldButton.classList.add('blocked');
+    }
     if (attackConfirmBar) {
       attackConfirmBar.classList.add('show');
       attackConfirmBar.setAttribute('aria-hidden', 'false');
@@ -674,6 +688,19 @@ function startNewRound() {
       attackCancelBtn.onclick = () => {
         hideAttackOverlay();
       };
+    }
+  }
+
+  function toggleAttackDirection(dir) {
+    if (!attackMode) return;
+    const btn = moveButtons.find(b => b.dataset.act === dir);
+    if (!btn || btn.disabled || btn.classList.contains('attack-disabled')) return;
+    if (pendingAttackDirs.includes(dir)) {
+      pendingAttackDirs = pendingAttackDirs.filter(x => x !== dir);
+      btn.classList.remove('attack-selected');
+    } else {
+      pendingAttackDirs.push(dir);
+      btn.classList.add('attack-selected');
     }
   }
 
@@ -923,6 +950,12 @@ function startNewRound() {
 
   function updateUI() {
     const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
+    if (attackMode && attackModeOwner && attackModeOwner !== P) {
+      hideAttackOverlay({ silent: true });
+    }
+    if (attackMode && phase === 'execute') {
+      hideAttackOverlay({ silent: true });
+    }
     phaseEl.textContent =
       `${t('round')} ${round}/${MAX_R}, ${P}: ` +
       (phase === 'execute' ? t('turn') : t('plan')) +
@@ -948,6 +981,21 @@ function startNewRound() {
     acts.forEach(b => {
       const a = b.dataset.act;
       b.disabled = false; b.classList.remove('blocked');
+      b.classList.remove('attack-disabled');
+      if (attackMode) {
+        if (DXY[a]) {
+          const owner = attackModeOwner || P;
+          const lockedDir = usedMove[owner].has(a);
+          const selected = pendingAttackDirs.includes(a);
+          b.disabled = lockedDir;
+          b.classList.toggle('attack-disabled', lockedDir);
+          b.classList.toggle('attack-selected', selected);
+        } else {
+          b.disabled = true;
+          b.classList.add('blocked');
+        }
+        return;
+      }
       if (executing || locked) {
         b.disabled = true;
         b.classList.add('blocked');
@@ -977,7 +1025,10 @@ function startNewRound() {
       btnNext.textContent = executing ? t('executeBtn') : t('nextBtn');
       btnNext.disabled = plans[P].length < STEPS && !executing;
     }
-    btnDel.disabled = executing || locked;
+    if (attackMode) {
+      btnNext.disabled = true;
+    }
+    btnDel.disabled = executing || locked || attackMode;
     btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
     document.querySelectorAll('.cell').forEach(c => {
       const x = +c.id[1], y = +c.id[2], edge = x === 0 || x === 4 || y === 0 || y === 4;
