@@ -162,9 +162,20 @@ function startNewRound() {
     const step = tutorialScript[tutorialIndex];
     if (step && step.trigger === event && tutOv && tutCont && tutNext) {
       tutCont.textContent = t(step.key);
+      if (tutorialProgress) {
+        const total = tutorialScript.length;
+        const current = Math.min(tutorialIndex + 1, total);
+        tutorialProgress.textContent = t('tutorialStepLabel')
+          .replace('{current}', current)
+          .replace('{total}', total);
+      }
+      if (tutorialHint) tutorialHint.textContent = t('tutorialNextHint');
       tutOv.classList.add('show');
+      tutOv.setAttribute('aria-hidden', 'false');
+      if (tutNext) tutNext.focus();
       tutNext.onclick = () => {
         tutOv.classList.remove('show');
+        tutOv.setAttribute('aria-hidden', 'true');
         tutorialIndex++;
         if (tutorialIndex >= tutorialScript.length) {
           isTutorial = false;
@@ -174,7 +185,25 @@ function startNewRound() {
     }
   }
 
+  function hideTutorialPrompt() {
+    if (!tutorialPrompt) return;
+    tutorialPrompt.classList.remove('show');
+    tutorialPrompt.setAttribute('aria-hidden', 'true');
+  }
+
+  function showTutorialPrompt() {
+    if (!tutorialPrompt) return;
+    tutorialPrompt.classList.add('show');
+    tutorialPrompt.setAttribute('aria-hidden', 'false');
+    if (tutorialPromptStart) {
+      tutorialPromptStart.focus();
+    } else if (tutorialPromptSkip) {
+      tutorialPromptSkip.focus();
+    }
+  }
+
   function startTutorial() {
+    hideTutorialPrompt();
     single = true;
     isTutorial = true;
     tutorialIndex = 0;
@@ -190,6 +219,11 @@ function startNewRound() {
   const tutOv = document.getElementById('tutorialOverlay');
   const tutCont = document.getElementById('tutorialContent');
   const tutNext = document.getElementById('tutorialNext');
+  const tutorialProgress = document.getElementById('tutorialProgress');
+  const tutorialHint = document.getElementById('tutorialHint');
+  const tutorialPrompt = document.getElementById('tutorialPrompt');
+  const tutorialPromptStart = document.getElementById('tutorialPromptStart');
+  const tutorialPromptSkip = document.getElementById('tutorialPromptSkip');
 
   let audioCtx;
 
@@ -254,7 +288,23 @@ function startNewRound() {
   bOnline.onclick = () => { ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
   rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
-  if (rulesTutorial) rulesTutorial.onclick = () => { rulesOv.style.display = 'none'; startTutorial(); };
+  if (rulesTutorial) rulesTutorial.onclick = () => {
+    rulesOv.style.display = 'none';
+    try { localStorage.removeItem('tutorialDone'); } catch (err) {}
+    startTutorial();
+  };
+  if (tutorialPromptStart) {
+    tutorialPromptStart.onclick = () => {
+      try { localStorage.removeItem('tutorialDone'); } catch (err) {}
+      startTutorial();
+    };
+  }
+  if (tutorialPromptSkip) {
+    tutorialPromptSkip.onclick = () => {
+      try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+      hideTutorialPrompt();
+    };
+  }
 
   ds.querySelector('.easy').onclick   = () => {
     aiRand = 0.6;  aiMistake = 0.5; aiSamples = 20;
@@ -1484,8 +1534,14 @@ document.addEventListener('DOMContentLoaded', () => {
     playSound(e.target.dataset.sound || "ui");
   });
 
-  if (!localStorage.getItem('tutorialDone') && typeof window.startTutorial === 'function') {
-    window.startTutorial();
+  let shouldOfferTutorial = false;
+  try {
+    shouldOfferTutorial = !localStorage.getItem('tutorialDone');
+  } catch (err) {
+    shouldOfferTutorial = false;
+  }
+  if (shouldOfferTutorial) {
+    showTutorialPrompt();
   }
 });
 

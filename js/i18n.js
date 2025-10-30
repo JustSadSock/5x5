@@ -94,9 +94,16 @@
       ,rule7: 'After three rounds the outer ring collapses leaving a 3\u00d73 arena.'
       ,rule8: 'If there is no winner after the last round, the match ends in a draw.'
       ,tutorial: 'Tutorial'
-      ,tutorial1: 'Welcome! Use arrows or buttons to move.'
+      ,tutorial1: 'Welcome! Use arrows or buttons to move your unit.'
       ,tutorial2: 'Plan five actions including one attack and one shield.'
       ,tutorial3: 'Press Confirm to execute and win.'
+      ,tutorialNextHint: 'Tap Next to continue through the guide.'
+      ,tutorialStepLabel: 'Step {current} of {total}'
+      ,tutorialPromptTitle: 'Learn the basics?'
+      ,tutorialPromptBody: 'Would you like to follow the guided tutorial or skip it for now?'
+      ,tutorialPromptStart: 'Start tutorial'
+      ,tutorialPromptSkip: 'Skip for now'
+      ,tutorialPromptNote: 'You can launch the tutorial later from the Rules menu.'
     },
     ru: {
       singlePlayer: '1 игрок',
@@ -192,9 +199,16 @@
       rule7: 'После трёх раундов края поля разрушаются, остаётся зона 3\u00d73.',
       rule8: 'Если победителя нет после финала, объявляется ничья.'
       ,tutorial: 'Обучение'
-      ,tutorial1: 'Добро пожаловать! Используйте стрелки или кнопки для движения.'
+      ,tutorial1: 'Добро пожаловать! Используйте стрелки или кнопки, чтобы сдвинуть юнита.'
       ,tutorial2: 'Запланируйте пять действий, включая атаку и щит.'
       ,tutorial3: 'Нажмите \u00abПодтвердить\u00bb, чтобы начать раунд.'
+      ,tutorialNextHint: 'Нажмите \u00abДалее\u00bb, чтобы продолжить обучение.'
+      ,tutorialStepLabel: '\u0428\u0430\u0433 {current} \u0438\u0437 {total}'
+      ,tutorialPromptTitle: '\u041f\u0440\u043e\u0439\u0442\u0438 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435?'
+      ,tutorialPromptBody: '\u0425\u043e\u0442\u0438\u0442\u0435 \u043f\u0440\u043e\u0439\u0442\u0438 \u043f\u043e\u0448\u0430\u0433\u043e\u0432\u043e\u0435 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435 \u0438\u043b\u0438 \u043f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u0435\u0433\u043e \u0441\u0435\u0439\u0447\u0430\u0441?'
+      ,tutorialPromptStart: '\u041d\u0430\u0447\u0430\u0442\u044c \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435'
+      ,tutorialPromptSkip: '\u041f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u043a\u0430'
+      ,tutorialPromptNote: '\u041f\u043e\u0437\u0436\u0435 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435 \u043c\u043e\u0436\u043d\u043e \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u0440\u0430\u0437\u0434\u0435\u043b\u0435 \u00ab\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u00bb.'
     },
     uk: {
       singlePlayer: '1 гравець',
@@ -290,9 +304,16 @@
       rule7: 'Після трьох раундів зовнішнє кільце зникає, залишається арена 3\u00d73.',
       rule8: 'Якщо переможця немає після фінального раунду, оголошується нічия.'
       ,tutorial: 'Навчання'
-      ,tutorial1: 'Ласкаво просимо! Використовуйте стрілки або кнопки для руху.'
-      ,tutorial2: 'Заплануйте п\u2019ять дій, включаючи атаку та щит.'
-      ,tutorial3: 'Натисніть \u00abПідтвердити\u00bb, щоб розпочати раунд.'
+      ,tutorial1: '\u041b\u0430\u0441\u043a\u0430\u0432\u043e \u043f\u0440\u043e\u0441\u0438\u043c\u043e! \u0412\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u043e\u0432\u0443\u0439\u0442\u0435 \u0441\u0442\u0440\u0456\u043b\u043a\u0438 \u0430\u0431\u043e \u043a\u043d\u043e\u043f\u043a\u0438, \u0449\u043e\u0431 \u043f\u0435\u0440\u0435\u0441\u0443\u043d\u0443\u0442\u0438 \u0431\u043e\u0439\u0446\u044f.'
+      ,tutorial2: '\u0417\u0430\u043f\u043b\u0430\u043d\u0443\u0439\u0442\u0435 \u043f\u2019\u044f\u0442\u044c \u0434\u0456\u0439, \u0432\u043a\u043b\u044e\u0447\u043d\u043e \u0437 \u0430\u0442\u0430\u043a\u043e\u044e \u0442\u0430 \u0449\u0438\u0442\u043e\u043c.'
+      ,tutorial3: '\u041d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c \u00ab\u041f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438\u00bb, \u0449\u043e\u0431 \u0440\u043e\u0437\u043f\u043e\u0447\u0430\u0442\u0438 \u0440\u0430\u0443\u043d\u0434.'
+      ,tutorialNextHint: '\u041d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c \u00ab\u0414\u0430\u043b\u0456\u00bb, \u0449\u043e\u0431 \u043f\u0440\u043e\u0434\u043e\u0432\u0436\u0438\u0442\u0438 \u043d\u0430\u0432\u0447\u0430\u043d\u043d\u044f.'
+      ,tutorialStepLabel: '\u041a\u0440\u043e\u043a {current} \u0437 {total}'
+      ,tutorialPromptTitle: '\u041f\u0440\u043e\u0439\u0442\u0438 \u043d\u0430\u0432\u0447\u0430\u043d\u043d\u044f?'
+      ,tutorialPromptBody: '\u0411\u0430\u0436\u0430\u0454\u0442\u0435 \u043f\u0440\u043e\u0439\u0442\u0438 \u043f\u043e\u043a\u0440\u043e\u043a\u043e\u0432\u0438\u0439 \u0442\u0443\u0442\u043e\u0440\u0456\u0430\u043b \u0447\u0438 \u043f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u0438 \u0439\u043e\u0433\u043e \u0437\u0430\u0440\u0430\u0437?'
+      ,tutorialPromptStart: '\u0420\u043e\u0437\u043f\u043e\u0447\u0430\u0442\u0438 \u043d\u0430\u0432\u0447\u0430\u043d\u043d\u044f'
+      ,tutorialPromptSkip: '\u041f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u0438'
+      ,tutorialPromptNote: '\u041f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u0438\u0441\u044c \u0434\u043e \u043d\u0430\u0432\u0447\u0430\u043d\u043d\u044f \u043c\u043e\u0436\u043d\u0430 \u0437\u0433\u043e\u0434\u043e\u043c \u0447\u0435\u0440\u0435\u0437 \u043c\u0435\u043d\u044e \u00ab\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u00bb.'
     }
   };
 
