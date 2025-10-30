@@ -105,6 +105,7 @@ function startNewRound() {
     { trigger: 'afterMove', key: 'tutorial2' },
     { trigger: 'afterConfirm', key: 'tutorial3' }
   ];
+  const themeToggle = document.getElementById('themeToggle');
 
   function resetOnlineFlags() {
     onlineConfirmed = { A: false, B: false };
@@ -171,6 +172,37 @@ function startNewRound() {
     score = { A: 0, B: 0 };
     updateScore();
   };
+
+  function updateThemeToggle(theme) {
+    if (!themeToggle) return;
+    const normalized = theme === 'light' ? 'light' : 'dark';
+    const target = normalized === 'light' ? 'dark' : 'light';
+    themeToggle.textContent = normalized === 'light' ? '🌙' : '☀️';
+    const label = target === 'light' ? 'Switch to light theme' : 'Switch to dark theme';
+    themeToggle.setAttribute('aria-label', label);
+    themeToggle.setAttribute('title', label);
+  }
+
+  function applyTheme(theme) {
+    const normalized = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = normalized;
+    try {
+      localStorage.setItem('theme', normalized);
+    } catch (err) {
+      // ignore storage errors
+    }
+    updateThemeToggle(normalized);
+  }
+
+  if (themeToggle) {
+    const initial = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    updateThemeToggle(initial);
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+    });
+  }
 
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
