@@ -100,7 +100,7 @@
       width:100%; height:100vh;
     }
     .panel, .panelDiff {
-      width:90%; max-width:320px; padding:20px;
+      width:90%; max-width:360px; padding:20px;
       border-radius:12px;
       box-shadow:0 6px 16px rgba(15,23,42,0.35);
       display:flex; align-items:center; justify-content:center;
@@ -111,11 +111,49 @@
       transition:background .3s ease, transform .3s ease, box-shadow .3s ease;
     }
     .panelDiff {
-      border:2px solid var(--color-accent);
+      border:2px solid transparent;
       box-shadow:0 8px 18px rgba(15,23,42,0.2);
+      justify-content:flex-start;
+      gap:16px;
+      font-size:24px;
+      padding:18px 22px;
+      min-height:74px;
     }
+    .panelDiff .difficulty-icon {
+      font-size:26px;
+      filter:drop-shadow(0 2px 4px rgba(15,23,42,0.4));
+    }
+    .panelDiff .difficulty-label {
+      font-size:24px;
+      font-weight:600;
+    }
+    .panelDiff.easy {
+      background:rgba(34,197,94,0.18);
+      border-color:#22c55e;
+    }
+    .panelDiff.easy:hover { background:rgba(34,197,94,0.26); }
+    .panelDiff.medium {
+      background:rgba(250,204,21,0.22);
+      border-color:#facc15;
+    }
+    .panelDiff.medium:hover { background:rgba(250,204,21,0.3); }
+    .panelDiff.hard {
+      background:rgba(239,68,68,0.2);
+      border-color:var(--color-danger);
+    }
+    .panelDiff.hard:hover { background:rgba(239,68,68,0.28); }
+    .panelDiff.expert {
+      background:rgba(168,85,247,0.22);
+      border-color:#a855f7;
+    }
+    .panelDiff.expert:hover { background:rgba(168,85,247,0.3); }
+    .panelDiff.insane {
+      background:rgba(148,163,184,0.25);
+      border-color:#94a3b8;
+    }
+    .panelDiff.insane:hover { background:rgba(148,163,184,0.32); }
+    .panel:hover { background:var(--color-surface-hover); }
     .panel:hover, .panelDiff:hover {
-      background:var(--color-surface-hover);
       transform:translateY(-2px);
       box-shadow:0 12px 24px rgba(15,23,42,0.28);
     }
@@ -593,23 +631,69 @@
 
     /* Счёт */
     #scoreboard {
-      position:absolute; top:6px; left:50%; transform:translateX(-50%);
+      position:absolute; top:12px; left:50%; transform:translateX(-50%);
       background:var(--color-surface-alt);
-      padding:6px 16px; border-radius:999px;
-      display:flex; align-items:center; gap:10px; font-size:18px;
+      padding:16px 24px;
+      border-radius:24px;
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:center;
+      gap:16px 24px;
       font-family:'Roboto Mono', monospace;
       border:1px solid var(--color-border);
-      box-shadow:0 10px 24px rgba(15,23,42,0.28);
+      box-shadow:0 12px 30px rgba(15,23,42,0.3);
       z-index:25;
+      min-width:min(100%, 320px);
+      max-width:min(90vw, 640px);
+    }
+    #scoreboard .scoreboard-scores {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-size:28px;
+      font-weight:700;
+      letter-spacing:1px;
+      color:var(--color-heading);
+    }
+    #scoreboard .score-divider {
+      opacity:0.7;
+    }
+    #scoreboard .scoreboard-actions,
+    #scoreboard .scoreboard-quick {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    #scoreboard .scoreboard-actions {
+      flex-wrap:wrap;
+      justify-content:center;
     }
     #scoreboard button {
-      padding:6px 12px;
+      padding:10px 18px;
       background:var(--color-surface);
       color:var(--color-text-primary);
       border:1px solid var(--color-border);
-      border-radius:999px;
+      border-radius:14px;
       cursor:pointer;
       transition:background .2s ease, transform .2s ease;
+      font-size:16px;
+      min-width:128px;
+      font-weight:600;
+    }
+    #scoreboard .scoreboard-actions button {
+      flex:1 1 140px;
+    }
+    #scoreboard .scoreboard-quick button {
+      min-width:0;
+      width:44px;
+      height:44px;
+      padding:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:20px;
+      border-radius:50%;
     }
     #scoreboard button:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
     #scoreReset {
@@ -773,11 +857,26 @@
   </div>
 
   <div id="difficultySelect">
-    <div class="panelDiff easy" data-i18n="easy" data-sound="nav">Легко</div>
-    <div class="panelDiff medium" data-i18n="medium" data-sound="nav">Средне</div>
-    <div class="panelDiff hard" data-i18n="hard" data-sound="nav">Сложно</div>
-    <div class="panelDiff expert" data-i18n="expert" data-sound="nav">Эксперт</div>
-    <div class="panelDiff insane" data-i18n="insane" data-sound="nav">Безумие</div>
+    <div class="panelDiff easy" data-sound="nav" data-i18n-title="easyHint" title="Подходит для первых игр">
+      <span class="difficulty-icon" aria-hidden="true">🌱</span>
+      <span class="difficulty-label" data-i18n="easy">Легко</span>
+    </div>
+    <div class="panelDiff medium" data-sound="nav" data-i18n-title="mediumHint" title="Баланс атаки и защиты">
+      <span class="difficulty-icon" aria-hidden="true">🛡️</span>
+      <span class="difficulty-label" data-i18n="medium">Средне</span>
+    </div>
+    <div class="panelDiff hard" data-sound="nav" data-i18n-title="hardHint" title="Быстрые враги и агрессия">
+      <span class="difficulty-icon" aria-hidden="true">⚔️</span>
+      <span class="difficulty-label" data-i18n="hard">Сложно</span>
+    </div>
+    <div class="panelDiff expert" data-sound="nav" data-i18n-title="expertHint" title="Продвинутые комбинации бота">
+      <span class="difficulty-icon" aria-hidden="true">💥</span>
+      <span class="difficulty-label" data-i18n="expert">Эксперт</span>
+    </div>
+    <div class="panelDiff insane" data-sound="nav" data-i18n-title="insaneHint" title="Максимальный вызов для чемпионов">
+      <span class="difficulty-icon" aria-hidden="true">☠️</span>
+      <span class="difficulty-label" data-i18n="insane">Безумие</span>
+    </div>
   </div>
 
   <div id="onlineMenu">
@@ -790,12 +889,20 @@
   </div>
 
   <div id="scoreboard">
-    <span id="scoreA">0</span> : <span id="scoreB">0</span>
-    <button id="scoreReset" data-i18n="resetScore" data-sound="nav">Сбросить счёт</button>
-    <button id="settingsBtn" data-sound="nav">⚙</button>
-    <button id="themeToggle" data-sound="nav" aria-label="Switch theme" title="Switch theme">🌓</button>
-    <button id="menuBtn" data-i18n="toMenu" data-sound="nav">В меню</button>
-    <button id="replayBtn" data-i18n="replay" data-sound="nav" style="display:none;">Повтор</button>
+    <div class="scoreboard-scores" aria-live="polite">
+      <span id="scoreA">0</span>
+      <span class="score-divider">:</span>
+      <span id="scoreB">0</span>
+    </div>
+    <div class="scoreboard-actions">
+      <button id="scoreReset" data-i18n="resetScore" data-sound="nav">Сбросить счёт</button>
+      <button id="replayBtn" data-i18n="replay" data-sound="nav" style="display:none;">Повтор</button>
+      <button id="menuBtn" data-i18n="toMenu" data-sound="nav">В меню</button>
+    </div>
+    <div class="scoreboard-quick">
+      <button id="settingsBtn" data-sound="nav" data-i18n-title="settingsTooltip" data-i18n-aria="settingsTooltip" aria-label="Open settings" title="Settings">⚙</button>
+      <button id="themeToggle" data-sound="nav" data-i18n-title="themeTooltip" data-i18n-aria="themeTooltip" aria-label="Switch theme" title="Switch theme">🌓</button>
+    </div>
   </div>
 
   <div id="settingsModal">

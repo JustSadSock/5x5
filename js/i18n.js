@@ -10,11 +10,18 @@
       hard: 'Hard',
       expert: 'Expert',
       insane: 'Insane',
+      easyHint: 'Great for first games',
+      mediumHint: 'Balanced offence and defence',
+      hardHint: 'Faster enemies and more aggression',
+      expertHint: 'Advanced bot combos ahead',
+      insaneHint: 'Ultimate challenge for champions',
       createRoom: 'Create Room',
       joinRoom: 'Join',
       toMenu: 'Menu',
       roomCodePlaceholder: 'Room Code',
       resetScore: 'Reset score',
+      settingsTooltip: 'Open settings',
+      themeTooltip: 'Switch theme',
       volume: 'Volume:',
       language: 'Language:',
       close: 'Close',
@@ -87,11 +94,18 @@
       hard: 'Сложно',
       expert: 'Эксперт',
       insane: 'Безумие',
+      easyHint: 'Подходит для первых игр',
+      mediumHint: 'Баланс атаки и защиты',
+      hardHint: 'Быстрые враги и агрессия',
+      expertHint: 'Продвинутые комбинации бота',
+      insaneHint: 'Максимальный вызов для чемпионов',
       createRoom: 'Создать комнату',
       joinRoom: 'Присоединиться',
       toMenu: 'В меню',
       roomCodePlaceholder: 'Код комнаты',
       resetScore: 'Сбросить счёт',
+      settingsTooltip: 'Открыть настройки',
+      themeTooltip: 'Переключить тему',
       volume: 'Громкость:',
       language: 'Язык:',
       close: 'Закрыть',
@@ -164,11 +178,18 @@
       hard: 'Важко',
       expert: 'Експерт',
       insane: 'Божевілля',
+      easyHint: 'Підійде для перших ігор',
+      mediumHint: 'Баланс атаки й захисту',
+      hardHint: 'Швидші вороги та більше агресії',
+      expertHint: 'Просунуті комбінації бота',
+      insaneHint: 'Максимальний виклик для чемпіонів',
       createRoom: 'Створити кімнату',
       joinRoom: 'Приєднатися',
       toMenu: 'До меню',
       roomCodePlaceholder: 'Код кімнати',
       resetScore: 'Скинути рахунок',
+      settingsTooltip: 'Відкрити налаштування',
+      themeTooltip: 'Перемкнути тему',
       volume: 'Гучність:',
       language: 'Мова:',
       close: 'Закрити',
@@ -256,6 +277,14 @@
       } else {
         el.textContent = t(key);
       }
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      el.title = t(key);
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      const key = el.getAttribute('data-i18n-aria');
+      el.setAttribute('aria-label', t(key));
     });
   }
 
