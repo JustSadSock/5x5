@@ -470,21 +470,46 @@ function log(text) {
 }
 
 function showConfirmMessage(text) {
+  const root = document.documentElement;
+  const scoreboard = document.getElementById('scoreboard');
+  const messageEl = document.getElementById('scoreboardMessage');
+  if (scoreboard && messageEl) {
+    const shell = scoreboard.querySelector('.scoreboard-shell');
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (typeof window.closeHudMenu === 'function') {
+      try {
+        window.closeHudMenu();
+      } catch (err) {
+        /* ignore close errors */
+      }
+    }
+    messageEl.textContent = text;
+    messageEl.setAttribute('aria-hidden', 'false');
+    scoreboard.classList.add('showing-message');
+    scoreboard.setAttribute('aria-busy', 'true');
+    if (shell) shell.setAttribute('aria-hidden', 'true');
+    if (settingsBtn) settingsBtn.setAttribute('aria-hidden', 'true');
+    clearTimeout(messageEl._hideTimer);
+    messageEl._hideTimer = setTimeout(() => {
+      scoreboard.classList.remove('showing-message');
+      scoreboard.removeAttribute('aria-busy');
+      messageEl.setAttribute('aria-hidden', 'true');
+      if (shell) shell.removeAttribute('aria-hidden');
+      if (settingsBtn) settingsBtn.removeAttribute('aria-hidden');
+      messageEl._hideTimer = null;
+    }, 2400);
+    if (root) root.style.setProperty('--toast-offset', '0px');
+    return;
+  }
+
   const el = document.getElementById('confirmToast');
   if (!el) return;
   el.textContent = text;
   el.classList.add('show');
-  const root = document.documentElement;
-  requestAnimationFrame(() => {
-    const rect = el.getBoundingClientRect();
-    const height = rect && rect.height ? rect.height : 0;
-    if (height > 0) root.style.setProperty('--toast-offset', `${Math.ceil(height + 12)}px`);
-    else root.style.setProperty('--toast-offset', '0px');
-  });
+  if (root) root.style.setProperty('--toast-offset', '0px');
   clearTimeout(el._hideTimer);
   el._hideTimer = setTimeout(() => {
     el.classList.remove('show');
-    root.style.setProperty('--toast-offset', '0px');
   }, 2000);
 }
 
