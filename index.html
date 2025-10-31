@@ -712,27 +712,79 @@
       overflow:auto;
       box-shadow:0 18px 40px rgba(15,23,42,0.35);
     }
+    #rulesOverlay .rules-actions {
+      position:sticky;
+      top:0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding-bottom:16px;
+      margin-bottom:20px;
+      background:linear-gradient(180deg, var(--color-overlay) 70%, transparent);
+      z-index:1;
+    }
+    #rulesOverlay .rules-actions::after {
+      content:'';
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:1px;
+      background:rgba(148,163,184,0.3);
+    }
     #rulesOverlay h2, #rulesOverlay h3 { color:var(--color-heading); }
     #rulesOverlay p, #rulesOverlay ul { color:var(--color-text-primary); margin:8px 0; }
     #rulesOverlay ul { padding-left:20px; }
     #rulesClose {
-      margin-top:20px;
-      background:var(--color-danger);
-      color:var(--color-button-text);
-      padding:10px 18px;
-      border:none; border-radius:8px;
-      cursor:pointer;
+      background:transparent;
+      color:var(--color-text-muted);
+      border:none;
+      font-size:calc(18px * var(--ui-scale));
+      width:calc(36px * var(--ui-scale));
+      height:calc(36px * var(--ui-scale));
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:background .2s ease, color .2s ease;
     }
-    #rulesClose:hover { background:var(--color-danger-strong); }
+    #rulesClose:hover {
+      background:rgba(239,68,68,0.12);
+      color:var(--color-danger);
+    }
     #rulesTutorial {
-      margin-top:20px; margin-right:10px;
-      background:var(--color-info);
-      color:var(--color-button-text);
-      padding:10px 18px;
-      border:none; border-radius:8px;
-      cursor:pointer;
+      flex:1;
+      background:linear-gradient(135deg, rgba(56,189,248,0.95), rgba(14,165,233,0.9));
+      color:#fff;
+      padding:12px 20px;
+      border:none;
+      border-radius:12px;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+      box-shadow:0 12px 28px rgba(14,165,233,0.45);
+      position:relative;
+      overflow:hidden;
+      animation:rulesTutorialPulse 3s ease-in-out infinite;
     }
-    #rulesTutorial:hover { background:var(--color-info-strong); }
+    #rulesTutorial::after {
+      content:'➜';
+      position:absolute;
+      right:16px;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:1.2em;
+      opacity:0.8;
+    }
+    #rulesTutorial:hover {
+      box-shadow:0 16px 34px rgba(14,165,233,0.55);
+      animation-play-state:paused;
+    }
+    @keyframes rulesTutorialPulse {
+      0%, 100% { box-shadow:0 12px 28px rgba(14,165,233,0.45); }
+      50% { box-shadow:0 18px 36px rgba(14,165,233,0.6); }
+    }
 
     /* Поле и UI */
     #gameArea {
@@ -914,12 +966,17 @@
     #btn-del, #btn-next {
       position:relative;
       padding:calc(6px * var(--ui-scale));
-      font-size:calc(16px * var(--ui-scale));
       border:none;
       border-radius:calc(9px * var(--ui-scale));
       cursor:pointer;
       box-shadow:0 6px 14px rgba(15,23,42,0.3);
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    #actions button {
+      font-size:calc(20px * var(--ui-scale));
+    }
+    #btn-del, #btn-next {
+      font-size:calc(16px * var(--ui-scale));
     }
     #actions button.moveBtn {
       background:var(--color-info);
@@ -979,8 +1036,8 @@
       border:1px solid rgba(239,68,68,0.35);
     }
     #actions.attack-mode .moveBtn:hover:not(:disabled) {
-      background:rgba(239,68,68,0.3);
-      color:var(--color-button-text);
+      background:rgba(239,68,68,0.15);
+      color:var(--color-danger);
     }
     #actions.attack-mode .moveBtn.attack-selected {
       background:var(--color-danger);
@@ -2197,6 +2254,10 @@
   </div>
 
   <div id="rulesOverlay">
+    <div class="rules-actions">
+      <button id="rulesTutorial" data-i18n="tutorial" data-sound="nav" type="button">Tutorial</button>
+      <button id="rulesClose" data-sound="nav" type="button" data-i18n-aria="close" data-i18n-title="close" title="Закрыть" aria-label="Закрыть">✕</button>
+    </div>
     <h2 data-i18n="rulesHeader">Концепция и правила игры</h2>
     <h3 data-i18n="rulesGeneral">Общее</h3>
     <p data-i18n="rulesIntro">Это пошаговая PvP-арена 5×5 для двух игроков. После трёх раундов в отсутствие победителя начинается «внезапная смерть» в центре 3×3.</p>
@@ -2204,6 +2265,7 @@
       <li data-i18n="rule1">Каждый раунд игроки заранее выбирают пять шагов.</li>
       <li data-i18n="rule2">За раунд можно выполнить перемещения, одну атаку и один щит.</li>
       <li data-i18n="rule3">Атака требует указать направление и поражает текущую клетку и клетки вдоль луча.</li>
+      <li data-i18n="rule3b">Вы можете добавить несколько атак в разных направлениях, каждая занимает отдельный шаг плана.</li>
       <li data-i18n="rule4">В одном раунде нельзя и двигаться, и атаковать в одну и ту же сторону — направление атаки должно отличаться.</li>
       <li data-i18n="rule5">Щит поглощает весь урон выбранного шага.</li>
       <li data-i18n="rule6">После планирования ходы выполняются по порядку одновременно у обоих игроков.</li>
@@ -2211,8 +2273,6 @@
       <li data-i18n="rule8">Спустя три раунда внешнее кольцо поля обрушивается, остаётся зона 3×3.</li>
       <li data-i18n="rule9">Если победителя нет даже после «внезапной смерти», засчитывается ничья.</li>
     </ul>
-    <button id="rulesTutorial" data-i18n="tutorial" data-sound="nav">Tutorial</button>
-    <button id="rulesClose" data-i18n="close" data-sound="nav">Закрыть</button>
   </div>
 
   <div id="gameArea">
