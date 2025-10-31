@@ -255,12 +255,12 @@
       display:none;
       flex-direction:column;
       align-items:center;
-      gap:28px;
-      padding:calc(var(--hud-height) + 36px) 14px 48px;
+      gap:24px;
+      padding:calc(var(--hud-height) + 32px) 12px 40px;
       min-height:100vh;
       overflow-y:auto;
       overscroll-behavior:contain;
-      scroll-padding-top:calc(var(--hud-height) + 20px);
+      scroll-padding-top:calc(var(--hud-height) + 18px);
     }
     #onlineMenu .menu-back-row {
       width:100%;
@@ -268,6 +268,8 @@
       display:flex;
       justify-content:flex-start;
       margin:0 auto;
+      padding:0;
+      margin-bottom:4px;
     }
     .online-shell {
       display:flex;
@@ -280,7 +282,7 @@
       max-width:960px;
       display:flex;
       flex-direction:column;
-      gap:28px;
+      gap:24px;
     }
     .online-header {
       display:flex;
@@ -319,10 +321,10 @@
       border:1px solid var(--color-border);
       border-radius:22px;
       box-shadow:0 18px 38px rgba(15,23,42,0.32);
-      padding:clamp(18px, 3vw + 12px, 26px);
+      padding:clamp(16px, 3vw + 10px, 24px);
       display:flex;
       flex-direction:column;
-      gap:clamp(12px, 2.5vw + 8px, 18px);
+      gap:clamp(10px, 2vw + 6px, 16px);
       overflow:hidden;
     }
     .online-card::before {
@@ -339,7 +341,7 @@
       opacity:1;
     }
     .online-card h3 {
-      font-size:clamp(18px, calc(18px + 2px * var(--ui-scale)), 22px);
+      font-size:clamp(17px, calc(18px + 1.5px * var(--ui-scale)), 21px);
       font-weight:700;
       color:var(--color-heading);
       margin:0;
@@ -348,7 +350,7 @@
       margin:0;
       color:var(--color-text-primary);
       line-height:1.5;
-      font-size:clamp(14px, calc(14px + 1.5px * var(--ui-scale)), 17px);
+      font-size:clamp(13.5px, calc(14px + 1px * var(--ui-scale)), 16px);
     }
     .online-card .online-btn {
       width:100%;
@@ -363,9 +365,9 @@
       display:flex;
       align-items:center;
       gap:12px;
-      padding:12px 14px;
+      padding:11px 12px;
       border-radius:14px;
-      background:rgba(15,23,42,0.55);
+      background:rgba(15,23,42,0.5);
       border:1px solid var(--color-border);
       font-weight:600;
       color:var(--color-text-primary);
@@ -414,7 +416,7 @@
       align-items:center;
       justify-content:center;
       gap:10px;
-      padding:14px 18px;
+      padding:12px 16px;
       border-radius:16px;
       border:1px solid var(--color-border);
       background:var(--color-surface);
@@ -450,17 +452,17 @@
       width:100%;
     }
     #onlineMenu input {
-      padding:14px 18px;
-      border-radius:16px;
+      padding:12px 16px;
+      border-radius:15px;
       border:1px solid var(--color-input-border);
       background:var(--color-input-bg);
       color:var(--color-text-primary);
-      font-size:18px;
-      letter-spacing:1.8px;
+      font-size:17px;
+      letter-spacing:1.6px;
       text-transform:uppercase;
-      width:min(260px, 100%);
+      width:min(240px, 100%);
       text-align:center;
-      flex:1 1 220px;
+      flex:1 1 200px;
     }
     #onlineMenu input.input-error {
       border-color:var(--color-danger);
@@ -476,10 +478,10 @@
       border:1px solid var(--color-border);
       border-radius:18px;
       padding:16px 22px;
-      min-height:56px;
+      min-height:52px;
       font-family:'Roboto Mono', monospace;
-      font-size:28px;
-      letter-spacing:6px;
+      font-size:26px;
+      letter-spacing:5px;
       text-transform:uppercase;
       color:var(--color-heading);
       width:100%;
@@ -495,8 +497,8 @@
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
       border-radius:12px;
-      width:44px;
-      height:44px;
+      width:42px;
+      height:42px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -521,138 +523,142 @@
     .online-hint[data-state="info"] { color:var(--color-text-primary); }
     @media (max-width: 640px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 34px) 12px 32px;
-        gap:24px;
+        padding:calc(var(--hud-height) + 28px) 10px 28px;
+        gap:20px;
       }
       .online-header {
         flex-direction:column;
         align-items:flex-start;
       }
       .online-card {
-        border-radius:20px;
-        padding:clamp(18px, 5vw + 8px, 24px);
+        border-radius:18px;
+        padding:clamp(16px, 5vw + 6px, 22px);
       }
       .online-panels {
-        gap:18px;
+        gap:16px;
       }
       .room-display {
-        font-size:20px;
-        letter-spacing:3px;
-        padding:12px 14px;
+        font-size:19px;
+        letter-spacing:2.5px;
+        padding:11px 12px;
       }
     }
     @media (max-width: 480px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 28px) 10px 24px;
-        gap:20px;
+        padding:calc(var(--hud-height) + 22px) 8px 22px;
+        gap:16px;
       }
       #onlineMenu .menu-back-row {
         position:sticky;
-        top:calc(var(--hud-height) + 12px);
+        top:calc(var(--hud-height) + 10px);
         z-index:2;
-        background:var(--color-surface);
-        padding-bottom:6px;
-        box-shadow:0 4px 12px rgba(15,23,42,0.22);
+        background:var(--color-background);
+        padding:2px 0 6px;
+        box-shadow:none;
       }
       .online-shell {
         width:100%;
       }
       .online-layout {
-        gap:18px;
+        gap:14px;
       }
       .online-header {
-        gap:12px;
+        gap:10px;
         align-items:stretch;
       }
       .online-heading {
         gap:3px;
       }
       .online-title {
-        font-size:22px;
+        font-size:20px;
       }
       .online-subtitle {
-        font-size:15px;
+        font-size:14px;
       }
       .online-status {
         width:100%;
         justify-content:flex-start;
-        font-size:14px;
-        padding:10px 12px;
+        font-size:13px;
+        padding:9px 10px;
+        border-radius:12px;
       }
       .online-panels {
         display:flex;
         flex-direction:column;
-        gap:18px;
-      }
-      .online-card {
-        border-radius:18px;
-        padding:20px;
         gap:14px;
-        box-shadow:0 14px 30px rgba(15,23,42,0.26);
-      }
-      .online-card h3 {
-        font-size:19px;
-      }
-      .online-card p {
-        font-size:14px;
-      }
-      .room-display {
-        flex-wrap:wrap;
-        justify-content:center;
-        gap:12px;
-        padding:12px 12px;
-        font-size:18px;
-        letter-spacing:2.5px;
-      }
-      .room-input-row {
-        gap:10px;
-      }
-      .room-input-row input {
-        font-size:15px;
-        padding:11px 12px;
-        letter-spacing:2.5px;
-        flex:1 1 150px;
-      }
-      .room-clip-btn {
-        width:40px;
-        height:40px;
-      }
-      .online-btn {
-        min-height:46px;
-        font-size:15px;
-      }
-      .online-hint {
-        font-size:12.5px;
-      }
-    }
-    @media (max-width: 360px) {
-      #onlineMenu {
-        padding:calc(var(--hud-height) + 26px) 8px 20px;
-      }
-      .online-title {
-        font-size:20px;
       }
       .online-card {
-        padding:18px;
+        border-radius:16px;
+        padding:16px 18px;
         gap:12px;
+        box-shadow:0 12px 28px rgba(8,12,24,0.28);
       }
       .online-card h3 {
-        font-size:17px;
+        font-size:18px;
       }
       .online-card p {
         font-size:13px;
       }
       .room-display {
+        flex-wrap:wrap;
+        justify-content:center;
+        gap:10px;
+        padding:10px 12px;
         font-size:17px;
         letter-spacing:2px;
-        padding:10px 12px;
+      }
+      .room-input-row {
+        gap:8px;
       }
       .room-input-row input {
         font-size:14px;
+        padding:10px 11px;
+        letter-spacing:2px;
+        flex:1 1 140px;
+      }
+      .room-clip-btn {
+        width:36px;
+        height:36px;
+        border-radius:10px;
       }
       .online-btn {
         min-height:42px;
         font-size:14px;
+        padding:12px 14px;
+        border-radius:14px;
+      }
+      .online-hint {
+        font-size:12px;
+      }
+    }
+    @media (max-width: 360px) {
+      #onlineMenu {
+        padding:calc(var(--hud-height) + 20px) 6px 18px;
+      }
+      .online-title {
+        font-size:18px;
+      }
+      .online-card {
+        padding:15px;
+        gap:10px;
+      }
+      .online-card h3 {
+        font-size:16px;
+      }
+      .online-card p {
+        font-size:12.5px;
+      }
+      .room-display {
+        font-size:16px;
+        letter-spacing:1.5px;
+        padding:9px 10px;
+      }
+      .room-input-row input {
+        font-size:13px;
+      }
+      .online-btn {
+        min-height:40px;
+        font-size:13px;
       }
     }
     @media (max-height: 820px) {
@@ -2111,7 +2117,7 @@
             <button id="onlineCreate" class="online-btn primary" type="button" data-i18n="createRoom" data-sound="nav">Создать комнату</button>
             <div class="room-display empty" id="roomDisplay" aria-live="polite">
               <span id="roomCode" class="room-code">----</span>
-              <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
+              <button id="copyRoomCode" class="room-clip-btn" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
             </div>
           </section>
           <section class="online-card join-card">
