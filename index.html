@@ -259,6 +259,9 @@
       gap:32px;
       padding:calc(var(--hud-height) + 48px) 16px 64px;
       min-height:100vh;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      scroll-padding-top:calc(var(--hud-height) + 24px);
     }
     #onlineMenu .menu-back-row {
       width:100%;
@@ -536,6 +539,32 @@
         font-size:24px;
         letter-spacing:4px;
         padding:14px 18px;
+      }
+    }
+    @media (max-height: 820px) {
+      #onlineMenu {
+        justify-content:flex-start;
+        padding:calc(var(--hud-height) + 36px) 16px 48px;
+      }
+      .online-layout {
+        gap:24px;
+      }
+      .online-shell {
+        padding-bottom:32px;
+      }
+    }
+    @media (max-height: 640px) {
+      #onlineMenu {
+        padding:calc(var(--hud-height) + 28px) 12px 32px;
+      }
+      .online-layout {
+        gap:20px;
+      }
+      .online-card {
+        padding:20px;
+      }
+      .online-header {
+        gap:16px;
       }
     }
 
