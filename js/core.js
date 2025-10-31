@@ -161,7 +161,7 @@ function startNewRound() {
     const requiredHeight = boardRect.height + uiRect.height + verticalAllowance;
     let scale = Math.min(1, availableWidth / requiredWidth);
     scale = Math.min(scale, availableHeight / Math.max(requiredHeight, 1));
-    scale = Math.max(0.6, Math.min(scale, 1));
+    scale = Math.max(0.5, Math.min(scale, 1));
     root.style.setProperty('--ui-scale', scale.toFixed(3));
   }
 
@@ -1685,7 +1685,6 @@ function startNewRound() {
   function returnToMenu() {
     resetGame();
     hideAttackOverlay();
-    hideRoundReport(false);
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
     closeHudMenu();
@@ -1730,7 +1729,6 @@ function startNewRound() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settingsBtn');
-  const menuSettingsBtn = document.getElementById('menuSettingsBtn');
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
@@ -1763,9 +1761,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const openSettings = () => { if (settingsModal) settingsModal.style.display = 'block'; };
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = openSettings;
-  }
-  if (menuSettingsBtn && settingsModal) {
-    menuSettingsBtn.onclick = openSettings;
   }
   if (settingsClose && settingsModal) {
     settingsClose.onclick = () => { settingsModal.style.display = 'none'; };

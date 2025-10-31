@@ -56,15 +56,15 @@
       --color-input-border: rgba(148,163,184,0.35);
       --color-overlay: rgba(15,23,42,0.92);
       --ui-scale: 1;
-      --cell-size: calc(56px * var(--ui-scale));
-      --board-gap: calc(3px * var(--ui-scale));
-      --board-padding: calc(8px * var(--ui-scale));
-      --board-radius: calc(16px * var(--ui-scale));
-      --ui-padding: calc(12px * var(--ui-scale));
-      --ui-radius: calc(12px * var(--ui-scale));
-      --action-size: calc(52px * var(--ui-scale));
-      --action-gap: calc(8px * var(--ui-scale));
-      --hud-height: clamp(48px, calc(56px * var(--ui-scale)), 72px);
+      --cell-size: calc(52px * var(--ui-scale));
+      --board-gap: calc(2.5px * var(--ui-scale));
+      --board-padding: calc(6px * var(--ui-scale));
+      --board-radius: calc(14px * var(--ui-scale));
+      --ui-padding: calc(10px * var(--ui-scale));
+      --ui-radius: calc(10px * var(--ui-scale));
+      --action-size: calc(48px * var(--ui-scale));
+      --action-gap: calc(6px * var(--ui-scale));
+      --hud-height: clamp(44px, calc(50px * var(--ui-scale)), 64px);
     }
 
     :root[data-theme="light"] {
@@ -170,23 +170,6 @@
     .panel:hover, .panelDiff:hover {
       transform:translateY(-2px);
       box-shadow:0 12px 24px rgba(15,23,42,0.28);
-    }
-    .menuSettingsBtn {
-      margin-top:10px;
-      padding:10px 18px;
-      border-radius:12px;
-      border:1px solid var(--color-border);
-      background:var(--color-surface);
-      color:var(--color-text-primary);
-      font-size:18px;
-      font-weight:600;
-      cursor:pointer;
-      transition:background .2s ease, transform .2s ease;
-      box-shadow:0 6px 16px rgba(15,23,42,0.25);
-    }
-    .menuSettingsBtn:hover {
-      background:var(--color-surface-hover);
-      transform:translateY(-1px);
     }
     .modeBtn {
       background:var(--color-accent);
@@ -513,14 +496,14 @@
       flex-direction:column;
       align-items:center;
       position:relative;
-      margin-top:calc(var(--hud-height) + 28px);
+      margin-top:calc(var(--hud-height) + 16px);
     }
     #board {
       visibility:hidden;
       display:grid;
       grid-template:repeat(5, var(--cell-size))/repeat(5, var(--cell-size));
       gap:var(--board-gap);
-      margin:calc(16px * var(--ui-scale)) auto calc(6px * var(--ui-scale));
+      margin:calc(12px * var(--ui-scale)) auto calc(4px * var(--ui-scale));
       padding:var(--board-padding);
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
@@ -567,8 +550,8 @@
       opacity:0;
       transform:translateY(20px);
       width:100%;
-      max-width:calc(320px * var(--ui-scale));
-      margin:calc(6px * var(--ui-scale)) auto calc(4px * var(--ui-scale));
+      max-width:calc(300px * var(--ui-scale));
+      margin:calc(4px * var(--ui-scale)) auto calc(2px * var(--ui-scale));
       background:var(--color-surface-alt);
       padding:var(--ui-padding);
       display:flex;
@@ -627,7 +610,9 @@
       letter-spacing:1px;
       box-shadow:0 12px 24px rgba(15,23,42,0.25);
       opacity:0;
-      transform:translateY(calc(-12px * var(--ui-scale))) scale(0.9);
+      margin-top:calc(6px * var(--ui-scale));
+      margin-bottom:calc(6px * var(--ui-scale));
+      transform:translateY(calc(-6px * var(--ui-scale))) scale(0.9);
       transition:opacity .3s ease, transform .3s ease;
       pointer-events:none;
     }
@@ -665,10 +650,10 @@
         "left center right"
         "pad down pad2";
       gap:var(--action-gap);
-      padding:calc(10px * var(--ui-scale));
+      padding:calc(8px * var(--ui-scale));
       background:var(--color-surface);
       border:1px solid var(--color-border);
-      border-radius:calc(12px * var(--ui-scale));
+      border-radius:calc(10px * var(--ui-scale));
       box-shadow:inset 0 0 14px rgba(15,23,42,0.18);
       position:relative;
     }
@@ -683,10 +668,10 @@
     #actions button,
     #btn-del, #btn-next {
       position:relative;
-      padding:calc(8px * var(--ui-scale));
-      font-size:calc(18px * var(--ui-scale));
+      padding:calc(6px * var(--ui-scale));
+      font-size:calc(16px * var(--ui-scale));
       border:none;
-      border-radius:calc(10px * var(--ui-scale));
+      border-radius:calc(9px * var(--ui-scale));
       cursor:pointer;
       box-shadow:0 6px 14px rgba(15,23,42,0.3);
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
@@ -798,14 +783,14 @@
 
     #navButtons {
       display:flex;
-      gap:calc(6px * var(--ui-scale));
-      margin-top:calc(8px * var(--ui-scale));
+      gap:calc(5px * var(--ui-scale));
+      margin-top:calc(6px * var(--ui-scale));
       width:100%;
       flex-wrap:wrap;
       justify-content:center;
     }
     #navButtons button {
-      flex:1 1 calc(110px * var(--ui-scale));
+      flex:1 1 calc(104px * var(--ui-scale));
     }
 
     /* Юниты и эффекты */
@@ -1184,33 +1169,33 @@
     /* Верхняя панель */
     #scoreboard {
       position:fixed;
-      top:16px;
+      top:12px;
       left:50%;
       transform:translateX(-50%);
       display:flex;
       align-items:center;
-      gap:calc(10px + 4px * var(--ui-scale));
-      padding:calc(6px + 6px * var(--ui-scale)) calc(12px + 6px * var(--ui-scale));
+      gap:calc(8px + 4px * var(--ui-scale));
+      padding:calc(5px + 4px * var(--ui-scale)) calc(10px + 4px * var(--ui-scale));
       border-radius:999px;
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
       box-shadow:0 12px 26px rgba(15,23,42,0.32);
       z-index:900;
       min-width:0;
-      width:min(460px, calc(100% - 24px));
+      width:min(360px, calc(100% - 24px));
       min-height:var(--hud-height);
     }
     #scoreboard .scoreboard-shell {
       display:flex;
       align-items:center;
-      gap:calc(8px + 4px * var(--ui-scale));
+      gap:calc(6px + 3px * var(--ui-scale));
       flex:1;
     }
     #scoreboard .scoreboard-scores {
       display:flex;
       align-items:center;
-      gap:calc(6px + 2px * var(--ui-scale));
-      font-size:clamp(18px, calc(18px + 4px * var(--ui-scale)), 26px);
+      gap:calc(5px + 2px * var(--ui-scale));
+      font-size:clamp(17px, calc(17px + 3px * var(--ui-scale)), 24px);
       font-weight:700;
       letter-spacing:0.8px;
       color:var(--color-heading);
@@ -1220,8 +1205,8 @@
     }
     #scoreboard .score-divider { opacity:0.7; }
     .scoreboard-icon {
-      width:clamp(30px, calc(34px + 6px * var(--ui-scale)), 44px);
-      height:clamp(30px, calc(34px + 6px * var(--ui-scale)), 44px);
+      width:clamp(28px, calc(32px + 4px * var(--ui-scale)), 40px);
+      height:clamp(28px, calc(32px + 4px * var(--ui-scale)), 40px);
       border-radius:50%;
       border:1px solid var(--color-border);
       background:var(--color-surface);
@@ -1229,7 +1214,7 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:clamp(16px, calc(16px + 4px * var(--ui-scale)), 22px);
+      font-size:clamp(15px, calc(15px + 3px * var(--ui-scale)), 20px);
       cursor:pointer;
       transition:background .2s ease, transform .2s ease;
       flex-shrink:0;
@@ -1238,7 +1223,7 @@
     .scoreboard-icon:active { transform:scale(0.94); }
     #scoreboardMenu {
       position:fixed;
-      top:calc(16px + var(--hud-height) + 12px);
+      top:calc(10px + var(--hud-height) + 8px);
       left:50%;
       transform:translateX(-50%);
       background:var(--color-surface);
@@ -1534,21 +1519,19 @@
     @media (max-width: 540px) {
       #scoreboard {
         width:calc(100% - 16px);
-        padding:calc(6px + 4px * var(--ui-scale)) calc(10px + 4px * var(--ui-scale));
+        padding:calc(5px + 3px * var(--ui-scale)) calc(8px + 3px * var(--ui-scale));
       }
       #scoreboardMenu {
-        top:calc(12px + var(--hud-height) + 8px);
+        top:calc(10px + var(--hud-height) + 6px);
         width:min(220px, calc(100vw - 16px));
       }
       #gameArea {
-        margin-top:calc(var(--hud-height) + 18px);
+        margin-top:calc(var(--hud-height) + 14px);
       }
     }
 
     @media (min-width: 768px) {
-      #scoreboard {
-        width:min(520px, calc(100% - 32px));
-      }
+      #scoreboard { width:min(360px, calc(100% - 32px)); }
     }
   </style>
 </head>
@@ -1562,7 +1545,6 @@
     <div id="rulesBtnInitial" class="panel rulesBtn" data-i18n="rules" data-sound="nav">Правила</div>
     <div id="btn2p" class="panel modeBtn" data-i18n="twoPlayers" data-sound="nav">2 игрока</div>
     <div id="btnOnline" class="panel modeBtn" data-i18n="online" data-sound="nav">Онлайн</div>
-    <button id="menuSettingsBtn" class="menuSettingsBtn" data-i18n="settingsTitle" data-sound="nav">Настройки</button>
   </div>
 
   <div id="difficultySelect">
