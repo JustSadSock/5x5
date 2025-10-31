@@ -13,6 +13,7 @@ let replaySpeed = 1;
 let replayFrames = [];
 let replayIndex = 0;
 let replayTimer = null;
+let replayLoop = null;
 let replayPaused = false;
 let recorder = null;
 let recordedChunks = [];
@@ -77,6 +78,8 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
+  let activeResultOverlay = null;
+  let resultOverlaySuppressed = false;
   let displayedRound = 0;
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
@@ -1364,11 +1367,24 @@ function startNewRound() {
   function startReplay() {
     if (isReplaying || replayHistory.length === 0) return;
     isReplaying = true;
+    suppressResultOverlay();
     const ov = document.getElementById('replayOverlay');
-    if (ov) ov.classList.add('show');
+    if (ov) {
+      ov.classList.add('show');
+      ov.setAttribute('aria-hidden', 'false');
+    }
     replayPaused = false;
     const pauseBtn = document.getElementById('replayPause');
-    if (pauseBtn) pauseBtn.textContent = '❚❚';
+    if (pauseBtn) {
+      pauseBtn.textContent = '❚❚';
+      pauseBtn.setAttribute('aria-label', t('pauseReplay'));
+      pauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
+    }
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
+    replayLoop = null;
     resetGame();
     replayFrames = [];
     replayHistory.forEach(r => {
@@ -1380,6 +1396,10 @@ function startNewRound() {
         });
       }
     });
+    if (!replayFrames.length) {
+      endReplay();
+      return;
+    }
     replayIndex = 0;
     const seek = document.getElementById('replaySeek');
     if (seek) {
@@ -1388,20 +1408,28 @@ function startNewRound() {
     }
     function play() {
       if (!isReplaying) return;
-      if (replayPaused) { replayTimer = setTimeout(play, 100); return; }
+      if (replayPaused) {
+        replayTimer = null;
+        return;
+      }
       if (replayIndex >= replayFrames.length) {
         replayPaused = true;
         replayIndex = replayFrames.length - 1;
         if (seek) seek.value = replayIndex;
         const pauseBtn = document.getElementById('replayPause');
-        if (pauseBtn) pauseBtn.textContent = '▶';
+        if (pauseBtn) {
+          pauseBtn.textContent = '▶';
+          pauseBtn.setAttribute('aria-label', t('resumeReplay'));
+          pauseBtn.setAttribute('data-i18n-aria', 'resumeReplay');
+        }
         return;
       }
       const f = replayFrames[replayIndex++];
       renderReplayFrame(f);
       if (seek) seek.value = replayIndex;
-      replayTimer = setTimeout(play, 700 / (replaySpeed || 0.1));
+      replayTimer = setTimeout(play, 700 / Math.max(replaySpeed || 0.1, 0.1));
     }
+    replayLoop = play;
     play();
   }
 
@@ -1418,10 +1446,19 @@ function startNewRound() {
     if (idx < 0) idx = 0;
     if (idx >= replayFrames.length) idx = replayFrames.length - 1;
     replayIndex = idx;
-    clearTimeout(replayTimer);
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
     const seek = document.getElementById('replaySeek');
     if (seek) seek.value = replayIndex;
-    renderReplayFrame(replayFrames[replayIndex]);
+    const frame = replayFrames[replayIndex];
+    if (frame) {
+      renderReplayFrame(frame);
+    }
+    if (!replayPaused && typeof replayLoop === 'function') {
+      replayLoop();
+    }
   }
 
   async function saveReplayVideo() {
@@ -1539,16 +1576,28 @@ function startNewRound() {
   }
 
   function endReplay() {
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
+    replayLoop = null;
     isReplaying = false;
+    replayPaused = false;
+    replayIndex = 0;
+    replayFrames = [];
     if (recorder) {
       try { recorder.stop(); } catch (e) {}
       recorder = null;
     }
     const ov = document.getElementById('replayOverlay');
-    if (ov) ov.classList.remove('show');
+    if (ov) {
+      ov.classList.remove('show');
+      ov.setAttribute('aria-hidden', 'true');
+    }
     resetGame();
     updateScore();
     updateReplayButton();
+    restoreResultOverlay();
   }
 
   window.startReplay = startReplay;
@@ -1583,9 +1632,38 @@ function startNewRound() {
     });
   }
 
+  function removeResultOverlay() {
+    if (activeResultOverlay && activeResultOverlay.parentNode) {
+      activeResultOverlay.remove();
+    }
+    activeResultOverlay = null;
+    resultOverlaySuppressed = false;
+  }
+
+  function suppressResultOverlay() {
+    if (!activeResultOverlay || resultOverlaySuppressed) return;
+    activeResultOverlay.classList.add('hidden');
+    activeResultOverlay.setAttribute('aria-hidden', 'true');
+    resultOverlaySuppressed = true;
+  }
+
+  function restoreResultOverlay() {
+    if (!activeResultOverlay || !resultOverlaySuppressed) return;
+    activeResultOverlay.classList.remove('hidden');
+    activeResultOverlay.removeAttribute('aria-hidden');
+    const focusTarget = activeResultOverlay.querySelector('#resPlayAgain') || activeResultOverlay.querySelector('button');
+    if (focusTarget) {
+      setTimeout(() => focusTarget.focus(), 0);
+    }
+    resultOverlaySuppressed = false;
+  }
+
   function showResult(text) {
+    removeResultOverlay();
     const ov = document.createElement('div');
     ov.id = 'resultOverlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
     ov.innerHTML =
       `<div>${text}</div>` +
       '<div class="resultActions">' +
@@ -1604,6 +1682,9 @@ function startNewRound() {
       '  </div>' +
       '</div>';
     document.body.append(ov);
+    activeResultOverlay = ov;
+    resultOverlaySuppressed = false;
+    ov.setAttribute('aria-hidden', 'false');
     const resAgain = ov.querySelector('#resPlayAgain');
     const resMenu = ov.querySelector('#resMenu');
     const resReplay = ov.querySelector('#resReplay');
@@ -1611,7 +1692,7 @@ function startNewRound() {
     const statusEl = ov.querySelector('#replaySaveStatus');
     if (resAgain) {
       resAgain.onclick = () => {
-        ov.remove();
+        removeResultOverlay();
         resetGame();
         if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
         if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
@@ -1619,13 +1700,13 @@ function startNewRound() {
     }
     if (resMenu) {
       resMenu.onclick = () => {
-        ov.remove();
+        removeResultOverlay();
         returnToMenu();
       };
     }
     if (resReplay) {
       resReplay.onclick = () => {
-        ov.remove();
+        suppressResultOverlay();
         startReplay();
       };
     }
@@ -1735,6 +1816,7 @@ function startNewRound() {
 
   window.exitOnlineMode = exitOnlineMode;
   function returnToMenu() {
+    removeResultOverlay();
     resetGame();
     hideAttackOverlay();
     board.style.visibility = 'hidden';
@@ -1883,7 +1965,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateReplayButton();
   }
   if (saveReplayBtn) saveReplayBtn.onclick = () => showSaveSpeedModal();
-  if (replaySeek) replaySeek.oninput = () => seekReplay(parseInt(replaySeek.value));
+  if (replaySeek) {
+    replaySeek.oninput = () => {
+      const target = parseInt(replaySeek.value, 10);
+      if (!Number.isNaN(target)) {
+        seekReplay(target);
+      }
+    };
+  }
   if (speedBtns.length) {
     speedBtns.forEach(btn => {
       if (parseFloat(btn.dataset.speed) === replaySpeed) btn.classList.add('active');
@@ -1891,13 +1980,37 @@ document.addEventListener('DOMContentLoaded', () => {
         replaySpeed = parseFloat(btn.dataset.speed);
         speedBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        if (!replayPaused && typeof replayLoop === 'function') {
+          if (replayTimer) {
+            clearTimeout(replayTimer);
+            replayTimer = null;
+          }
+          replayLoop();
+        }
       };
     });
   }
   if (replayPauseBtn) {
+    replayPauseBtn.setAttribute('aria-label', t('pauseReplay'));
+    replayPauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
     replayPauseBtn.onclick = () => {
       replayPaused = !replayPaused;
-      replayPauseBtn.textContent = replayPaused ? '▶' : '❚❚';
+      if (replayPaused) {
+        replayPauseBtn.textContent = '▶';
+        replayPauseBtn.setAttribute('aria-label', t('resumeReplay'));
+        replayPauseBtn.setAttribute('data-i18n-aria', 'resumeReplay');
+        if (replayTimer) {
+          clearTimeout(replayTimer);
+          replayTimer = null;
+        }
+      } else {
+        replayPauseBtn.textContent = '❚❚';
+        replayPauseBtn.setAttribute('aria-label', t('pauseReplay'));
+        replayPauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
+        if (typeof replayLoop === 'function') {
+          replayLoop();
+        }
+      }
     };
   }
 

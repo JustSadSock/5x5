@@ -975,72 +975,134 @@
 
     /* Overlay for replay mode */
     #replayOverlay {
-      display:none; position:absolute; top:0; left:0;
-      width:100%; height:100%; background:rgba(0,0,0,0.2);
-      pointer-events:none; z-index:30;
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:rgba(15,23,42,0.35);
+      pointer-events:none;
+      z-index:950;
     }
     #replayOverlay.show {
-      display:block;
-      pointer-events:auto;
-    }
-    #replayOverlay button {
-      position:absolute; top:10px; right:10px;
-      padding:10px 16px;
-      background:var(--color-surface);
-      color:var(--color-text-primary) !important;
-      border:1px solid var(--color-border) !important;
-      border-radius:10px;
-      pointer-events:auto;
-    }
-    #replayOverlay button:hover { background:var(--color-surface-hover); }
-    .speedControl {
       display:flex;
-      align-items:center;
-      gap:8px;
-      background:var(--color-surface-alt);
-      padding:8px 12px;
-      border-radius:12px;
       pointer-events:auto;
-      border:1px solid var(--color-border);
-      box-shadow:0 10px 24px rgba(15,23,42,0.28);
     }
-    .replayControls {
-      position:absolute;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
-      width:calc(100% - 40px);
-      max-width:360px;
+    #replayOverlay .replayPanel {
+      width:min(440px, 100%);
+      background:var(--color-overlay);
+      border-radius:20px;
+      padding:20px;
       display:flex;
       flex-direction:column;
-      align-items:center;
-      gap:8px;
-      pointer-events:auto;
-    }
-    .replayControls input[type=range] {
-      width:100%;
-    }
-    .speedBtn {
-      background:var(--color-surface);
-      color:var(--color-text-primary);
+      gap:16px;
       border:1px solid var(--color-border);
-      border-radius:8px;
-      padding:6px 10px;
+      box-shadow:0 22px 44px rgba(15,23,42,0.32);
+    }
+    #replayOverlay .replayHeader {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    #replayOverlay .replayTitle {
+      font-size:clamp(18px, 2.4vw, 22px);
+      font-weight:600;
+    }
+    #replayOverlay .replayHeaderButtons {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    #replayOverlay .replayIconBtn {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:8px 14px;
+      border-radius:999px;
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      color:var(--color-text-primary);
+      font-size:14px;
+      cursor:pointer;
+      transition:background .2s ease, transform .2s ease;
+    }
+    #replayOverlay .replayIconBtn:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
+    #replayOverlay .replayIconBtn .icon { font-size:16px; }
+    #replayOverlay .replayIconBtn .label { display:none; }
+    #replayOverlay .replayBody {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    #replayOverlay .replayBody input[type=range] {
+      flex:1;
+    }
+    #replayOverlay #replayPause {
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:var(--color-accent);
+      color:var(--color-button-text);
+      font-size:18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       cursor:pointer;
       transition:background .2s ease;
     }
-    .speedBtn:hover { background:var(--color-surface-hover); }
-    #replayPause {
-      left:10px;
-      right:auto;
-      padding:2px 4px;
-      width:28px;
-      font-size:14px;
+    #replayOverlay #replayPause:hover { background:var(--color-accent-strong); }
+    #replayOverlay .replaySpeeds {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
-    .speedBtn.active {
+    #replayOverlay .speedLabel {
+      font-size:13px;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      color:var(--color-text-muted);
+    }
+    #replayOverlay .speedControl {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    #replayOverlay .speedBtn {
+      flex:1 1 64px;
+      min-width:64px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--color-border);
+      background:var(--color-surface);
+      color:var(--color-text-primary);
+      cursor:pointer;
+      transition:background .2s ease, transform .2s ease;
+    }
+    #replayOverlay .speedBtn:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
+    #replayOverlay .speedBtn.active {
       background:var(--color-accent);
       color:var(--color-button-text);
       border:none;
+    }
+    @media (min-width: 640px) {
+      #replayOverlay .replayIconBtn .label { display:inline; }
+    }
+    @media (max-width: 520px) {
+      #replayOverlay {
+        padding:16px;
+      }
+      #replayOverlay .replayPanel {
+        padding:16px;
+        gap:14px;
+      }
+      #replayOverlay #replayPause {
+        width:40px;
+        height:40px;
+      }
     }
 
     /* Tutorial overlay */
@@ -1136,7 +1198,7 @@
     #leaveOverlay,
     #speedModal,
     #resultOverlay {
-      position:absolute; top:50%; left:50%;
+      position:fixed; top:50%; left:50%;
       transform:translate(-50%,-50%);
       background:var(--color-overlay);
       padding:24px;
@@ -1146,6 +1208,7 @@
       box-shadow:0 18px 40px rgba(15,23,42,0.32);
       color:var(--color-text-primary);
     }
+    #resultOverlay.hidden { display:none; }
     #leaveOverlay button,
     #speedModal button,
     #resultOverlay button {
@@ -1753,19 +1816,35 @@
 
   <div id="confirmToast" role="status" aria-live="polite"></div>
 
-  <div id="replayOverlay">
-    <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
-    <button id="saveReplay" data-i18n="saveVideo" data-sound="nav" style="right:90px;top:10px;position:absolute;">Save</button>
-    <button id="replayPause">❚❚</button>
-    <div id="replayControls" class="replayControls">
-      <div class="speedControl">
-        <button class="speedBtn" data-speed="1">1x</button>
-        <button class="speedBtn" data-speed="2">2x</button>
-        <button class="speedBtn" data-speed="3">3x</button>
-        <button class="speedBtn" data-speed="4">4x</button>
-        <button class="speedBtn" data-speed="5">5x</button>
+  <div id="replayOverlay" aria-hidden="true">
+    <div class="replayPanel" role="dialog" aria-modal="true" aria-labelledby="replayTitle" aria-describedby="replayControls">
+      <div class="replayHeader">
+        <span id="replayTitle" class="replayTitle" data-i18n="replay">Повтор</span>
+        <div class="replayHeaderButtons">
+          <button id="saveReplay" class="replayIconBtn" data-sound="nav" data-i18n-title="saveVideo" data-i18n-aria="saveVideo" aria-label="Save video">
+            <span class="icon">💾</span>
+            <span class="label" data-i18n="saveVideo">Сохранить видео</span>
+          </button>
+          <button id="replayClose" class="replayIconBtn" data-sound="nav" data-i18n-title="close" data-i18n-aria="close" aria-label="Close">
+            <span class="icon">✕</span>
+            <span class="label" data-i18n="close">Закрыть</span>
+          </button>
+        </div>
       </div>
-      <input id="replaySeek" type="range" min="0" max="0" step="1" value="0">
+      <div class="replayBody">
+        <button id="replayPause" data-sound="nav" data-i18n-aria="pauseReplay" aria-label="Pause replay">❚❚</button>
+        <input id="replaySeek" type="range" min="0" max="0" step="1" value="0">
+      </div>
+      <div id="replayControls" class="replaySpeeds">
+        <span class="speedLabel" data-i18n="playbackSpeed">Скорость воспроизведения</span>
+        <div class="speedControl">
+          <button class="speedBtn" data-speed="1">1x</button>
+          <button class="speedBtn" data-speed="2">2x</button>
+          <button class="speedBtn" data-speed="3">3x</button>
+          <button class="speedBtn" data-speed="4">4x</button>
+          <button class="speedBtn" data-speed="5">5x</button>
+        </div>
+      </div>
     </div>
   </div>
   <div id="tutorialOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="tutorialProgress" aria-describedby="tutorialContent tutorialHint">
