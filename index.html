@@ -65,6 +65,7 @@
       --action-size: calc(48px * var(--ui-scale));
       --action-gap: calc(6px * var(--ui-scale));
       --hud-height: clamp(44px, calc(50px * var(--ui-scale)), 64px);
+      --round-gap: clamp(10px, calc(10px + 6px * var(--ui-scale)), 22px);
     }
 
     :root[data-theme="light"] {
@@ -496,8 +497,8 @@
       flex-direction:column;
       align-items:center;
       position:relative;
-      margin-top:calc(var(--hud-height) + 6px);
-      gap:calc(6px * var(--ui-scale));
+      margin-top:var(--hud-stack-offset, calc(var(--hud-height) + var(--round-gap)));
+      gap:var(--round-gap);
     }
     #board {
       visibility:hidden;
@@ -1524,9 +1525,6 @@
       #scoreboardMenu {
         top:calc(10px + var(--hud-height) + 6px);
         width:min(220px, calc(100vw - 16px));
-      }
-      #gameArea {
-        margin-top:calc(var(--hud-height) + 10px);
       }
     }
 

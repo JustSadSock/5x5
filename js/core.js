@@ -142,14 +142,36 @@ function startNewRound() {
     hudMenuOpen = true;
   }
 
+  function syncHudSpacing() {
+    if (!gameArea) return;
+    if (!scoreboard) {
+      root.style.removeProperty('--hud-stack-offset');
+      gameArea.style.marginTop = '';
+      return;
+    }
+    const rect = scoreboard.getBoundingClientRect();
+    if (!rect || rect.height <= 0) {
+      root.style.removeProperty('--hud-stack-offset');
+      gameArea.style.marginTop = '';
+      return;
+    }
+    const computed = getComputedStyle(gameArea);
+    const gapStr = (computed.rowGap && computed.rowGap !== 'normal') ? computed.rowGap : computed.gap;
+    let gapValue = parseFloat(gapStr);
+    if (!Number.isFinite(gapValue)) gapValue = 0;
+    const offset = Math.ceil(rect.bottom + gapValue);
+    root.style.setProperty('--hud-stack-offset', `${offset}px`);
+    gameArea.style.marginTop = '';
+  }
+
   function recalcLayoutScale() {
     layoutScaleRaf = null;
     if (!board || !ui) return;
     const prev = getComputedStyle(root).getPropertyValue('--ui-scale') || '1';
     root.style.setProperty('--ui-scale', '1');
+    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : null;
     const boardRect = board.getBoundingClientRect();
     const uiRect = ui.getBoundingClientRect();
-    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : null;
     if (boardRect.width === 0 || boardRect.height === 0) {
       root.style.setProperty('--ui-scale', prev.trim() || '1');
       return;
@@ -180,6 +202,7 @@ function startNewRound() {
     }
     scale = Math.max(0.45, Math.min(scale, 1));
     root.style.setProperty('--ui-scale', scale.toFixed(3));
+    requestAnimationFrame(syncHudSpacing);
   }
 
   function updateLayoutScale() {
@@ -1745,6 +1768,7 @@ function startNewRound() {
     updateUI();
   };
 
+  syncHudSpacing();
   updateLayoutScale();
 })();
 
