@@ -973,7 +973,7 @@
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
     }
     #actions button {
-      font-size:calc(20px * var(--ui-scale));
+      font-size:calc(24px * var(--ui-scale));
     }
     #btn-del, #btn-next {
       font-size:calc(16px * var(--ui-scale));
@@ -1038,6 +1038,8 @@
     #actions.attack-mode .moveBtn:hover:not(:disabled) {
       background:rgba(239,68,68,0.15);
       color:var(--color-danger);
+      transform:none;
+      box-shadow:0 6px 14px rgba(15,23,42,0.3);
     }
     #actions.attack-mode .moveBtn.attack-selected {
       background:var(--color-danger);
@@ -2265,7 +2267,7 @@
       <li data-i18n="rule1">Каждый раунд игроки заранее выбирают пять шагов.</li>
       <li data-i18n="rule2">За раунд можно выполнить перемещения, одну атаку и один щит.</li>
       <li data-i18n="rule3">Атака требует указать направление и поражает текущую клетку и клетки вдоль луча.</li>
-      <li data-i18n="rule3b">Вы можете добавить несколько атак в разных направлениях, каждая занимает отдельный шаг плана.</li>
+      <li data-i18n="rule3b">Вы можете добавить несколько атак в разных направлениях за раунд, но каждое направление можно выбрать только один раз; каждая атака занимает отдельный шаг плана.</li>
       <li data-i18n="rule4">В одном раунде нельзя и двигаться, и атаковать в одну и ту же сторону — направление атаки должно отличаться.</li>
       <li data-i18n="rule5">Щит поглощает весь урон выбранного шага.</li>
       <li data-i18n="rule6">После планирования ходы выполняются по порядку одновременно у обоих игроков.</li>
