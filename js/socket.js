@@ -18,8 +18,20 @@ const ROOM_CODE_PATTERN = /^[A-Z0-9]{4}$/;
 const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_BACKOFF_FACTOR = 1.5;
 const RECONNECT_MAX_DELAY_MS = 20000;
-const LOG_LIMIT = 200;
 const TOAST_LIFETIME = 4200;
+const CONNECTIVITY_INTERVAL_MS = 3000;
+const CONNECTIVITY_TIMEOUT_MS = 2500;
+
+const runtimeConfig = typeof window !== 'undefined' ? (window.__CROSSLINE_RUNTIME__ || {}) : {};
+const API_ORIGIN = (() => {
+  if (typeof window === 'undefined') return null;
+  if (runtimeConfig.apiOrigin) return runtimeConfig.apiOrigin;
+  if (window.CROSSLINE_API_URL) return window.CROSSLINE_API_URL;
+  if (window.location && window.location.origin) return window.location.origin;
+  return null;
+})();
+
+let connectivityTimer = null;
 
 const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
 const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
@@ -65,16 +77,15 @@ if (typeof window !== 'undefined') {
 
 WS_SERVER_URL = addNgrokBypassParam(WS_SERVER_URL);
 
-function updateConnectionStatus(text, color, state) {
+function updateConnectionStatus(text, state) {
   const el = document.getElementById('connectionStatus');
-  if (el) {
-    el.textContent = text;
-    if (color) el.style.color = color;
-    if (state) {
-      el.dataset.state = state;
-    } else {
-      delete el.dataset.state;
-    }
+  if (!el) return;
+  const textSpan = el.querySelector('.status-text');
+  if (textSpan) textSpan.textContent = text;
+  if (state) {
+    el.dataset.state = state;
+  } else {
+    delete el.dataset.state;
   }
 }
 
@@ -100,6 +111,34 @@ function showOnlineToast(type, message) {
   }
 }
 
+function scheduleConnectivityPoll() {
+  if (connectivityTimer) clearTimeout(connectivityTimer);
+  if (typeof fetch !== 'function' || !API_ORIGIN) return;
+  const poll = async () => {
+    const statusEl = document.getElementById('connectionStatus');
+    const currentState = statusEl ? statusEl.dataset.state : null;
+    if ((!socket || socket.readyState !== WebSocket.OPEN) && currentState !== 'connecting' && currentState !== 'reconnecting') {
+      updateConnectionStatus(t('checkingConnection'), 'checking');
+    }
+    try {
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS) : null;
+      await fetch(API_ORIGIN, { method: 'HEAD', cache: 'no-store', signal: controller ? controller.signal : undefined });
+      if (timeoutId) clearTimeout(timeoutId);
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      updateConnectionStatus(t('onlineStatus'), 'online');
+    }
+    } catch (err) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        updateConnectionStatus(t('serverUnavailable'), 'offline');
+      }
+    } finally {
+      connectivityTimer = setTimeout(poll, CONNECTIVITY_INTERVAL_MS);
+    }
+  };
+  poll();
+}
+
 function setRoomCodeDisplay(code) {
   const codeEl = document.getElementById('roomCode');
   if (codeEl) {
@@ -120,8 +159,6 @@ function resetRoomState() {
 
 function clearRoomUI() {
   setRoomCodeDisplay(null);
-  const logEl = document.getElementById('log');
-  if (logEl) logEl.innerHTML = '';
   const btn = document.getElementById('btn-next');
   if (btn) btn.disabled = true;
 }
@@ -175,7 +212,7 @@ function cleanupRoom() {
     clearTimeout(connectionWatchdog);
     connectionWatchdog = null;
   }
-  updateConnectionStatus(t('offline'), 'orange', 'offline');
+  updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
   clearRoomUI();
   if (typeof window.onOnlineDisconnected === 'function') {
@@ -195,13 +232,13 @@ function initSocket(onReady) {
   }
   clearReconnectTimer();
   socket = new WebSocket(addNgrokBypassParam(WS_SERVER_URL));
-  updateConnectionStatus(t('connecting'), 'yellow', 'connecting');
+  updateConnectionStatus(t('connecting'), 'connecting');
   if (connectionWatchdog) clearTimeout(connectionWatchdog);
   connectionWatchdog = setTimeout(() => {
     connectionWatchdog = null;
     if (!socket || socket.readyState === WebSocket.OPEN) return;
     log('⛔ ' + t('serverUnavailable'));
-    updateConnectionStatus(t('serverUnavailable'), 'red', 'error');
+    updateConnectionStatus(t('serverUnavailable'), 'offline');
     showOnlineToast('error', t('serverUnavailable'));
     try {
       socket.close();
@@ -222,12 +259,12 @@ function initSocket(onReady) {
       });
     }
     if (!onReady && (wasCreator || lastRoomId)) {
-      updateConnectionStatus(t('rejoin'), 'lime', 'online');
+      updateConnectionStatus(t('rejoin'), 'online');
       const msg = wasCreator ? { type: 'create' } : { type: 'join', roomId: lastRoomId };
       startRoomActionWatch(wasCreator ? 'create' : 'join');
       socket.send(JSON.stringify(msg));
     } else {
-      updateConnectionStatus(t('onlineStatus'), 'lime', 'online');
+      updateConnectionStatus(t('onlineStatus'), 'online');
     }
     if (onReady) onReady();
   });
@@ -238,7 +275,7 @@ function initSocket(onReady) {
     }
     if (!isConnected) {
       log('⛔ ' + t('serverUnavailable'));
-      updateConnectionStatus(t('serverUnavailable'), 'red', 'error');
+      updateConnectionStatus(t('serverUnavailable'), 'offline');
       showOnlineToast('error', t('serverUnavailable'));
     }
   });
@@ -254,10 +291,10 @@ function initSocket(onReady) {
     clearPendingRoomAction();
     if (intentionalClose) {
       intentionalClose = false;
-      updateConnectionStatus(t('offline'), 'orange', 'offline');
+      updateConnectionStatus(t('offline'), 'offline');
       return;
     }
-    updateConnectionStatus(t('reconnecting'), 'orange', 'reconnecting');
+    updateConnectionStatus(t('reconnecting'), 'reconnecting');
     showOnlineToast('info', t('reconnecting'));
     clearReconnectTimer();
     const attempt = Math.min(reconnectAttempts + 1, 20);
@@ -415,17 +452,33 @@ function sendState(state) {
 }
 
 function log(text) {
-  const el = document.getElementById('log');
-  if (!el) return;
-  const entry = document.createElement('div');
-  entry.textContent = text;
-  el.appendChild(entry);
-  while (el.childNodes.length > LOG_LIMIT) {
-    el.removeChild(el.firstChild);
+  if (!text) return;
+  try {
+    console.log('[online]', text);
+  } catch (err) {
+    /* ignore console errors */
   }
-  if (typeof el.scrollTop === 'number') {
-    el.scrollTop = el.scrollHeight;
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const first = trimmed[0];
+  if (first === '📨') return;
+  let type = 'info';
+  let message = trimmed;
+  const stripLeading = () => {
+    message = message.slice(1).trim();
+    if (!message) message = trimmed;
+  };
+  if ('⛔❌'.includes(first)) {
+    type = 'error';
+    stripLeading();
+  } else if ('✅✨✔'.includes(first)) {
+    type = 'success';
+    stripLeading();
+  } else if (first === '⚠') {
+    type = 'error';
+    stripLeading();
   }
+  showOnlineToast(type, message);
 }
 
 function showConfirmMessage(text) {
@@ -471,9 +524,10 @@ function showOpponentLeftModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateConnectionStatus(t('offline'), 'orange', 'offline');
+  updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
   setRoomCodeDisplay(null);
+  scheduleConnectivityPoll();
   if (copyRoomCodeBtn) {
     copyRoomCodeBtn.disabled = true;
     copyRoomCodeBtn.addEventListener('click', async () => {

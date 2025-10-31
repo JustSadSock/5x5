@@ -21,32 +21,27 @@ let attackModeOwner = null;
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
-function placeSymbol(x, y, who) {
+function placeSymbol(x, y) {
   const cell = document.getElementById(`c${x}${y}`);
   if (cell) {
-    cell.textContent = who === 0 ? 'X' : 'O';
+    cell.textContent = '';
+    cell.classList.remove('cell-marked');
   }
 }
 
 function onCellClick(x, y) {
-  if (attackMode) return;
-  if (!canPlay) return;
-  if (localMoves.length >= 5) return;
-  localMoves.push({ x, y });
-  applyMove({ x, y }, playerIndex);
-  // confirmation handled via Next button in online mode
-  if (localMoves.length === 5) {
-    updateUI();
-  }
+  const cell = document.getElementById(`c${x}${y}`);
+  if (!cell) return;
+  cell.classList.toggle('cell-marked');
 }
 
 function handleOpponentMove(move) {
-  placeSymbol(move.x, move.y, 1 - playerIndex);
+  placeSymbol(move.x, move.y);
   yourTurn = true;
 }
 
-function applyMove(move, who) {
-  placeSymbol(move.x, move.y, who);
+function applyMove(move) {
+  placeSymbol(move.x, move.y);
 }
 
 function startNewRound() {
@@ -82,15 +77,7 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
-  let roundEventLog = [];
-  let lastRoundSummary = null;
-  let roundReportUnread = false;
-  let lastStepSummary = null;
-  let autoRoundReport = true;
   let displayedRound = 0;
-  const storedRoundReportPref = localStorage.getItem('roundReportAuto');
-  if (storedRoundReportPref === '0') autoRoundReport = false;
-
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
   const b1p = document.getElementById('btn1p');
@@ -123,17 +110,98 @@ function startNewRound() {
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
   const scoreboard = document.getElementById('scoreboard');
+  const scoreboardToggle = document.getElementById('scoreboardToggle');
+  const scoreboardMenu = document.getElementById('scoreboardMenu');
+  const scoreboardBackdrop = document.getElementById('scoreboardBackdrop');
   const roundBadge = document.getElementById('roundBadge');
   const roundNumberEl = roundBadge ? roundBadge.querySelector('.round-number') : null;
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
-  const roundReportBtn = document.getElementById('roundReportBtn');
-  const roundReportPanel = document.getElementById('roundReportPanel');
-  const roundReportBody = document.getElementById('roundReportBody');
-  const roundReportClose = document.getElementById('roundReportClose');
-  const roundReportAutoToggle = document.getElementById('roundReportAutoToggle');
-  const roundReportTitleEl = document.getElementById('roundReportTitle');
+  const root = document.documentElement;
+  let layoutScaleRaf = null;
+  let hudMenuOpen = false;
+
+  function closeHudMenu() {
+    if (!scoreboardMenu) return;
+    scoreboardMenu.classList.remove('show');
+    scoreboardMenu.setAttribute('aria-hidden', 'true');
+    if (scoreboardBackdrop) scoreboardBackdrop.classList.remove('show');
+    if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'false');
+    hudMenuOpen = false;
+  }
+
+  function openHudMenu() {
+    if (!scoreboardMenu) return;
+    scoreboardMenu.classList.add('show');
+    scoreboardMenu.setAttribute('aria-hidden', 'false');
+    if (scoreboardBackdrop) scoreboardBackdrop.classList.add('show');
+    if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'true');
+    const focusTarget = scoreboardMenu.querySelector('button:not([disabled])');
+    if (focusTarget) focusTarget.focus();
+    hudMenuOpen = true;
+  }
+
+  function recalcLayoutScale() {
+    layoutScaleRaf = null;
+    if (!board || !ui) return;
+    const prev = getComputedStyle(root).getPropertyValue('--ui-scale') || '1';
+    root.style.setProperty('--ui-scale', '1');
+    const boardRect = board.getBoundingClientRect();
+    const uiRect = ui.getBoundingClientRect();
+    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : { height: 0 };
+    if (boardRect.width === 0 || boardRect.height === 0) {
+      root.style.setProperty('--ui-scale', prev.trim() || '1');
+      return;
+    }
+    const availableWidth = Math.max(320, window.innerWidth - 32);
+    const availableHeight = Math.max(320, window.innerHeight - 40);
+    const requiredWidth = Math.max(boardRect.width, uiRect.width, 300);
+    const verticalAllowance = Math.max(48, scoreboardRect.height) + 48;
+    const requiredHeight = boardRect.height + uiRect.height + verticalAllowance;
+    let scale = Math.min(1, availableWidth / requiredWidth);
+    scale = Math.min(scale, availableHeight / Math.max(requiredHeight, 1));
+    scale = Math.max(0.6, Math.min(scale, 1));
+    root.style.setProperty('--ui-scale', scale.toFixed(3));
+  }
+
+  function updateLayoutScale() {
+    if (layoutScaleRaf !== null) cancelAnimationFrame(layoutScaleRaf);
+    layoutScaleRaf = requestAnimationFrame(recalcLayoutScale);
+  }
+
+  if (scoreboardMenu) {
+    scoreboardMenu.setAttribute('aria-hidden', 'true');
+    scoreboardMenu.addEventListener('click', evt => {
+      if (evt.target instanceof HTMLElement && evt.target.closest('button')) {
+        closeHudMenu();
+      }
+    });
+  }
+  if (scoreboardBackdrop) {
+    scoreboardBackdrop.addEventListener('click', closeHudMenu);
+  }
+  if (scoreboardToggle && scoreboardMenu) {
+    scoreboardToggle.setAttribute('aria-expanded', 'false');
+    scoreboardToggle.addEventListener('click', () => {
+      if (scoreboardMenu.classList.contains('show')) {
+        closeHudMenu();
+      } else {
+        openHudMenu();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', evt => {
+    if (evt.key === 'Escape' && hudMenuOpen) {
+      closeHudMenu();
+    }
+  });
+
+  window.closeHudMenu = closeHudMenu;
+
+  window.addEventListener('resize', updateLayoutScale);
+  window.addEventListener('orientationchange', updateLayoutScale);
   const tutorialScript = [
     { trigger: 'start', key: 'tutorial1' },
     { trigger: 'afterMove', key: 'tutorial2' },
@@ -176,182 +244,6 @@ function startNewRound() {
       updateUI();
     }
   }
-
-  function updateRoundReportButton() {
-    if (!roundReportBtn) return;
-    roundReportBtn.disabled = !lastRoundSummary;
-    roundReportBtn.classList.toggle('has-unread', Boolean(lastRoundSummary && roundReportUnread));
-  }
-
-  function hideRoundReport(resetUnread) {
-    if (!roundReportPanel) return;
-    roundReportPanel.classList.remove('show');
-    roundReportPanel.setAttribute('aria-hidden', 'true');
-    if (resetUnread) {
-      roundReportUnread = false;
-      updateRoundReportButton();
-    }
-  }
-
-  function formatCell(cell) {
-    if (!cell) return '';
-    const cx = typeof cell.x === 'number' ? cell.x : 0;
-    const cy = typeof cell.y === 'number' ? cell.y : 0;
-    return `(${cx + 1}, ${cy + 1})`;
-  }
-
-  function playerName(pl) {
-    return pl === 'A' ? t('playerA') : t('playerB');
-  }
-
-  function describeAttackDirs(dirs) {
-    if (!Array.isArray(dirs) || !dirs.length) {
-      return t('roundReportCenter');
-    }
-    const dirLabels = dirs.map(d => t(`dir_${d}`)).join(t('roundReportDirsJoin'));
-    return `${t('roundReportCenter')} + ${dirLabels}`;
-  }
-
-  function formatPlayerEvents(playerKey, info) {
-    const lines = [];
-    if (!info || !Array.isArray(info.events)) return lines;
-    info.events.forEach(evt => {
-      switch (evt.type) {
-        case 'inactive':
-          lines.push(t('roundReportEliminatedEarlier'));
-          break;
-        case 'move':
-          lines.push(t('roundReportMoved', {
-            dir: t(`dir_${evt.dir}`),
-            cell: formatCell(evt.to || info.endCell)
-          }));
-          break;
-        case 'wait':
-          lines.push(t('roundReportHeld', { cell: formatCell(evt.at || info.endCell) }));
-          break;
-        case 'attack':
-          lines.push(t('roundReportAttack', { dirs: describeAttackDirs(evt.dirs || []) }));
-          break;
-        case 'shield': {
-          const blocks = Array.isArray(evt.blocks) ? evt.blocks : [];
-          if (evt.blocked && blocks.length) {
-            blocks.forEach(block => {
-              lines.push(t('roundReportShieldBlocked', {
-                player: playerName(block.source || (playerKey === 'A' ? 'B' : 'A')),
-                cell: formatCell(block.cell || info.endCell)
-              }));
-            });
-          } else {
-            lines.push(t('roundReportShieldReady'));
-          }
-          break;
-        }
-        case 'damage':
-          if (evt.cause === 'attack') {
-            lines.push(t('roundReportDamageAttack', {
-              cell: formatCell(evt.cell || info.endCell),
-              player: playerName(evt.source || (playerKey === 'A' ? 'B' : 'A'))
-            }));
-          } else if (evt.cause === 'collapse') {
-            lines.push(t('roundReportDamageCollapse', {
-              cell: formatCell(evt.cell || info.endCell)
-            }));
-          }
-          break;
-        default:
-          break;
-      }
-    });
-    return lines;
-  }
-
-  function buildRoundSummary(roundNumber) {
-    const steps = roundEventLog.map(entry => {
-      const players = ['A', 'B'].map(pl => {
-        const info = entry.perPlayer[pl];
-        const events = formatPlayerEvents(pl, info);
-        return {
-          key: pl,
-          name: playerName(pl),
-          events,
-          info
-        };
-      });
-      return {
-        step: entry.step,
-        players
-      };
-    });
-    return { round: roundNumber, steps };
-  }
-
-  function renderRoundReport(summary) {
-    if (!roundReportBody) return;
-    roundReportBody.innerHTML = '';
-    if (!summary || !summary.steps || !summary.steps.length) {
-      const empty = document.createElement('div');
-      empty.className = 'roundReportEmpty';
-      empty.textContent = t('roundReportEmpty');
-      roundReportBody.append(empty);
-      if (roundReportTitleEl) {
-        roundReportTitleEl.textContent = t('roundReportTitle');
-      }
-      return;
-    }
-    if (roundReportTitleEl) {
-      roundReportTitleEl.textContent = `${t('roundReportTitle')} · ${t('round')} ${summary.round}`;
-    }
-    summary.steps.forEach(stepInfo => {
-      const stepEl = document.createElement('div');
-      stepEl.className = 'roundReportStep';
-      const stepTitle = document.createElement('h4');
-      stepTitle.textContent = t('roundReportStep', { step: stepInfo.step });
-      stepEl.append(stepTitle);
-      const playersWrap = document.createElement('div');
-      playersWrap.className = 'roundReportPlayers';
-      stepInfo.players.forEach(player => {
-        const playerEl = document.createElement('div');
-        playerEl.className = 'roundReportPlayer';
-        const name = document.createElement('h5');
-        name.textContent = player.name;
-        playerEl.append(name);
-        const list = document.createElement('ul');
-        player.events.forEach(text => {
-          const li = document.createElement('li');
-          li.textContent = text;
-          list.append(li);
-        });
-        playerEl.append(list);
-        playersWrap.append(playerEl);
-      });
-      stepEl.append(playersWrap);
-      roundReportBody.append(stepEl);
-    });
-  }
-
-  function showRoundReport(summary, autoOpen = false) {
-    if (!roundReportPanel || !summary) return;
-    renderRoundReport(summary);
-    roundReportPanel.classList.add('show');
-    roundReportPanel.setAttribute('aria-hidden', 'false');
-    roundReportUnread = false;
-    updateRoundReportButton();
-    if (roundReportAutoToggle) {
-      roundReportAutoToggle.checked = autoRoundReport;
-    }
-    if (!autoOpen && roundReportClose) {
-      roundReportClose.focus();
-    }
-  }
-
-  window.refreshRoundReport = function() {
-    if (roundReportPanel && roundReportPanel.classList.contains('show')) {
-      const summary = lastRoundSummary || buildRoundSummary(round);
-      showRoundReport(summary, true);
-    } else if (lastRoundSummary && roundReportTitleEl) {
-      renderRoundReport(lastRoundSummary);
-    }
-  };
 
   function showTutorial(event) {
     if (!isTutorial) return;
@@ -444,6 +336,7 @@ function startNewRound() {
   scoreReset.onclick = () => {
     score = { A: 0, B: 0 };
     updateScore();
+    closeHudMenu();
   };
 
   function updateThemeToggle(theme) {
@@ -479,36 +372,6 @@ function startNewRound() {
       });
     });
   }
-
-  if (roundReportBtn) {
-    roundReportBtn.addEventListener('click', () => {
-      if (!lastRoundSummary) return;
-      showRoundReport(lastRoundSummary);
-    });
-  }
-  if (roundReportClose) {
-    roundReportClose.addEventListener('click', () => hideRoundReport(true));
-  }
-  if (roundReportPanel) {
-    roundReportPanel.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        hideRoundReport(true);
-      }
-    });
-  }
-  if (roundReportAutoToggle) {
-    roundReportAutoToggle.checked = autoRoundReport;
-    roundReportAutoToggle.addEventListener('change', () => {
-      autoRoundReport = roundReportAutoToggle.checked;
-      try {
-        localStorage.setItem('roundReportAuto', autoRoundReport ? '1' : '0');
-      } catch (err) {
-        /* ignore storage errors */
-      }
-    });
-  }
-  updateRoundReportButton();
 
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
@@ -563,9 +426,9 @@ function startNewRound() {
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
   function startGame() {
     hideAttackOverlay();
+    closeHudMenu();
     board.style.visibility = 'visible';
     ui.classList.add('show');
-    if (scoreboard) scoreboard.classList.add('scoreboard-hidden');
     if (roundBadge) {
       roundBadge.classList.remove('visible', 'bump');
       displayedRound = 0;
@@ -574,6 +437,7 @@ function startNewRound() {
     updateScore();
     edgesCollapsed = false;
     replayHistory = [];
+    updateLayoutScale();
   }
 
   function buildBoard() {
@@ -1145,8 +1009,6 @@ function startNewRound() {
         }
       }
     };
-    lastStepSummary = stepSummary;
-
     const ensureShieldEvent = info => {
       let shieldEvt = info.events.find(evt => evt.type === 'shield');
       if (!shieldEvt) {
@@ -1303,8 +1165,6 @@ function startNewRound() {
       }
     });
 
-    roundEventLog.push(stepSummary);
-
     render();
     recordState();
 
@@ -1417,13 +1277,6 @@ function startNewRound() {
         u.alive = false;
         showDeath(u.x, u.y);
         playSound('death');
-        if (lastStepSummary && lastStepSummary.perPlayer && lastStepSummary.perPlayer[pl]) {
-          const info = lastStepSummary.perPlayer[pl];
-          info.events = info.events.filter(evt => evt.type !== 'wait');
-          info.events.push({ type: 'damage', cause: 'collapse', cell: { x: u.x, y: u.y } });
-          info.endAlive = false;
-          info.endCell = { x: u.x, y: u.y };
-        }
       }
     });
     render();
@@ -1444,8 +1297,6 @@ function startNewRound() {
   }
 
   function startRecordingRound() {
-    roundEventLog = [];
-    lastStepSummary = null;
     currentReplay = {
       actions: {
         A: JSON.parse(JSON.stringify(plans.A)),
@@ -1463,20 +1314,6 @@ function startNewRound() {
       replayHistory.push(currentReplay);
       currentReplay = null;
     }
-    const summary = buildRoundSummary(round);
-    if (summary.steps.length || roundEventLog.length) {
-      lastRoundSummary = summary;
-      const panelOpen = roundReportPanel && roundReportPanel.classList.contains('show');
-      const shouldShow = autoRoundReport || panelOpen;
-      if (shouldShow) {
-        showRoundReport(summary, true);
-      } else {
-        roundReportUnread = true;
-      }
-    }
-    updateRoundReportButton();
-    roundEventLog = [];
-    lastStepSummary = null;
     updateReplayButton();
   }
 
@@ -1710,7 +1547,6 @@ function startNewRound() {
       '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">' +
       `<button id="resReplay">${t('replay')}</button>` +
       `<button id="resSaveReplay">${t('saveReplay')}</button>` +
-      `<button id="resRoundReport">${t('roundReportButton')}</button>` +
       `<button id="resMenu">${t('toMenu')}</button>` +
       `<button id="resOk">${t('ok')}</button>` +
       '</div>' +
@@ -1720,7 +1556,6 @@ function startNewRound() {
     const resMenu = ov.querySelector('#resMenu');
     const resReplay = ov.querySelector('#resReplay');
     const resSave = ov.querySelector('#resSaveReplay');
-    const resRoundReport = ov.querySelector('#resRoundReport');
     const statusEl = ov.querySelector('#replaySaveStatus');
     if (resOk) {
       resOk.onclick = () => {
@@ -1754,15 +1589,6 @@ function startNewRound() {
         if (saved) resSave.disabled = true;
       };
     }
-    if (resRoundReport) {
-      if (!lastRoundSummary) {
-        resRoundReport.disabled = true;
-      }
-      resRoundReport.onclick = () => {
-        if (!lastRoundSummary) return;
-        showRoundReport(lastRoundSummary);
-      };
-    }
   }
 
   function resetGame() {
@@ -1775,8 +1601,6 @@ function startNewRound() {
     simPos = { A: { x: 0, y: 2 }, B: { x: 4, y: 2 } };
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
-    roundEventLog = [];
-    lastStepSummary = null;
     resetOnlineFlags();
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
@@ -1864,7 +1688,7 @@ function startNewRound() {
     hideRoundReport(false);
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
-    if (scoreboard) scoreboard.classList.remove('scoreboard-hidden');
+    closeHudMenu();
     if (roundBadge) {
       roundBadge.classList.remove('visible', 'bump');
       displayedRound = 0;
@@ -1875,6 +1699,7 @@ function startNewRound() {
     ms.style.display = 'flex';
     if (ds) ds.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
+    updateLayoutScale();
   }
 
   window.returnToMenu = returnToMenu;
@@ -1899,6 +1724,8 @@ function startNewRound() {
     clearPlan();
     updateUI();
   };
+
+  updateLayoutScale();
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1917,6 +1744,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const replayBtn = document.getElementById('replayBtn');
   const saveReplayBtn = document.getElementById('saveReplay');
   const replaySeek = document.getElementById('replaySeek');
+  const hideHudMenu = () => {
+    if (typeof window.closeHudMenu === 'function') {
+      window.closeHudMenu();
+      return;
+    }
+    const menu = document.getElementById('scoreboardMenu');
+    if (menu) {
+      menu.classList.remove('show');
+      menu.setAttribute('aria-hidden', 'true');
+    }
+    const backdrop = document.getElementById('scoreboardBackdrop');
+    if (backdrop) backdrop.classList.remove('show');
+    const toggle = document.getElementById('scoreboardToggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  };
 
   const openSettings = () => { if (settingsModal) settingsModal.style.display = 'block'; };
   if (settingsBtn && settingsModal) {
@@ -1986,10 +1828,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  if (menuBtn) menuBtn.onclick = () => returnToMenu();
+  if (menuBtn) menuBtn.onclick = () => { hideHudMenu(); returnToMenu(); };
   if (replayClose) replayClose.onclick = () => endReplay();
   if (replayBtn) {
-    replayBtn.onclick = () => startReplay();
+    replayBtn.onclick = () => { hideHudMenu(); startReplay(); };
     updateReplayButton();
   }
   if (saveReplayBtn) saveReplayBtn.onclick = () => showSaveSpeedModal();

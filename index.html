@@ -55,6 +55,16 @@
       --color-input-bg: rgba(15,23,42,0.7);
       --color-input-border: rgba(148,163,184,0.35);
       --color-overlay: rgba(15,23,42,0.92);
+      --ui-scale: 1;
+      --cell-size: calc(56px * var(--ui-scale));
+      --board-gap: calc(3px * var(--ui-scale));
+      --board-padding: calc(8px * var(--ui-scale));
+      --board-radius: calc(16px * var(--ui-scale));
+      --ui-padding: calc(12px * var(--ui-scale));
+      --ui-radius: calc(12px * var(--ui-scale));
+      --action-size: calc(52px * var(--ui-scale));
+      --action-gap: calc(8px * var(--ui-scale));
+      --hud-height: clamp(48px, calc(56px * var(--ui-scale)), 72px);
     }
 
     :root[data-theme="light"] {
@@ -202,24 +212,130 @@
 
     #onlineMenu {
       display:none;
+      padding:calc(var(--hud-height) + 72px) 16px 48px;
+      min-height:100vh;
+    }
+    .online-shell {
+      display:flex;
+      justify-content:center;
+      width:100%;
+    }
+    .online-card {
+      width:100%;
+      max-width:420px;
+      background:var(--color-surface-alt);
+      border:1px solid var(--color-border);
+      border-radius:24px;
+      box-shadow:0 20px 44px rgba(15,23,42,0.35);
+      padding:24px;
+      display:flex;
       flex-direction:column;
+      gap:20px;
+    }
+    .online-status {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(15,23,42,0.55);
+      border:1px solid var(--color-border);
+      font-weight:600;
+      color:var(--color-text-primary);
+    }
+    .online-status[data-state="online"] {
+      background:rgba(34,197,94,0.16);
+      border-color:rgba(34,197,94,0.45);
+      color:var(--color-success);
+    }
+    .online-status[data-state="offline"] {
+      background:rgba(239,68,68,0.18);
+      border-color:rgba(239,68,68,0.45);
+      color:var(--color-danger);
+    }
+    .online-status[data-state="reconnecting"],
+    .online-status[data-state="connecting"],
+    .online-status[data-state="checking"] {
+      color:var(--color-warning);
+    }
+    .status-dot {
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      position:relative;
+      background:currentColor;
+    }
+    .status-dot::after {
+      content:'';
+      position:absolute;
+      inset:-4px;
+      border-radius:50%;
+      border:2px solid currentColor;
+      opacity:0.35;
+    }
+    .online-status[data-state="connecting"] .status-dot,
+    .online-status[data-state="reconnecting"] .status-dot,
+    .online-status[data-state="checking"] .status-dot {
+      animation:status-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes status-pulse {
+      0%, 100% { transform:scale(0.9); opacity:0.7; }
+      50% { transform:scale(1.1); opacity:1; }
+    }
+    .online-actions {
+      display:flex;
+      gap:14px;
+      width:100%;
+    }
+    .online-btn {
+      flex:1;
+      display:flex;
       align-items:center;
       justify-content:center;
       gap:10px;
-      margin-top:20px;
-      height:100vh;
-      padding-bottom:40px;
+      padding:14px 18px;
+      border-radius:16px;
+      border:1px solid var(--color-border);
+      background:var(--color-surface);
+      color:var(--color-heading);
+      font-size:18px;
+      font-weight:600;
+      box-shadow:0 12px 24px rgba(15,23,42,0.26);
+      transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .online-btn.primary {
+      background:var(--color-accent);
+      color:var(--color-button-text);
+      border-color:transparent;
+      box-shadow:0 16px 28px rgba(14,165,233,0.3);
+    }
+    .online-btn.primary:hover { background:var(--color-accent-strong); }
+    .online-btn.secondary:hover { background:var(--color-surface-hover); }
+    .online-btn:active:not(:disabled) {
+      transform:scale(0.98);
+      box-shadow:0 8px 18px rgba(15,23,42,0.28);
+    }
+    .online-btn:disabled {
+      opacity:0.5;
+      box-shadow:none;
+      cursor:default;
+    }
+    .online-form {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:16px;
     }
     #onlineMenu input {
-      padding:12px 16px;
-      border-radius:12px;
+      padding:14px 18px;
+      border-radius:16px;
       border:1px solid var(--color-input-border);
       background:var(--color-input-bg);
       color:var(--color-text-primary);
-      font-size:16px;
-      letter-spacing:1px;
+      font-size:18px;
+      letter-spacing:2px;
       text-transform:uppercase;
-      width:160px;
+      width:180px;
       text-align:center;
     }
     #onlineMenu input.input-error {
@@ -227,64 +343,121 @@
       box-shadow:0 0 0 2px rgba(239,68,68,0.35);
     }
     #onlineMenu input::placeholder { color:var(--color-text-muted); }
-
     .room-display {
       display:flex;
       align-items:center;
       justify-content:center;
-      gap:10px;
+      gap:12px;
       background:var(--color-surface);
       border:1px solid var(--color-border);
-      border-radius:14px;
-      padding:12px 18px;
-      min-height:48px;
+      border-radius:18px;
+      padding:16px 22px;
+      min-height:56px;
       font-family:'Roboto Mono', monospace;
-      font-size:22px;
-      letter-spacing:4px;
+      font-size:28px;
+      letter-spacing:6px;
       text-transform:uppercase;
       color:var(--color-heading);
+      width:100%;
     }
-    .room-display.empty { color:var(--color-text-muted); letter-spacing:2px; }
-    #roomCode { min-width:0; }
+    .room-display.empty {
+      color:var(--color-text-muted);
+      letter-spacing:3px;
+    }
+    .room-code { min-width:0; }
     #copyRoomCode {
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
-      border-radius:10px;
-      width:40px;
-      height:40px;
+      border-radius:12px;
+      width:44px;
+      height:44px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:18px;
+      font-size:20px;
       cursor:pointer;
       transition:background .2s ease, transform .2s ease;
     }
     #copyRoomCode:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
-
-    #connectionStatus {
+    #copyRoomCode:disabled { opacity:0.4; cursor:default; transform:none; }
+    .online-hint {
+      font-size:14px;
+      color:var(--color-text-muted);
+      text-align:center;
+      line-height:1.4;
+      margin-top:-4px;
+    }
+    .online-toasts {
+      position:fixed;
+      top:calc(var(--hud-height) + 24px);
+      right:24px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      z-index:950;
+      pointer-events:none;
+    }
+    .online-toast {
       display:flex;
       align-items:center;
-      gap:6px;
-      min-height:18px;
+      gap:10px;
+      padding:12px 16px;
+      border-radius:14px;
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      color:var(--color-text-primary);
+      box-shadow:0 12px 24px rgba(15,23,42,0.28);
+      opacity:1;
+      transition:opacity .25s ease, transform .25s ease;
     }
-    #connectionStatus::before {
-      content:'';
-      width:12px;
-      height:12px;
-      border-radius:50%;
-      border:2px solid currentColor;
-      border-right-color:transparent;
-      animation:connection-spin 1s linear infinite;
-      display:none;
+    .online-toast.dismiss {
+      opacity:0;
+      transform:translateY(-8px);
     }
-    #connectionStatus[data-state="connecting"]::before,
-    #connectionStatus[data-state="reconnecting"]::before {
-      display:inline-block;
+    .online-toast.success {
+      border-color:rgba(34,197,94,0.5);
+      color:var(--color-success);
     }
-
-    @keyframes connection-spin {
-      from { transform:rotate(0deg); }
-      to { transform:rotate(360deg); }
+    .online-toast.error {
+      border-color:rgba(239,68,68,0.55);
+      color:var(--color-danger);
+    }
+    .online-toast .toast-icon {
+      font-size:18px;
+    }
+    @media (max-width: 640px) {
+      #onlineMenu {
+        padding:calc(var(--hud-height) + 64px) 12px 32px;
+      }
+      .online-card {
+        padding:20px;
+        border-radius:20px;
+      }
+      .online-actions {
+        flex-direction:column;
+        gap:12px;
+      }
+      .online-btn {
+        width:100%;
+      }
+      .room-display {
+        font-size:24px;
+        letter-spacing:4px;
+        padding:14px 18px;
+      }
+      .online-toasts {
+        right:auto;
+        left:50%;
+        transform:translateX(-50%);
+        top:auto;
+        bottom:24px;
+        width:min(90vw, 320px);
+        align-items:center;
+      }
+      .online-toast {
+        width:100%;
+        justify-content:center;
+      }
     }
 
     #title {
@@ -340,24 +513,37 @@
       flex-direction:column;
       align-items:center;
       position:relative;
+      margin-top:calc(var(--hud-height) + 28px);
     }
     #board {
       visibility:hidden;
-      display:grid; grid-template:repeat(5,60px)/repeat(5,60px);
-      gap:3px; margin:24px auto 12px;
-      padding:8px; background:var(--color-surface-alt);
-      border:1px solid var(--color-border); border-radius:16px;
+      display:grid;
+      grid-template:repeat(5, var(--cell-size))/repeat(5, var(--cell-size));
+      gap:var(--board-gap);
+      margin:calc(16px * var(--ui-scale)) auto calc(6px * var(--ui-scale));
+      padding:var(--board-padding);
+      background:var(--color-surface-alt);
+      border:1px solid var(--color-border);
+      border-radius:var(--board-radius);
       box-shadow:0 16px 32px rgba(15,23,42,0.35);
       position:relative;
     }
     .cell {
-      width:60px; height:60px;
+      width:var(--cell-size);
+      height:var(--cell-size);
       background:var(--color-surface);
       border:1px solid var(--color-border);
-      position:relative; transition:background .2s, transform .2s;
+      border-radius:calc(10px * var(--ui-scale));
+      position:relative;
+      transition:background .2s, transform .2s, border-color .2s, box-shadow .2s;
       box-shadow:inset 0 0 8px rgba(15,23,42,0.22);
     }
     .cell:hover { background:var(--color-surface-hover); }
+    .cell.cell-marked {
+      background:linear-gradient(140deg, rgba(56,189,248,0.32), rgba(14,116,144,0.15));
+      border-color:rgba(56,189,248,0.65);
+      box-shadow:inset 0 0 14px rgba(56,189,248,0.35);
+    }
     .cracked {
       background:
         repeating-linear-gradient(45deg,#222 0 10px,#400 10px 20px),
@@ -377,21 +563,33 @@
     }
 
     #ui {
-      visibility:hidden; opacity:0; transform:translateY(20px);
-      width:100%; max-width:360px;
-      margin:8px auto 4px;
+      visibility:hidden;
+      opacity:0;
+      transform:translateY(20px);
+      width:100%;
+      max-width:calc(320px * var(--ui-scale));
+      margin:calc(6px * var(--ui-scale)) auto calc(4px * var(--ui-scale));
       background:var(--color-surface-alt);
-      padding:12px; display:flex;
-      flex-direction:column; gap:8px;
-      border-radius:12px;
+      padding:var(--ui-padding);
+      display:flex;
+      flex-direction:column;
+      gap:calc(8px * var(--ui-scale));
+      border-radius:var(--ui-radius);
       border:1px solid var(--color-border);
       box-shadow:0 12px 28px rgba(15,23,42,0.35);
       transition:opacity .3s ease, transform .3s ease;
     }
     #ui.show { visibility:visible; opacity:1; transform:translateY(0); }
-    #phase { text-align:center; color:var(--color-heading); min-height:24px; font-weight:600; letter-spacing:0.4px; font-size:16px; }
-    #planIndicator { display:flex; justify-content:center; margin-bottom:4px; }
-    #planCells { display:flex; justify-content:space-between; gap:8px; width:100%; }
+    #phase {
+      text-align:center;
+      color:var(--color-heading);
+      min-height:calc(20px * var(--ui-scale));
+      font-weight:600;
+      letter-spacing:0.4px;
+      font-size:calc(15px * var(--ui-scale));
+    }
+    #planIndicator { display:flex; justify-content:center; margin-bottom:calc(4px * var(--ui-scale)); }
+    #planCells { display:flex; justify-content:space-between; gap:calc(6px * var(--ui-scale)); width:100%; }
     .planCell {
       flex:1;
       min-width:0;
@@ -401,35 +599,35 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:10px 8px;
-      transition:border-color .2s ease, box-shadow .2s ease;
+      padding:calc(10px * var(--ui-scale)) calc(8px * var(--ui-scale));
+      transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
     }
     .planCell.current {
       border-color:var(--color-accent);
       box-shadow:0 0 12px rgba(56,189,248,0.35);
     }
     .planStepValue {
-      font-size:28px;
+      font-size:calc(28px * var(--ui-scale));
       color:var(--color-heading);
-      line-height:28px;
-      min-height:28px;
+      line-height:calc(28px * var(--ui-scale));
+      min-height:calc(28px * var(--ui-scale));
     }
 
     #roundBadge {
       display:flex;
       align-items:center;
-      gap:8px;
-      padding:6px 14px;
+      gap:calc(8px * var(--ui-scale));
+      padding:calc(6px * var(--ui-scale)) calc(14px * var(--ui-scale));
       border-radius:999px;
       border:1px solid var(--color-border);
       background:var(--color-surface-alt);
       color:var(--color-heading);
-      font-size:14px;
+      font-size:calc(14px * var(--ui-scale));
       font-weight:600;
       letter-spacing:1px;
       box-shadow:0 12px 24px rgba(15,23,42,0.25);
       opacity:0;
-      transform:translateY(-12px) scale(0.9);
+      transform:translateY(calc(-12px * var(--ui-scale))) scale(0.9);
       transition:opacity .3s ease, transform .3s ease;
       pointer-events:none;
     }
@@ -442,12 +640,12 @@
     }
     .round-label {
       text-transform:uppercase;
-      font-size:12px;
+      font-size:calc(12px * var(--ui-scale));
       letter-spacing:2px;
       color:var(--color-text-muted);
     }
     .round-number {
-      font-size:24px;
+      font-size:calc(24px * var(--ui-scale));
       font-weight:700;
       color:var(--color-heading);
     }
@@ -460,35 +658,35 @@
 
     #actions {
       display:grid;
-      grid-template-columns:repeat(3, minmax(56px, 1fr));
-      grid-template-rows:repeat(3, minmax(56px, 1fr));
+      grid-template-columns:repeat(3, minmax(var(--action-size), 1fr));
+      grid-template-rows:repeat(3, minmax(var(--action-size), 1fr));
       grid-template-areas:
         "attack up shield"
         "left center right"
         "pad down pad2";
-      gap:8px;
-      padding:12px;
+      gap:var(--action-gap);
+      padding:calc(10px * var(--ui-scale));
       background:var(--color-surface);
       border:1px solid var(--color-border);
-      border-radius:12px;
+      border-radius:calc(12px * var(--ui-scale));
       box-shadow:inset 0 0 14px rgba(15,23,42,0.18);
       position:relative;
     }
     #actions.attack-mode::after {
       content:'';
       position:absolute;
-      inset:8px;
-      border-radius:10px;
+      inset:calc(8px * var(--ui-scale));
+      border-radius:calc(10px * var(--ui-scale));
       border:1px dashed rgba(239,68,68,0.45);
       pointer-events:none;
     }
     #actions button,
     #btn-del, #btn-next {
       position:relative;
-      padding:10px;
-      font-size:20px;
+      padding:calc(8px * var(--ui-scale));
+      font-size:calc(18px * var(--ui-scale));
       border:none;
-      border-radius:10px;
+      border-radius:calc(10px * var(--ui-scale));
       cursor:pointer;
       box-shadow:0 6px 14px rgba(15,23,42,0.3);
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
@@ -514,7 +712,7 @@
     #actions button.shieldBtn:hover:not(:disabled) { background:var(--color-accent-strong); }
     #actions button:hover:not(:disabled),
     #btn-del:hover:not(:disabled), #btn-next:hover:not(:disabled) {
-      transform:translateY(-2px);
+      transform:translateY(calc(-2px * var(--ui-scale)));
       box-shadow:0 12px 22px rgba(15,23,42,0.32);
     }
     #actions button:active:not(:disabled),
@@ -600,14 +798,14 @@
 
     #navButtons {
       display:flex;
-      gap:8px;
-      margin-top:10px;
+      gap:calc(6px * var(--ui-scale));
+      margin-top:calc(8px * var(--ui-scale));
       width:100%;
       flex-wrap:wrap;
       justify-content:center;
     }
     #navButtons button {
-      flex:1 1 120px;
+      flex:1 1 calc(110px * var(--ui-scale));
     }
 
     /* Юниты и эффекты */
@@ -983,177 +1181,123 @@
     #resultOverlay .resultStatus.success { color:var(--color-success); }
     #resultOverlay .resultStatus.error { color:var(--color-danger); }
 
-    /* Счёт */
+    /* Верхняя панель */
     #scoreboard {
-      position:relative;
-      margin:8px auto 0;
-      background:var(--color-surface-alt);
-      padding:12px 18px;
-      border-radius:18px;
+      position:fixed;
+      top:16px;
+      left:50%;
+      transform:translateX(-50%);
       display:flex;
-      flex-wrap:wrap;
       align-items:center;
-      justify-content:center;
-      gap:10px 16px;
-      font-family:'Roboto Mono', monospace;
+      gap:calc(10px + 4px * var(--ui-scale));
+      padding:calc(6px + 6px * var(--ui-scale)) calc(12px + 6px * var(--ui-scale));
+      border-radius:999px;
+      background:var(--color-surface-alt);
       border:1px solid var(--color-border);
-      box-shadow:0 10px 26px rgba(15,23,42,0.28);
-      z-index:5;
-      width:min(100%, 560px);
+      box-shadow:0 12px 26px rgba(15,23,42,0.32);
+      z-index:900;
+      min-width:0;
+      width:min(460px, calc(100% - 24px));
+      min-height:var(--hud-height);
     }
-    #scoreboard.scoreboard-hidden { display:none !important; }
+    #scoreboard .scoreboard-shell {
+      display:flex;
+      align-items:center;
+      gap:calc(8px + 4px * var(--ui-scale));
+      flex:1;
+    }
     #scoreboard .scoreboard-scores {
       display:flex;
       align-items:center;
-      gap:10px;
-      font-size:24px;
+      gap:calc(6px + 2px * var(--ui-scale));
+      font-size:clamp(18px, calc(18px + 4px * var(--ui-scale)), 26px);
       font-weight:700;
       letter-spacing:0.8px;
       color:var(--color-heading);
-    }
-    #scoreboard .score-divider {
-      opacity:0.7;
-    }
-    #scoreboard .scoreboard-actions {
-      display:flex;
-      flex-wrap:wrap;
+      font-family:'Roboto Mono', monospace;
       justify-content:center;
-      gap:8px;
-      width:100%;
+      flex:1;
     }
-    #scoreboard button {
-      padding:8px 14px;
-      background:var(--color-surface);
-      color:var(--color-text-primary);
+    #scoreboard .score-divider { opacity:0.7; }
+    .scoreboard-icon {
+      width:clamp(30px, calc(34px + 6px * var(--ui-scale)), 44px);
+      height:clamp(30px, calc(34px + 6px * var(--ui-scale)), 44px);
+      border-radius:50%;
       border:1px solid var(--color-border);
-      border-radius:10px;
+      background:var(--color-surface);
+      color:var(--color-heading);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:clamp(16px, calc(16px + 4px * var(--ui-scale)), 22px);
       cursor:pointer;
       transition:background .2s ease, transform .2s ease;
-      font-size:14px;
-      font-weight:600;
-      line-height:1.1;
-      min-width:0;
-      flex:0 1 auto;
+      flex-shrink:0;
     }
-    #scoreboard button:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
-    #scoreReset {
-      background:var(--color-danger);
-      color:var(--color-button-text);
-    }
-    #scoreReset:hover { background:var(--color-danger-strong); }
-    #settingsBtn { background:var(--color-surface); }
-    #menuBtn {
-      background:var(--color-info);
-      color:var(--color-button-text);
-    }
-    #menuBtn:hover { background:var(--color-info-strong); }
-    #replayBtn {
-      background:var(--color-accent);
-      color:var(--color-button-text);
-    }
-    #replayBtn:hover { background:var(--color-accent-strong); }
-    #roundReportPanel {
+    .scoreboard-icon:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
+    .scoreboard-icon:active { transform:scale(0.94); }
+    #scoreboardMenu {
       position:fixed;
-      right:24px;
-      bottom:100px;
-      width:320px;
-      max-width:calc(100% - 32px);
+      top:calc(16px + var(--hud-height) + 12px);
+      left:50%;
+      transform:translateX(-50%);
       background:var(--color-surface);
       border:1px solid var(--color-border);
       border-radius:16px;
-      box-shadow:0 20px 40px rgba(15,23,42,0.35);
-      padding:18px 20px 16px;
+      box-shadow:0 20px 44px rgba(15,23,42,0.4);
+      padding:12px;
       display:none;
-      gap:12px;
       flex-direction:column;
-      z-index:1200;
+      gap:8px;
+      z-index:890;
+      width:min(260px, calc(100vw - 32px));
     }
-    #roundReportPanel.show { display:flex; }
-    #roundReportPanel header {
+    #scoreboardMenu.show { display:flex; }
+    #scoreboardMenu button {
+      width:100%;
+      padding:10px 14px;
+      border:none;
+      background:var(--color-surface-alt);
+      color:var(--color-text-primary);
+      border-radius:12px;
+      font-weight:600;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
+      gap:8px;
     }
-    #roundReportPanel header h3 {
+    #scoreboardMenu button:hover { background:var(--color-surface-hover); }
+    #scoreboardMenu button .menu-icon {
       font-size:18px;
-      font-weight:700;
-      color:var(--color-heading);
+      opacity:0.75;
     }
-    #roundReportClose {
-      width:32px;
-      height:32px;
-      border-radius:8px;
-      font-size:18px;
+    #scoreboardMenu button.danger {
+      background:rgba(239,68,68,0.18);
+      color:var(--color-danger);
     }
-    #roundReportBody {
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      max-height:240px;
-      overflow:auto;
-      padding-right:4px;
+    #scoreboardMenu button.danger:hover { background:rgba(239,68,68,0.28); }
+    #scoreboardMenu button.primary {
+      background:var(--color-accent);
+      color:var(--color-button-text);
     }
-    .roundReportStep {
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      background:var(--color-surface-alt);
-      border:1px solid var(--color-border);
-      border-radius:12px;
-      padding:10px 12px;
+    #scoreboardMenu button.primary:hover { background:var(--color-accent-strong); }
+    #scoreboardBackdrop {
+      position:fixed;
+      inset:0;
+      background:transparent;
+      display:none;
+      z-index:880;
     }
-    .roundReportStep h4 {
-      font-size:14px;
-      font-weight:600;
-      color:var(--color-heading);
-    }
-    .roundReportPlayers {
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:8px;
-    }
-    .roundReportPlayer {
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
-    .roundReportPlayer h5 {
-      font-size:13px;
-      font-weight:600;
-      color:var(--color-accent);
-    }
-    .roundReportPlayer ul {
-      list-style:disc;
-      padding-left:18px;
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      font-size:13px;
-      color:var(--color-text-muted);
-    }
-    .roundReportEmpty {
-      font-size:14px;
-      color:var(--color-text-muted);
-      text-align:center;
-      padding:12px 0 4px;
-    }
-    .roundReportAuto {
-      display:flex;
-      align-items:center;
-      gap:8px;
-      font-size:13px;
-      color:var(--color-text-muted);
-    }
-    .roundReportAuto input {
-      width:16px;
-      height:16px;
-    }
-    #scoreboard #scoreReset,
-    #scoreboard #menuBtn,
-    #scoreboard #replayBtn,
-    #scoreboard #settingsBtn {
-      border:none;
+    #scoreboardBackdrop.show { display:block; }
+    @media (max-width: 600px) {
+      #scoreboard {
+        width:calc(100% - 20px);
+        padding:calc(6px + 4px * var(--ui-scale)) calc(10px + 4px * var(--ui-scale));
+      }
+      #scoreboardMenu {
+        top:calc(12px + var(--hud-height) + 8px);
+        width:min(240px, calc(100vw - 20px));
+      }
     }
 
     #settingsModal {
@@ -1357,23 +1501,25 @@
 
     button {
       font-family:inherit;
-      background:var(--color-surface);
-      color:var(--color-text-primary);
-      border:1px solid var(--color-border);
       border-radius:10px;
       cursor:pointer;
       transition:background .2s ease, box-shadow .2s ease, transform .2s ease;
     }
-    button:hover:not(:disabled) {
+    button:not(.online-btn) {
+      background:var(--color-surface);
+      color:var(--color-text-primary);
+      border:1px solid var(--color-border);
+    }
+    button:not(.online-btn):hover:not(:disabled) {
       background:var(--color-surface-hover);
       box-shadow:0 8px 18px rgba(15,23,42,0.25);
       transform:translateY(-1px);
     }
-    button:active:not(:disabled) {
+    button:not(.online-btn):active:not(:disabled) {
       box-shadow:0 4px 10px rgba(15,23,42,0.22);
       transform:translateY(0) scale(0.97);
     }
-    button:disabled {
+    button:not(.online-btn):disabled {
       cursor:default;
       opacity:0.6;
       box-shadow:none;
@@ -1384,87 +1530,24 @@
       #board { margin-top:36px; }
     }
 
-    @media (max-width: 720px) {
-      #roundReportPanel {
-        right:16px;
-        left:16px;
-        bottom:120px;
-        width:auto;
-        max-height:50vh;
-      }
-      .roundReportPlayers {
-        grid-template-columns:1fr;
-      }
-    }
-
     /* Адаптивные правки */
     @media (max-width: 540px) {
       #scoreboard {
-        padding:12px 16px;
-        gap:12px 16px;
-        border-radius:20px;
-        max-width:94vw;
+        width:calc(100% - 16px);
+        padding:calc(6px + 4px * var(--ui-scale)) calc(10px + 4px * var(--ui-scale));
       }
-      #scoreboard .scoreboard-scores {
-        font-size:24px;
-        width:100%;
-        justify-content:center;
+      #scoreboardMenu {
+        top:calc(12px + var(--hud-height) + 8px);
+        width:min(220px, calc(100vw - 16px));
       }
-      #scoreboard .scoreboard-actions {
-        width:100%;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:10px;
-      }
-      #scoreboard .scoreboard-actions button {
-        min-width:0;
-        font-size:14px;
-        padding:10px 12px;
-      }
-
-      #board {
-        grid-template:repeat(5,48px)/repeat(5,48px);
-        gap:2px;
-        padding:6px;
-        margin:24px auto 16px;
-      }
-      .cell {
-        width:48px;
-        height:48px;
-      }
-      #ui {
-        max-width:300px;
-        padding:12px;
-        gap:8px;
-      }
-      #actions {
-        gap:6px;
-        padding:10px;
-        grid-template-rows:repeat(3,minmax(36px,1fr));
-      }
-      #actions button,
-      #btn-del,
-      #btn-next {
-        padding:10px;
-        font-size:18px;
-      }
-      #navButtons {
-        flex-direction:column;
+      #gameArea {
+        margin-top:calc(var(--hud-height) + 18px);
       }
     }
 
     @media (min-width: 768px) {
       #scoreboard {
-        padding:16px 24px;
-        gap:14px 20px;
-      }
-      #board {
-        margin-top:44px;
-      }
-      #ui {
-        max-width:420px;
-        padding:18px;
-        gap:14px;
+        width:min(520px, calc(100% - 32px));
       }
     }
   </style>
@@ -1508,36 +1591,52 @@
   <div id="onlineMenu">
     <div class="online-shell">
       <div class="online-card">
+        <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-text" data-i18n="checkingConnection">Проверяем соединение…</span>
+        </div>
         <div class="online-actions">
-          <div id="onlineCreate" class="panel modeBtn" data-i18n="createRoom" data-sound="nav">Создать комнату</div>
-          <div id="onlineJoin" class="panel modeBtn" data-i18n="joinRoom" data-sound="nav">Присоединиться</div>
+          <button id="onlineCreate" class="online-btn primary" type="button" data-i18n="createRoom" data-sound="nav">Создать комнату</button>
+          <button id="onlineJoin" class="online-btn secondary" type="button" data-i18n="joinRoom" data-sound="nav">Присоединиться</button>
         </div>
         <div class="online-form">
           <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
           <div class="room-display empty" id="roomDisplay" aria-live="polite">
-            <span id="roomCode">----</span>
+            <span id="roomCode" class="room-code">----</span>
             <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
           </div>
+          <p class="online-hint" data-i18n="roomCodeHint">Поделитесь кодом с другом или введите его, чтобы подключиться.</p>
         </div>
-        <div id="connectionStatus"></div>
-        <div id="log"></div>
       </div>
     </div>
   </div>
   <div class="online-toasts" id="onlineToasts" aria-live="assertive" aria-atomic="true"></div>
 
-  <div id="scoreboard">
-    <div class="scoreboard-scores" aria-live="polite">
-      <span id="scoreA">0</span>
-      <span class="score-divider">:</span>
-      <span id="scoreB">0</span>
+  <div id="scoreboard" role="banner">
+    <div class="scoreboard-shell">
+      <button id="scoreboardToggle" class="scoreboard-icon" type="button" data-sound="nav" data-i18n-title="hudMenu" data-i18n-aria="hudMenu" aria-label="Menu" title="Menu">☰</button>
+      <div class="scoreboard-scores" aria-live="polite">
+        <span id="scoreA">0</span>
+        <span class="score-divider">:</span>
+        <span id="scoreB">0</span>
+      </div>
     </div>
-    <div class="scoreboard-actions">
-      <button id="scoreReset" data-i18n="resetScore" data-sound="nav">Сбросить счёт</button>
-      <button id="replayBtn" data-i18n="replay" data-sound="nav" style="display:none;">Повтор</button>
-      <button id="menuBtn" data-i18n="toMenu" data-sound="nav">В меню</button>
-      <button id="settingsBtn" data-i18n="settingsTitle" data-sound="nav" data-i18n-title="settingsTooltip" data-i18n-aria="settingsTooltip" aria-label="Open settings" title="Settings">Настройки</button>
-    </div>
+    <button id="settingsBtn" class="scoreboard-icon" type="button" data-sound="nav" data-i18n-title="settingsTooltip" data-i18n-aria="settingsTooltip" aria-label="Open settings" title="Settings">⚙</button>
+  </div>
+  <div id="scoreboardBackdrop" tabindex="-1" aria-hidden="true"></div>
+  <div id="scoreboardMenu" role="menu" aria-hidden="true">
+    <button id="menuBtn" class="primary" type="button" data-sound="nav">
+      <span data-i18n="toMenu">В меню</span>
+      <span class="menu-icon" aria-hidden="true">↩</span>
+    </button>
+    <button id="replayBtn" type="button" data-sound="nav" style="display:none;">
+      <span data-i18n="replay">Повтор</span>
+      <span class="menu-icon" aria-hidden="true">▶</span>
+    </button>
+    <button id="scoreReset" class="danger" type="button" data-sound="nav">
+      <span data-i18n="resetScore">Сбросить счёт</span>
+      <span class="menu-icon" aria-hidden="true">⟲</span>
+    </button>
   </div>
 
   <div id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -1640,17 +1739,7 @@
   </div>
 
   <div id="confirmToast"></div>
-  <div id="roundReportPanel" aria-hidden="true" role="dialog" aria-modal="false" aria-labelledby="roundReportTitle">
-    <header>
-      <h3 id="roundReportTitle" data-i18n="roundReportTitle">Анализ раунда</h3>
-      <button id="roundReportClose" data-i18n="close" data-sound="nav">Закрыть</button>
-    </header>
-    <div id="roundReportBody" role="document"></div>
-    <label class="roundReportAuto">
-      <input type="checkbox" id="roundReportAutoToggle">
-      <span data-i18n="roundReportAutoLabel">Показывать автоматически</span>
-    </label>
-  </div>
+
   <div id="replayOverlay">
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
     <button id="saveReplay" data-i18n="saveVideo" data-sound="nav" style="right:90px;top:10px;position:absolute;">Save</button>
