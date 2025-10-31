@@ -496,14 +496,15 @@
       flex-direction:column;
       align-items:center;
       position:relative;
-      margin-top:calc(var(--hud-height) + 8px);
+      margin-top:calc(var(--hud-height) + 6px);
+      gap:calc(6px * var(--ui-scale));
     }
     #board {
       visibility:hidden;
       display:grid;
       grid-template:repeat(5, var(--cell-size))/repeat(5, var(--cell-size));
       gap:var(--board-gap);
-      margin:calc(12px * var(--ui-scale)) auto calc(4px * var(--ui-scale));
+      margin:0 auto calc(4px * var(--ui-scale));
       padding:var(--board-padding);
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
@@ -610,8 +611,7 @@
       letter-spacing:1px;
       box-shadow:0 12px 24px rgba(15,23,42,0.25);
       opacity:0;
-      margin-top:calc(6px * var(--ui-scale));
-      margin-bottom:calc(6px * var(--ui-scale));
+      margin:0;
       transform:translateY(calc(-6px * var(--ui-scale))) scale(0.9);
       transition:opacity .3s ease, transform .3s ease;
       pointer-events:none;
@@ -794,7 +794,7 @@
     }
 
     /* Юниты и эффекты */
-    .playerA, .playerB {
+    .playerA, .playerB, .playerBoth {
       position:absolute; width:40px; height:40px;
       border-radius:50%; top:50%; left:50%;
       transform:translate(-50%,-50%);
@@ -807,6 +807,20 @@
     }
     .playerA { background:#0af; }
     .playerB { background:#f40; }
+    .playerBoth {
+      background:linear-gradient(90deg, #0af 0 50%, #f40 50% 100%);
+      border:2px solid rgba(15,23,42,0.55);
+    }
+    .playerBoth::after {
+      content:'';
+      position:absolute;
+      top:6px; bottom:6px;
+      left:50%;
+      width:2px;
+      border-radius:2px;
+      background:rgba(15,23,42,0.35);
+      transform:translateX(-50%);
+    }
     @keyframes moveAnim {
       from {
         transform:translate(calc(-50% + var(--fromX, 0px)), calc(-50% + var(--fromY, 0px))) scale(0.9);
@@ -822,20 +836,6 @@
         opacity:1;
         filter:drop-shadow(0 0 4px rgba(15,23,42,0.45));
       }
-    }
-    .playerHalf {
-      position:absolute; width:20px; height:40px;
-      top:50%; transform:translateY(-50%); z-index:5;
-    }
-    .halfA {
-      background:#0af;
-      border-top-left-radius:40px; border-bottom-left-radius:40px;
-      left:10px;
-    }
-    .halfB {
-      background:#f40;
-      border-top-right-radius:40px; border-bottom-right-radius:40px;
-      right:10px;
     }
     .attack {
       position:absolute;
@@ -1512,7 +1512,7 @@
 
     /* Мелкие правки для широких экранов */
     @media (min-width: 600px) {
-      #board { margin-top:36px; }
+      #board { margin-top:0; }
     }
 
     /* Адаптивные правки */
@@ -1526,7 +1526,7 @@
         width:min(220px, calc(100vw - 16px));
       }
       #gameArea {
-        margin-top:calc(var(--hud-height) + 14px);
+        margin-top:calc(var(--hud-height) + 10px);
       }
     }
 
@@ -1658,16 +1658,17 @@
   <div id="rulesOverlay">
     <h2 data-i18n="rulesHeader">Концепция и правила игры</h2>
     <h3 data-i18n="rulesGeneral">Общее</h3>
-    <p data-i18n="rulesIntro">Это пошаговая PvP-арена 5×5 для двух игроков. Игра идёт до трёх раундов + «внезапная смерть» (центр 3×3).</p>
+    <p data-i18n="rulesIntro">Это пошаговая PvP-арена 5×5 для двух игроков. После трёх раундов в отсутствие победителя начинается «внезапная смерть» в центре 3×3.</p>
     <ul>
-      <li data-i18n="rule1">Каждый раунд игроки заранее выбирают пять действий.</li>
-      <li data-i18n="rule2">Доступны перемещения, одна атака и один щит за раунд.</li>
-      <li data-i18n="rule3">Атака обозначает направления и поражает текущую и соседние клетки.</li>
-      <li data-i18n="rule4">Щит блокирует весь урон выбранного шага.</li>
-      <li data-i18n="rule5">После планирования ходы выполняются по порядку одновременно у обоих игроков.</li>
-      <li data-i18n="rule6">Поражение наступает от попадания атаки или при выходе на провалившуюся клетку.</li>
-      <li data-i18n="rule7">Спустя три раунда внешнее кольцо поля обрушивается, остаётся зона 3×3.</li>
-      <li data-i18n="rule8">Если и после финального раунда победителя нет, засчитывается ничья.</li>
+      <li data-i18n="rule1">Каждый раунд игроки заранее выбирают пять шагов.</li>
+      <li data-i18n="rule2">За раунд можно выполнить перемещения, одну атаку и один щит.</li>
+      <li data-i18n="rule3">Атака требует указать направление и поражает текущую клетку и клетки вдоль луча.</li>
+      <li data-i18n="rule4">В одном раунде нельзя и двигаться, и атаковать в одну и ту же сторону — направление атаки должно отличаться.</li>
+      <li data-i18n="rule5">Щит поглощает весь урон выбранного шага.</li>
+      <li data-i18n="rule6">После планирования ходы выполняются по порядку одновременно у обоих игроков.</li>
+      <li data-i18n="rule7">Поражение наступает от попадания атаки или падения на разрушенную клетку.</li>
+      <li data-i18n="rule8">Спустя три раунда внешнее кольцо поля обрушивается, остаётся зона 3×3.</li>
+      <li data-i18n="rule9">Если победителя нет даже после «внезапной смерти», засчитывается ничья.</li>
     </ul>
     <button id="rulesTutorial" data-i18n="tutorial" data-sound="nav">Tutorial</button>
     <button id="rulesClose" data-i18n="close" data-sound="nav">Закрыть</button>

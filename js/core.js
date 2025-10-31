@@ -1219,8 +1219,11 @@ function startNewRound() {
     const newCell = document.getElementById(`c${current.x}${current.y}`);
     const oldCell = document.getElementById(`c${prev.x}${prev.y}`);
     if (!newCell || !oldCell) return;
-    const unitEl = newCell.querySelector(player === 'A' ? '.playerA' : '.playerB');
-    if (!unitEl) return;
+    let unitEl = newCell.querySelector(player === 'A' ? '.playerA' : '.playerB');
+    if (!unitEl) {
+      unitEl = newCell.querySelector('.playerBoth');
+    }
+    if (!unitEl || unitEl.classList.contains('moveAnim')) return;
     const fromRect = oldCell.getBoundingClientRect();
     const toRect = newCell.getBoundingClientRect();
     const dx = fromRect.left - toRect.left;
@@ -1239,13 +1242,14 @@ function startNewRound() {
 
   function render() {
     if (!document.getElementById('c00')) return;
-    document.querySelectorAll('.playerA,.playerB,.playerHalf').forEach(e => e.remove());
+    document.querySelectorAll('.playerA,.playerB,.playerBoth').forEach(e => e.remove());
     if (units.A.alive && units.B.alive && units.A.x === units.B.x && units.A.y === units.B.y) {
       const cell = document.getElementById(`c${units.A.x}${units.A.y}`);
-      ['halfA', 'halfB'].forEach(cls => {
-        const h = document.createElement('div'); h.className = 'playerHalf ' + cls;
-        cell.append(h);
-      });
+      if (cell) {
+        const merged = document.createElement('div');
+        merged.className = 'playerBoth';
+        cell.append(merged);
+      }
     } else {
       ['A', 'B'].forEach(pl => {
         const u = units[pl]; if (!u.alive) return;

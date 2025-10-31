@@ -101,15 +101,16 @@
       ,recordingNotSupported: 'Recording not supported'
       ,rulesHeader: 'Game Concept and Rules'
       ,rulesGeneral: 'Overview'
-      ,rulesIntro: 'This is a turn-based 5\u00d75 PvP arena for two players. Up to three rounds are played. If nobody wins, sudden death starts on the central 3\u00d73 grid.'
-      ,rule1: 'Each round players pre-plan five actions.'
-      ,rule2: 'Available actions are movement, one attack and one shield per round.'
-      ,rule3: 'An attack selects directions and hits your cell and chosen neighbours.'
-      ,rule4: 'The shield negates all damage for that step.'
-      ,rule5: 'After planning, actions execute in order for both players simultaneously.'
-      ,rule6: 'A player dies if struck by an attack or when stepping on collapsed cells.'
-      ,rule7: 'After three rounds the outer ring collapses leaving a 3\u00d73 arena.'
-      ,rule8: 'If there is no winner after the last round, the match ends in a draw.'
+      ,rulesIntro: 'This is a turn-based 5\u00d75 PvP arena for two players. After three rounds, sudden death starts on the central 3\u00d73 grid if nobody wins.'
+      ,rule1: 'Each round players pre-plan five steps.'
+      ,rule2: 'You can spend each round on movement, one attack, and one shield.'
+      ,rule3: 'An attack needs a direction and hits your cell plus the beam of cells ahead.'
+      ,rule4: "You can't move and attack in the same direction within a single round\u2014pick a different lane for the strike."
+      ,rule5: 'The shield negates all damage for the chosen step.'
+      ,rule6: 'After planning, actions resolve in order for both players simultaneously.'
+      ,rule7: 'Taking a hit or stepping onto a collapsed tile knocks you out.'
+      ,rule8: 'After three rounds the outer ring falls away, leaving a 3\u00d73 arena.'
+      ,rule9: 'If sudden death ends without a winner, the match is declared a draw.'
       ,tutorial: 'Tutorial'
       ,tutorial1: 'Welcome! Use arrows or buttons to move your unit.'
       ,tutorial2: 'Plan five actions including one attack and one shield.'
@@ -220,15 +221,16 @@
       recordingNotSupported: 'Запись не поддерживается',
       rulesHeader: 'Концепция и правила игры',
       rulesGeneral: 'Общее',
-      rulesIntro: 'Это пошаговая PvP-арена 5\u00d75 для двух игроков. Игра идёт три раунда, затем в отсутствие победителя начинается \u00abвнезапная смерть\u00bb в центре 3\u00d73.',
-      rule1: 'Каждый раунд игроки заранее выбирают пять действий.',
-      rule2: 'В распоряжении перемещения, одна атака и один щит за раунд.',
-      rule3: 'Атака задаёт направления и поражает текущую и соседние клетки.',
-      rule4: 'Щит блокирует урон выбранного хода.',
-      rule5: 'После планирования действия выполняются по порядку одновременно.',
-      rule6: 'Игрок погибает от атаки или наступив на провалившуюся клетку.',
-      rule7: 'После трёх раундов края поля разрушаются, остаётся зона 3\u00d73.',
-      rule8: 'Если победителя нет после финала, объявляется ничья.'
+      rulesIntro: 'Это пошаговая PvP-арена 5\u00d75 для двух игроков. После трёх раундов без победителя начинается \u00abвнезапная смерть\u00bb в центре 3\u00d73.',
+      rule1: 'Каждый раунд игроки заранее выбирают пять шагов.',
+      rule2: 'За раунд можно сделать перемещения, одну атаку и один щит.',
+      rule3: 'Атака требует направления и поражает текущую клетку и клетки вдоль луча.',
+      rule4: 'В одном раунде нельзя и двигаться, и атаковать в одну сторону \u2014 направление атаки должно отличаться.',
+      rule5: 'Щит поглощает весь урон выбранного шага.',
+      rule6: 'После планирования действия выполняются по порядку одновременно.',
+      rule7: 'Игрок проигрывает от удара или наступив на разрушенную клетку.',
+      rule8: 'Через три раунда внешнее кольцо поля разрушается, остаётся зона 3\u00d73.',
+      rule9: '\u0415\u0441\u043b\u0438 \u043f\u043e\u0431\u0435\u0434\u0438\u0442\u0435\u043b\u044f \u043d\u0435\u0442 \u0434\u0430\u0436\u0435 \u043f\u043e\u0441\u043b\u0435 \u00ab\u0432\u043d\u0435\u0437\u0430\u043f\u043d\u043e\u0439 \u0441\u043c\u0435\u0440\u0442\u0438\u00bb, \u0437\u0430\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u043d\u0438\u0447\u044c\u044f.'
       ,tutorial: 'Обучение'
       ,tutorial1: 'Добро пожаловать! Используйте стрелки или кнопки, чтобы сдвинуть юнита.'
       ,tutorial2: 'Запланируйте пять действий, включая атаку и щит.'
@@ -339,15 +341,16 @@
       recordingNotSupported: 'Запис не підтримується',
       rulesHeader: 'Концепція та правила гри',
       rulesGeneral: 'Загальне',
-      rulesIntro: 'Це покрокова PvP-арена 5\u00d75 для двох гравців. Після трьох раундів за відсутності переможця починається \u00abраптова смерть\u00bb у центрі 3\u00d73.',
-      rule1: 'Щоразу гравці заздалегідь планують п\u2019ять дій.',
-      rule2: 'Доступні переміщення, одна атака та один щит за раунд.',
-      rule3: 'Атака вибирає напрямки та вражає поточну й сусідні клітини.',
-      rule4: 'Щит блокує весь урон цього кроку.',
-      rule5: 'Після планування дії виконуються послідовно одночасно у обох гравців.',
-      rule6: 'Гравець гине від атаки або ступивши на зруйновану клітину.',
-      rule7: 'Після трьох раундів зовнішнє кільце зникає, залишається арена 3\u00d73.',
-      rule8: 'Якщо переможця немає після фінального раунду, оголошується нічия.'
+      rulesIntro: 'Це покрокова PvP-арена 5\u00d75 для двох гравців. Після трьох раундів без переможця починається \u00abраптова смерть\u00bb у центрі 3\u00d73.',
+      rule1: 'Щоразу гравці заздалегідь планують п\u2019ять ходів.',
+      rule2: 'За раунд доступні пересування, одна атака та один щит.',
+      rule3: 'Атака потребує напрямку й б\u2019є по вашій клітинці та клітинах уздовж променя.',
+      rule4: 'В одному раунді не можна іти та атакувати в один бік \u2014 напрямок атаки має бути іншим.',
+      rule5: 'Щит поглинає будь-яку шкоду на вибраному кроці.',
+      rule6: 'Після планування дії виконуються послідовно й одночасно для обох гравців.',
+      rule7: 'Поразка настає від удару або падіння на зруйновану клітинку.',
+      rule8: 'Після трьох раундів зовнішнє кільце поля обвалюється, лишається арена 3\u00d73.',
+      rule9: 'Якщо навіть після \u00abраптової смерті\u00bb переможця немає, фіксується нічия.'
       ,tutorial: 'Навчання'
       ,tutorial1: '\u041b\u0430\u0441\u043a\u0430\u0432\u043e \u043f\u0440\u043e\u0441\u0438\u043c\u043e! \u0412\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u043e\u0432\u0443\u0439\u0442\u0435 \u0441\u0442\u0440\u0456\u043b\u043a\u0438 \u0430\u0431\u043e \u043a\u043d\u043e\u043f\u043a\u0438, \u0449\u043e\u0431 \u043f\u0435\u0440\u0435\u0441\u0443\u043d\u0443\u0442\u0438 \u0431\u043e\u0439\u0446\u044f.'
       ,tutorial2: '\u0417\u0430\u043f\u043b\u0430\u043d\u0443\u0439\u0442\u0435 \u043f\u2019\u044f\u0442\u044c \u0434\u0456\u0439, \u0432\u043a\u043b\u044e\u0447\u043d\u043e \u0437 \u0430\u0442\u0430\u043a\u043e\u044e \u0442\u0430 \u0449\u0438\u0442\u043e\u043c.'

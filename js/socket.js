@@ -32,6 +32,7 @@ const API_ORIGIN = (() => {
 })();
 
 let connectivityTimer = null;
+let connectivityHasInitialResult = false;
 
 const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
 const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
@@ -112,12 +113,19 @@ function showOnlineToast(type, message) {
 }
 
 function scheduleConnectivityPoll() {
+  connectivityHasInitialResult = false;
   if (connectivityTimer) clearTimeout(connectivityTimer);
   if (typeof fetch !== 'function' || !API_ORIGIN) return;
   const poll = async () => {
     const statusEl = document.getElementById('connectionStatus');
     const currentState = statusEl ? statusEl.dataset.state : null;
-    if ((!socket || socket.readyState !== WebSocket.OPEN) && currentState !== 'connecting' && currentState !== 'reconnecting') {
+    if (
+      !connectivityHasInitialResult &&
+      statusEl &&
+      (!socket || socket.readyState !== WebSocket.OPEN) &&
+      currentState !== 'connecting' &&
+      currentState !== 'reconnecting'
+    ) {
       updateConnectionStatus(t('checkingConnection'), 'checking');
     }
     try {
@@ -125,13 +133,15 @@ function scheduleConnectivityPoll() {
       const timeoutId = controller ? setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS) : null;
       await fetch(API_ORIGIN, { method: 'HEAD', cache: 'no-store', signal: controller ? controller.signal : undefined });
       if (timeoutId) clearTimeout(timeoutId);
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      updateConnectionStatus(t('onlineStatus'), 'online');
-    }
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        updateConnectionStatus(t('onlineStatus'), 'online');
+      }
+      connectivityHasInitialResult = true;
     } catch (err) {
       if (!socket || socket.readyState !== WebSocket.OPEN) {
         updateConnectionStatus(t('serverUnavailable'), 'offline');
       }
+      connectivityHasInitialResult = true;
     } finally {
       connectivityTimer = setTimeout(poll, CONNECTIVITY_INTERVAL_MS);
     }
@@ -295,7 +305,6 @@ function initSocket(onReady) {
       return;
     }
     updateConnectionStatus(t('reconnecting'), 'reconnecting');
-    showOnlineToast('info', t('reconnecting'));
     clearReconnectTimer();
     const attempt = Math.min(reconnectAttempts + 1, 20);
     reconnectAttempts = attempt;
@@ -372,14 +381,14 @@ function initSocket(onReady) {
     if (data.type === 'opponent_left') {
       const msg = t('opponent_left_room');
       log('⚠ ' + msg);
-      showOnlineToast('info', msg);
+      showOnlineToast('error', msg);
       cleanupRoom();
       showOpponentLeftModal();
     }
     if (data.type === 'room_expired') {
       const msg = t('room_closed_inactivity');
       log('⌛ ' + msg);
-      showOnlineToast('info', msg);
+      showOnlineToast('error', msg);
       cleanupRoom();
     }
   };
@@ -458,27 +467,6 @@ function log(text) {
   } catch (err) {
     /* ignore console errors */
   }
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  const first = trimmed[0];
-  if (first === '📨') return;
-  let type = 'info';
-  let message = trimmed;
-  const stripLeading = () => {
-    message = message.slice(1).trim();
-    if (!message) message = trimmed;
-  };
-  if ('⛔❌'.includes(first)) {
-    type = 'error';
-    stripLeading();
-  } else if ('✅✨✔'.includes(first)) {
-    type = 'success';
-    stripLeading();
-  } else if (first === '⚠') {
-    type = 'error';
-    stripLeading();
-  }
-  showOnlineToast(type, message);
 }
 
 function showConfirmMessage(text) {
@@ -533,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
     copyRoomCodeBtn.addEventListener('click', async () => {
       const code = (document.getElementById('roomCode')?.textContent || '').trim();
       if (!code || code === '----') {
-        showOnlineToast('info', t('copyUnavailable'));
         return;
       }
       try {
