@@ -35,6 +35,10 @@ function placeSymbol(x, y) {
 }
 
 function onCellClick(x, y) {
+  if (typeof window.toggleCellMark === 'function') {
+    window.toggleCellMark(x, y);
+    return;
+  }
   const cell = document.getElementById(`c${x}${y}`);
   if (!cell) return;
   cell.classList.toggle('cell-marked');
@@ -82,6 +86,8 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
+  let markedCells = { A: new Set(), B: new Set() };
+  let markedOwner = null;
   let activeResultOverlay = null;
   let resultOverlaySuppressed = false;
   let displayedRound = 0;
@@ -714,7 +720,9 @@ function startNewRound() {
       roundBadge.classList.remove('visible', 'bump');
       displayedRound = 0;
     }
-    buildBoard(); bindUI(); render(); updateUI();
+    buildBoard();
+    resetMarkedCells();
+    bindUI(); render(); updateUI();
     updateScore();
     edgesCollapsed = false;
     replayHistory = [];
@@ -732,6 +740,41 @@ function startNewRound() {
         board.append(c);
       }
     }
+  }
+
+  function getMarkOwner() {
+    if (phase === 'execute') return null;
+    if (isOnline) return mySide();
+    if (phase === 'planA') return 'A';
+    if (phase === 'planB') return 'B';
+    return null;
+  }
+
+  function refreshMarkedCells(owner, force = false) {
+    if (!force && markedOwner === owner) return;
+    markedOwner = owner || null;
+    document.querySelectorAll('.cell.cell-marked').forEach(cell => cell.classList.remove('cell-marked'));
+    if (!owner || !markedCells[owner]) return;
+    markedCells[owner].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('cell-marked');
+    });
+  }
+
+  function resetMarkedCells() {
+    markedCells = { A: new Set(), B: new Set() };
+    refreshMarkedCells(null, true);
+  }
+
+  function toggleCellMark(x, y) {
+    if (isReplaying) return;
+    const owner = getMarkOwner();
+    if (!owner) return;
+    if (!markedCells[owner]) markedCells[owner] = new Set();
+    const id = `c${x}${y}`;
+    const set = markedCells[owner];
+    if (set.has(id)) set.delete(id); else set.add(id);
+    refreshMarkedCells(owner, true);
   }
 
   function bindUI() {
@@ -1116,6 +1159,7 @@ function startNewRound() {
 
   function updateUI() {
     const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
+    refreshMarkedCells(getMarkOwner());
     if (attackMode && attackModeOwner && attackModeOwner !== P) {
       hideAttackOverlay({ silent: true });
     }
@@ -2221,6 +2265,7 @@ function startNewRound() {
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
     resetOnlineFlags();
+    resetMarkedCells();
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     render(); btnNext.textContent = t('nextBtn'); updateUI();
@@ -2324,6 +2369,7 @@ function startNewRound() {
 
   window.returnToMenu = returnToMenu;
   window.plans = plans;
+  window.toggleCellMark = toggleCellMark;
 
   window.onStartRound = function(moves) {
     plans = { A: moves[0], B: moves[1] };
