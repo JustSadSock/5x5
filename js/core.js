@@ -256,6 +256,7 @@ function startNewRound() {
     { key: 'tutorialGoal', highlight: '#scoreboard', hint: 'tutorialGoalHint' },
     { key: 'tutorialMovePrompt', highlight: '#actions', hint: 'tutorialMoveHint', mode: 'practice', expect: 'moveQueued', focus: '#actions [data-act="up"]', buttonKey: 'tutorialTryButton' },
     { key: 'tutorialPlanPrompt', highlight: '#planIndicator', hint: 'tutorialPlanHint' },
+    { key: 'tutorialDirectionRule', highlight: '#planIndicator', hint: 'tutorialDirectionRuleHint' },
     { key: 'tutorialAttackPrompt', highlight: '#actions [data-act="attack"]', hint: 'tutorialAttackHint', mode: 'practice', expect: 'attackMode', focus: '#actions [data-act="attack"]', buttonKey: 'tutorialTryButton' },
     { key: 'tutorialAttackDirPrompt', highlight: '#actions', hint: 'tutorialAttackDirHint', mode: 'practice', expect: 'attackQueued', focus: '#actions [data-act="right"]', buttonKey: 'tutorialTryButton' },
     { key: 'tutorialShieldPrompt', highlight: '#actions [data-act="shield"]', hint: 'tutorialShieldHint', mode: 'practice', expect: 'shieldQueued', focus: '#actions [data-act="shield"]', buttonKey: 'tutorialTryButton' },
@@ -1575,6 +1576,7 @@ function startNewRound() {
           pauseBtn.setAttribute('aria-label', t('resumeReplay'));
           pauseBtn.setAttribute('data-i18n-aria', 'resumeReplay');
         }
+        stopReplayRecordingIfNeeded();
         return;
       }
       const f = replayFrames[replayIndex++];
@@ -1631,33 +1633,40 @@ function startNewRound() {
       return;
     }
     recordedChunks = [];
+    if (typeof MediaRecorder === 'undefined') {
+      try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const mp4Candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=h264,aac', 'video/mp4'];
+    let selectedRecorder = null;
     let mime = null;
-    let ext = 'webm';
-    if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
-      const mp4Candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=h264,aac', 'video/mp4'];
-      mime = mp4Candidates.find(type => MediaRecorder.isTypeSupported(type)) || null;
-      if (mime) {
-        ext = 'mp4';
-      } else {
-        const webmCandidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
-        mime = webmCandidates.find(type => MediaRecorder.isTypeSupported(type)) || null;
-      }
-    }
-    try {
-      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-    } catch (err) {
+    for (const candidate of mp4Candidates) {
+      if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported(candidate)) continue;
       try {
-        recorder = new MediaRecorder(stream);
-        mime = recorder.mimeType || mime;
-        if (mime && mime.includes('mp4')) ext = 'mp4';
-      } catch (err2) {
-        stream.getTracks().forEach(track => track.stop());
-        alert(t('recordingNotSupported'));
-        return;
+        selectedRecorder = new MediaRecorder(stream, { mimeType: candidate });
+        mime = selectedRecorder.mimeType || candidate;
+        break;
+      } catch (err) {
+        selectedRecorder = null;
       }
     }
-    recorderMime = mime || recorder.mimeType || 'video/webm';
-    recorderExt = recorderMime.includes('mp4') ? 'mp4' : ext;
+    if (!selectedRecorder && typeof MediaRecorder.isTypeSupported !== 'function') {
+      try {
+        selectedRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
+        mime = selectedRecorder.mimeType || 'video/mp4';
+      } catch (err) {
+        selectedRecorder = null;
+      }
+    }
+    if (!selectedRecorder || !mime || !mime.includes('mp4')) {
+      try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    recorder = selectedRecorder;
+    recorderMime = mime;
+    recorderExt = 'mp4';
     recorderStream = stream;
     recorder.ondataavailable = e => {
       if (e.data && e.data.size) recordedChunks.push(e.data);
@@ -1667,24 +1676,37 @@ function startNewRound() {
         const blob = new Blob(recordedChunks, { type: recorderMime });
         const filename = `replay.${recorderExt}`;
         const file = new File([blob], filename, { type: recorderMime });
-        if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file] });
-          } catch (e) {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-          }
-        } else {
+        const triggerDownload = () => {
           const url = URL.createObjectURL(file);
           const a = document.createElement('a');
           a.href = url;
           a.download = filename;
           a.click();
           URL.revokeObjectURL(url);
+        };
+        if (recorderExt === 'mp4' && typeof window.showSaveFilePicker === 'function') {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(file);
+            await writable.close();
+            return;
+          } catch (err) {
+            // fall through to alternate delivery mechanisms
+          }
+        }
+        if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file] });
+            return;
+          } catch (e) {
+            triggerDownload();
+          }
+        } else {
+          triggerDownload();
         }
       } catch (err) {
         console.error('Failed to export replay video', err);
@@ -1700,6 +1722,14 @@ function startNewRound() {
     };
     recorder.start();
     startReplay();
+  }
+
+  function stopReplayRecordingIfNeeded() {
+    if (!recorder) return;
+    try {
+      if (typeof recorder.state === 'string' && recorder.state === 'inactive') return;
+      recorder.stop();
+    } catch (err) {}
   }
 
   function saveReplayToStorage(resultText) {
@@ -1784,7 +1814,7 @@ function startNewRound() {
     replayIndex = 0;
     replayFrames = [];
     if (recorder) {
-      try { recorder.stop(); } catch (e) {}
+      stopReplayRecordingIfNeeded();
       recorder = null;
     }
     if (recorderStream) {
@@ -1808,6 +1838,7 @@ function startNewRound() {
   window.startReplay = startReplay;
   window.endReplay = endReplay;
   window.seekReplay = seekReplay;
+  window.saveReplayVideo = saveReplayVideo;
 
   function updateReplayButton() {
     const btn = document.getElementById('replayBtn');
@@ -1834,7 +1865,11 @@ function startNewRound() {
       btn.onclick = () => {
         replaySpeed = parseFloat(btn.dataset.speed);
         ov.remove();
-        saveReplayVideo();
+        if (typeof window.saveReplayVideo === 'function') {
+          window.saveReplayVideo();
+        } else {
+          saveReplayVideo();
+        }
       };
     });
   }
