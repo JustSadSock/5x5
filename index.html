@@ -134,9 +134,16 @@
       max-width:420px;
       display:flex;
       flex-direction:column;
+      align-items:center;
       gap:16px;
+      margin-left:auto;
+      margin-right:auto;
       margin-top:auto;
       margin-bottom:auto;
+    }
+    #difficultySelect .difficulty-grid .panelDiff {
+      width:100%;
+      max-width:360px;
     }
     .panel, .panelDiff {
       width:90%; max-width:360px; padding:20px;
@@ -1407,6 +1414,8 @@
     }
     #scoreboard .score-divider { opacity:0.7; }
     .scoreboard-icon {
+      --icon-open-rotate: 0deg;
+      --icon-open-translate: -4px;
       --icon-translate-y: 0px;
       --icon-rotate: 0deg;
       --icon-scale: 1;
@@ -1424,28 +1433,39 @@
       box-shadow:0 8px 20px rgba(15,23,42,0.26);
       opacity:0;
       transform:translateY(var(--icon-translate-y)) rotate(var(--icon-rotate)) scale(var(--icon-scale));
-      transition:background .2s ease, transform .35s cubic-bezier(0.22, 1.61, 0.36, 1), box-shadow .25s ease;
+      transition:background .25s ease, box-shadow .3s ease, transform .48s cubic-bezier(0.22, 1, 0.36, 1);
       animation:hudIconAppear 0.55s cubic-bezier(0.22, 1.61, 0.36, 1) forwards;
       animation-delay:var(--hud-icon-delay, 0s);
       flex-shrink:0;
+      will-change:transform;
     }
     .scoreboard-icon:hover {
       background:var(--color-surface-hover);
-      --icon-translate-y: -2px;
       box-shadow:0 14px 30px rgba(15,23,42,0.32);
+      --icon-translate-y: -2px;
+      --icon-scale: 1.08;
     }
     .scoreboard-icon:active {
       --icon-scale: 0.9;
     }
     .scoreboard-icon.active {
-      --icon-rotate: -90deg;
-      --icon-scale: 1.08;
+      --icon-translate-y: var(--icon-open-translate);
+      --icon-rotate: var(--icon-open-rotate);
+      --icon-scale: 1.05;
     }
-    #settingsBtn.active {
-      --icon-rotate: 180deg;
+    .scoreboard-icon.active:hover {
+      --icon-scale: 1.12;
     }
-    #scoreboardToggle { --hud-icon-delay: 0.05s; }
-    #settingsBtn { --hud-icon-delay: 0.15s; }
+    #scoreboardToggle {
+      --hud-icon-delay: 0.05s;
+      --icon-open-rotate: -120deg;
+      --icon-open-translate: -3px;
+    }
+    #settingsBtn {
+      --hud-icon-delay: 0.15s;
+      --icon-open-rotate: 210deg;
+      --icon-open-translate: -3px;
+    }
     @keyframes hudIconAppear {
       0% {
         opacity:0;

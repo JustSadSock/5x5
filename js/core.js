@@ -24,6 +24,54 @@ let recorderCanvas = null;
 let attackMode = false;
 let attackModeOwner = null;
 
+const hudMotionQuery = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+  ? window.matchMedia('(prefers-reduced-motion: reduce)')
+  : null;
+
+function playHudIconAnimation(icon, opening) {
+  if (!icon || typeof icon.animate !== 'function') return;
+  if (hudMotionQuery && hudMotionQuery.matches) return;
+  if (opening && icon.classList.contains('active')) return;
+  if (!opening && !icon.classList.contains('active')) return;
+  const styles = getComputedStyle(icon);
+  const rotateValue = parseFloat(styles.getPropertyValue('--icon-open-rotate'));
+  const translateValue = parseFloat(styles.getPropertyValue('--icon-open-translate'));
+  const targetRotate = Number.isFinite(rotateValue) ? rotateValue : 0;
+  const targetTranslate = Number.isFinite(translateValue) ? translateValue : -3;
+  if (icon._hudAnimation && typeof icon._hudAnimation.cancel === 'function') {
+    icon._hudAnimation.cancel();
+  }
+  const frames = opening
+    ? [
+        { transform: 'translateY(0px) rotate(0deg) scale(0.88)' },
+        { transform: `translateY(${targetTranslate - 1}px) rotate(${targetRotate * 0.78}deg) scale(1.12)` },
+        { transform: `translateY(${targetTranslate}px) rotate(${targetRotate}deg) scale(1)` }
+      ]
+    : [
+        { transform: `translateY(${targetTranslate}px) rotate(${targetRotate}deg) scale(1.04)` },
+        { transform: `translateY(${targetTranslate * 0.45}px) rotate(${targetRotate * 0.4}deg) scale(0.9)` },
+        { transform: 'translateY(0px) rotate(0deg) scale(1)' }
+      ];
+  const animation = icon.animate(frames, {
+    duration: 420,
+    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    fill: 'forwards'
+  });
+  icon._hudAnimation = animation;
+  const clear = () => {
+    if (icon._hudAnimation === animation) {
+      icon._hudAnimation = null;
+    }
+  };
+  if (typeof animation.addEventListener === 'function') {
+    animation.addEventListener('finish', clear, { once: true });
+    animation.addEventListener('cancel', clear, { once: true });
+  } else {
+    animation.onfinish = clear;
+    animation.oncancel = clear;
+  }
+}
+
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
 function placeSymbol(x, y) {
@@ -138,6 +186,9 @@ function startNewRound() {
 
   function closeHudMenu() {
     if (!scoreboardMenu) return;
+    if (scoreboardToggle && scoreboardToggle.classList.contains('active')) {
+      playHudIconAnimation(scoreboardToggle, false);
+    }
     scoreboardMenu.classList.remove('show');
     scoreboardMenu.setAttribute('aria-hidden', 'true');
     if (scoreboardBackdrop) scoreboardBackdrop.classList.remove('show');
@@ -148,6 +199,10 @@ function startNewRound() {
 
   function openHudMenu() {
     if (!scoreboardMenu) return;
+    if (scoreboardMenu.classList.contains('show')) return;
+    if (scoreboardToggle) {
+      playHudIconAnimation(scoreboardToggle, true);
+    }
     scoreboardMenu.classList.add('show');
     scoreboardMenu.setAttribute('aria-hidden', 'false');
     if (scoreboardBackdrop) scoreboardBackdrop.classList.add('show');
@@ -2459,7 +2514,10 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsModal.style.display = 'block';
       settingsModal.classList.add('show');
     }
-    if (settingsBtn) settingsBtn.classList.add('active');
+    if (settingsBtn) {
+      playHudIconAnimation(settingsBtn, true);
+      settingsBtn.classList.add('active');
+    }
   };
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = openSettings;
@@ -2468,7 +2526,10 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsClose.onclick = () => {
       settingsModal.style.display = 'none';
       settingsModal.classList.remove('show');
-      if (settingsBtn) settingsBtn.classList.remove('active');
+      if (settingsBtn) {
+        playHudIconAnimation(settingsBtn, false);
+        settingsBtn.classList.remove('active');
+      }
     };
   }
   const syncSoundControls = () => {
