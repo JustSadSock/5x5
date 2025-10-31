@@ -134,6 +134,7 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
+  let activeTutorialStep = null;
   let markedCells = { A: new Set(), B: new Set() };
   let markedOwner = null;
   let activeResultOverlay = null;
@@ -524,6 +525,7 @@ function startNewRound() {
   function stopTutorial(markComplete) {
     isTutorial = false;
     tutorialExpectEvent = null;
+    activeTutorialStep = null;
     clearTutorialHighlight();
     if (tutOv) {
       tutOv.classList.remove('show');
@@ -560,6 +562,12 @@ function startNewRound() {
     }
   }
 
+  function hideTutorialOverlay() {
+    if (!tutOv) return;
+    tutOv.classList.remove('show');
+    tutOv.setAttribute('aria-hidden', 'true');
+  }
+
   function showTutorialStep() {
     if (!isTutorial) return;
     const step = tutorialScript[tutorialIndex];
@@ -576,6 +584,8 @@ function startNewRound() {
       showTutorialStep();
       return;
     }
+    activeTutorialStep = step;
+    tutorialExpectEvent = step.mode === 'practice' ? (step.expect || null) : null;
     applyTutorialHighlight(step.highlight);
     if (!tutOv || !tutCont || !tutNext) return;
     if (tutorialProgress) {
@@ -596,22 +606,18 @@ function startNewRound() {
     tutNext.focus();
     requestAnimationFrame(() => positionTutorialCard());
     tutNext.onclick = () => {
+      if (!isTutorial || activeTutorialStep !== step) return;
       if (step.mode === 'practice') {
-        tutOv.classList.remove('show');
-        tutOv.setAttribute('aria-hidden', 'true');
+        hideTutorialOverlay();
         positionTutorialCard();
-        if (step.expect && isTutorialRequirementMet(step.expect)) {
+        if (!step.expect || isTutorialRequirementMet(step.expect)) {
+          tutorialExpectEvent = null;
+          activeTutorialStep = null;
           tutorialIndex++;
           if (tutorialIndex >= tutorialScript.length) {
             finishTutorial();
             return;
           }
-          showTutorialStep();
-          return;
-        }
-        tutorialExpectEvent = step.expect || null;
-        if (!tutorialExpectEvent) {
-          tutorialIndex++;
           showTutorialStep();
           return;
         }
@@ -621,14 +627,15 @@ function startNewRound() {
             setTimeout(() => focusTarget.focus(), 60);
           }
         }
-      } else {
-        tutorialIndex++;
-        if (tutorialIndex >= tutorialScript.length) {
-          finishTutorial();
-          return;
-        }
-        showTutorialStep();
+        return;
       }
+      activeTutorialStep = null;
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
     };
   }
 
@@ -636,6 +643,8 @@ function startNewRound() {
     if (!isTutorial) return;
     if (tutorialExpectEvent && tutorialExpectEvent === event) {
       tutorialExpectEvent = null;
+      hideTutorialOverlay();
+      activeTutorialStep = null;
       tutorialIndex++;
       if (tutorialIndex >= tutorialScript.length) {
         finishTutorial();
@@ -650,6 +659,7 @@ function startNewRound() {
     single = true;
     isTutorial = true;
     tutorialIndex = 0;
+    activeTutorialStep = null;
     ms.style.display = 'none';
     if (ds) ds.style.display = 'none';
     startGame();
@@ -1076,17 +1086,26 @@ function startNewRound() {
       return;
     }
   if (phase === 'planA' && single) {
+    const tutorialPlanReady = isTutorial && Array.isArray(plans.A) && plans.A.length === STEPS;
     autoPlanB();
     phase = 'execute';
     startRecordingRound();
     btnNext.textContent = t('executeBtn');
     clearPlan(); updateUI();
-    advanceTutorialEvent('roundStarted');
+    if (!isTutorial || tutorialPlanReady) {
+      advanceTutorialEvent('roundStarted');
+    }
     return;
   }
   if (phase !== 'execute') {
+    const tutorialPlanReady = isTutorial && Array.isArray(plans.A) && plans.A.length === STEPS;
     phase = phase === 'planA' ? 'planB' : 'execute';
-    if (phase === 'execute') { startRecordingRound(); advanceTutorialEvent('roundStarted'); }
+    if (phase === 'execute') {
+      startRecordingRound();
+      if (!isTutorial || tutorialPlanReady) {
+        advanceTutorialEvent('roundStarted');
+      }
+    }
     btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
     clearPlan(); updateUI();
     return;

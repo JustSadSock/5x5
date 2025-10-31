@@ -973,7 +973,7 @@
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
     }
     #actions button {
-      font-size:calc(24px * var(--ui-scale));
+      font-size:calc(30px * var(--ui-scale));
     }
     #btn-del, #btn-next {
       font-size:calc(16px * var(--ui-scale));
@@ -1035,7 +1035,7 @@
       color:var(--color-danger);
       border:1px solid rgba(239,68,68,0.35);
     }
-    #actions.attack-mode .moveBtn:hover:not(:disabled) {
+    #actions.attack-mode .moveBtn:not(.attack-selected):hover:not(:disabled) {
       background:rgba(239,68,68,0.15);
       color:var(--color-danger);
       transform:none;
@@ -1045,6 +1045,12 @@
       background:var(--color-danger);
       color:var(--color-button-text);
       border-color:rgba(239,68,68,0.7);
+      box-shadow:0 10px 18px rgba(239,68,68,0.35);
+    }
+    #actions.attack-mode .moveBtn.attack-selected:hover:not(:disabled) {
+      background:var(--color-danger);
+      color:var(--color-button-text);
+      transform:none;
       box-shadow:0 10px 18px rgba(239,68,68,0.35);
     }
     #actions.attack-mode .moveBtn.attack-disabled {

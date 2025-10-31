@@ -116,9 +116,9 @@
       ,rulesGeneral: 'Overview'
       ,rulesIntro: 'This is a turn-based 5\u00d75 PvP arena for two players. After three rounds, sudden death starts on the central 3\u00d73 grid if nobody wins.'
       ,rule1: 'Each round players pre-plan five steps.'
-      ,rule2: 'You can spend each round on movement, one attack, and one shield.'
-      ,rule3: 'An attack needs a direction and hits your cell plus the beam of cells ahead.'
-      ,rule3b: 'You can queue attacks in several directions in a round—each one consumes its own step and each direction can only be chosen once.'
+      ,rule2: 'Each round you may queue any number of moves plus exactly one attack action and one shield action.'
+      ,rule3: 'An attack needs a chosen direction and hits your tile along with the chain of tiles you target.'
+      ,rule3b: 'That single attack can fan out across several directions—every choice fires together and each direction can only be picked once per round.'
       ,rule4: "You can't move and attack in the same direction within a single round\u2014pick a different lane for the strike."
       ,rule5: 'The shield negates all damage for the chosen step.'
       ,rule6: 'After planning, actions resolve in order for both players simultaneously.'
@@ -133,13 +133,13 @@
       ,tutorialMovePrompt: 'Let’s queue your first move. Press the highlighted arrow to step one tile.'
       ,tutorialMoveHint: 'Tap the glowing arrow button to add a move to the plan list.'
       ,tutorialPlanPrompt: 'Great! Each square below fills with the actions you choose.'
-      ,tutorialPlanHint: 'Fill all five steps—one attack and one shield per round.'
-      ,tutorialDirectionRule: 'Keep actions balanced.'
-      ,tutorialDirectionRuleHint: 'Within a round, you can’t move and attack in the same direction. Choose different arrows for each.'
+      ,tutorialPlanHint: 'Fill all five steps—remember you only get one attack and one shield each round.'
+      ,tutorialDirectionRule: 'Keep actions balanced: one attack, one shield, and your attack can aim into several directions.'
+      ,tutorialDirectionRuleHint: 'Within a round you can’t move and attack in the same direction, and each attack direction can only be chosen once.'
       ,tutorialAttackPrompt: 'Time to prepare an attack. Tap the sword to enter attack mode.'
       ,tutorialAttackHint: 'Attack mode lets you pick the direction your strike will go.'
       ,tutorialAttackDirPrompt: 'Choose the red arrow to aim your strike—you can tap several different directions—then confirm it.'
-      ,tutorialAttackDirHint: 'Select one or several directions—each extra strike takes another step—and remember you can only choose each direction once per round before confirming.'
+      ,tutorialAttackDirHint: 'Pick one or several directions for this single attack—each direction is unique per round before you confirm.'
       ,tutorialShieldPrompt: 'Now queue a shield to keep your marble safe.'
       ,tutorialShieldHint: 'Press the shield once to place it in your plan.'
       ,tutorialConfirmPrompt: 'All set! Start the round to watch your plan unfold.'
@@ -270,9 +270,9 @@
       rulesGeneral: 'Общее',
       rulesIntro: 'Это пошаговая PvP-арена 5\u00d75 для двух игроков. После трёх раундов без победителя начинается \u00abвнезапная смерть\u00bb в центре 3\u00d73.',
       rule1: 'Каждый раунд игроки заранее выбирают пять шагов.',
-      rule2: 'За раунд можно сделать перемещения, одну атаку и один щит.',
-      rule3: 'Атака требует направления и поражает текущую клетку и клетки вдоль луча.',
-      rule3b: 'Можно добавить несколько атак в разных направлениях за раунд — каждая занимает отдельный шаг плана, а каждое направление выбирается только один раз.',
+      rule2: 'За раунд можно запланировать сколько угодно перемещений, но только одну атаку и один щит.',
+      rule3: 'Атака требует выбрать направление и поражает текущую клетку и цепочку клеток по лучу.',
+      rule3b: 'Эта единственная атака может охватывать несколько направлений: все они срабатывают одновременно, а каждое направление выбирается только один раз за раунд.',
       rule4: 'В одном раунде нельзя и двигаться, и атаковать в одну сторону \u2014 направление атаки должно отличаться.',
       rule5: 'Щит поглощает весь урон выбранного шага.',
       rule6: 'После планирования действия выполняются по порядку одновременно.',
@@ -287,13 +287,13 @@
       ,tutorialMovePrompt: 'Сделаем первый шаг. Нажми подсвечённую стрелку, чтобы сдвинуться на одну клетку.'
       ,tutorialMoveHint: 'Нажми светящуюся стрелку — в списке ходов появится шаг.'
       ,tutorialPlanPrompt: 'Отлично! Клеточки плана снизу показывают твои будущие действия.'
-      ,tutorialPlanHint: 'Заполни пять шагов — не забудь про атаку и щит.'
-      ,tutorialDirectionRule: 'Следи за направлениями.'
-      ,tutorialDirectionRuleHint: 'В одном раунде нельзя атаковать и двигаться в одном направлении. Выбирай разные стрелки.'
+      ,tutorialPlanHint: 'Заполни пять шагов — помни, что за раунд есть только одна атака и один щит.'
+      ,tutorialDirectionRule: 'Следи за балансом: за раунд доступна одна атака и один щит, а атаку можно направить в несколько сторон.'
+      ,tutorialDirectionRuleHint: 'В одном раунде нельзя атаковать и двигаться в одном направлении, и каждое направление атаки можно выбрать только один раз.'
       ,tutorialAttackPrompt: 'Теперь готовим атаку. Коснись меча, чтобы включить режим атаки.'
       ,tutorialAttackHint: 'В режиме атаки выбираем направление удара.'
       ,tutorialAttackDirPrompt: 'Жми красные стрелки, чтобы выбрать направление (можно несколько разных), затем подтверди.'
-      ,tutorialAttackDirHint: 'Выбери одно или несколько направлений — каждое займёт свой шаг — и помни, что каждое направление можно выбрать только один раз за раунд перед подтверждением.'
+      ,tutorialAttackDirHint: 'Выбери одно или несколько направлений для этой атаки — каждое можно выбрать лишь один раз перед подтверждением.'
       ,tutorialShieldPrompt: 'Поставим защиту. Нажми щит, чтобы добавить его в план.'
       ,tutorialShieldHint: 'Одно нажатие — и ход со щитом появится в списке.'
       ,tutorialConfirmPrompt: 'Готово! Запусти раунд и посмотри, как выполняется план.'
@@ -424,9 +424,9 @@
       rulesGeneral: 'Загальне',
       rulesIntro: 'Це покрокова PvP-арена 5\u00d75 для двох гравців. Після трьох раундів без переможця починається \u00abраптова смерть\u00bb у центрі 3\u00d73.',
       rule1: 'Щоразу гравці заздалегідь планують п\u2019ять ходів.',
-      rule2: 'За раунд доступні пересування, одна атака та один щит.',
+      rule2: 'За раунд можна запланувати скільки завгодно переміщень, але лише одну атаку та один щит.',
       rule3: 'Атака потребує напрямку й б\u2019є по вашій клітинці та клітинах уздовж променя.',
-      rule3b: 'Можна додати кілька атак у різні боки за раунд — кожна займає окремий крок плану, а кожен напрямок обирається лише один раз.',
+      rule3b: 'Ця єдина атака може охоплювати кілька напрямків: усі вони спрацьовують одночасно, але кожен напрям можна обрати лише один раз за раунд.',
       rule4: 'В одному раунді не можна іти та атакувати в один бік \u2014 напрямок атаки має бути іншим.',
       rule5: 'Щит поглинає будь-яку шкоду на вибраному кроці.',
       rule6: 'Після планування дії виконуються послідовно й одночасно для обох гравців.',
@@ -441,13 +441,13 @@
       ,tutorialMovePrompt: '\u0417\u0440\u043e\u0431\u0456\u043c\u043e \u043f\u0435\u0440\u0448\u0438\u0439 \u043a\u0440\u043e\u043a. \u041d\u0430\u0442\u0438\u0441\u043d\u0438 \u043f\u0456\u0434\u0441\u0432\u0456\u0447\u0435\u043d\u0443 \u0441\u0442\u0440\u0456\u043b\u043a\u0443, \u0449\u043e\u0431 \u043f\u0435\u0440\u0435\u0439\u0442\u0438 \u043d\u0430 \u043a\u043b\u0456\u0442\u0438\u043d\u043a\u0443.'
       ,tutorialMoveHint: '\u041d\u0430\u0442\u0438\u0441\u043d\u0438 \u0441\u0432\u0456\u0442\u043b\u0443 \u0441\u0442\u0440\u0456\u043b\u043a\u0443 \u2014 \u0443 \u0441\u043f\u0438\u0441\u043a\u0443 \u0437\u2019\u044f\u0432\u0438\u0442\u044c\u0441\u044f \u0445\u0456\u0434.'
       ,tutorialPlanPrompt: '\u0427\u0443\u0434\u043e\u0432\u043e! \u041d\u0438\u0436\u043d\u0456 \u043a\u043b\u0456\u0442\u0438\u043d\u043a\u0438 \u043f\u043b\u0430\u043d\u0430 \u043f\u043e\u043a\u0430\u0437\u0443\u044e\u0442\u044c, \u0449\u043e \u0442\u0438 \u0437\u0430\u0434\u0443\u043c\u0430\u0432.'
-      ,tutorialPlanHint: '\u0417\u0430\u043f\u043e\u0432\u043d\u0438 \u0432\u0441\u0456 \u043f\u2019\u044f\u0442\u044c \u043a\u0440\u043e\u043a\u0456\u0432 \u2014 \u043d\u0435 \u0437\u0430\u0431\u0443\u0434\u044c \u043f\u0440\u043e \u0430\u0442\u0430\u043a\u0443 \u0439 \u0449\u0438\u0442.'
-      ,tutorialDirectionRule: '\u0421\u043b\u0456\u0434\u043a\u0443\u0439 \u0437\u0430 \u043d\u0430\u043f\u0440\u044f\u043c\u043a\u0430\u043c\u0438.'
-      ,tutorialDirectionRuleHint: '\u0412 \u043e\u0434\u043d\u043e\u043c\u0443 \u0440\u0430\u0443\u043d\u0434\u0456 \u043d\u0435 \u043c\u043e\u0436\u043d\u0430 \u0440\u0443\u0445\u0430\u0442\u0438\u0441\u044f \u0439 \u0430\u0442\u0430\u043a\u0443\u0432\u0430\u0442\u0438 \u0432 \u043e\u0434\u043d\u043e\u043c\u0443 \u043d\u0430\u043f\u0440\u044f\u043c\u043a\u0443. \u041e\u0431\u0438\u0440\u0430\u0439 \u0440\u0456\u0437\u043d\u0456 \u0441\u0442\u0440\u0456\u043b\u043a\u0438.'
+      ,tutorialPlanHint: 'Заповни всі п’ять кроків — пам’ятай, що за раунд є лише одна атака та один щит.'
+      ,tutorialDirectionRule: 'Тримай баланс: за раунд доступні одна атака й один щит, але атаку можна спрямувати в кілька боків.'
+      ,tutorialDirectionRuleHint: 'В одному раунді не можна рухатися й атакувати в одному напрямку, і кожен напрям атаки можна вибрати тільки один раз.'
       ,tutorialAttackPrompt: '\u0413\u043e\u0442\u0443\u0454\u043c\u043e \u0430\u0442\u0430\u043a\u0443. \u0422\u043e\u0440\u043a\u043d\u0438\u0441\u044f \u043c\u0435\u0447\u0430, \u0449\u043e\u0431 \u0443\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u0440\u0435\u0436\u0438\u043c \u0430\u0442\u0430\u043a\u0438.'
       ,tutorialAttackHint: '\u0423 \u0440\u0435\u0436\u0438\u043c\u0456 \u0430\u0442\u0430\u043a\u0438 \u043e\u0431\u0438\u0440\u0430\u0454\u043c\u043e \u043d\u0430\u043f\u0440\u044f\u043c\u043e\u043a \u0443\u0434\u0430\u0440\u0443.'
       ,tutorialAttackDirPrompt: '\u041e\u0431\u0435\u0440\u0438 \u0447\u0435\u0440\u0432\u043e\u043d\u0456 \u0441\u0442\u0440\u0456\u043b\u043a\u0438 (\u043c\u043e\u0436\u043d\u0430 \u043a\u0456\u043b\u044c\u043a\u0430 \u0440\u0456\u0437\u043d\u0438\u0445), \u0449\u043e\u0431 \u043d\u0430\u043f\u0440\u0430\u0432\u0438\u0442\u0438 \u0443\u0434\u0430\u0440, \u0456 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438.'
-      ,tutorialAttackDirHint: '\u041e\u0431\u0435\u0440\u0438 \u043e\u0434\u0438\u043d \u0447\u0438 \u043a\u0456\u043b\u044c\u043a\u0430 \u043d\u0430\u043f\u0440\u044f\u043c\u043a\u0456\u0432 \u2014 \u043a\u043e\u0436\u0435\u043d \u0437\u0430\u0439\u043c\u0435 \u0441\u0432\u0456\u0439 \u043a\u0440\u043e\u043a \u2014 \u0456 \u0437\u0430\u043f\u0430\u043c\u2019\u044f\u0442\u0430\u0439, \u0449\u043e \u043a\u043e\u0436\u0435\u043d \u043d\u0430\u043f\u0440\u044f\u043c\u043e\u043a \u043c\u043e\u0436\u043d\u0430 \u043e\u0431\u0440\u0430\u0442\u0438 \u043b\u0438\u0448\u0435 \u043e\u0434\u0438\u043d \u0440\u0430\u0437 \u0437\u0430 \u0440\u0430\u0443\u043d\u0434 \u043f\u0435\u0440\u0435\u0434 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043d\u044f\u043c.'
+      ,tutorialAttackDirHint: 'Обери один чи кілька напрямків для цієї атаки — кожен напрям можна вибрати лише один раз перед підтвердженням.'
       ,tutorialShieldPrompt: '\u041f\u043e\u0441\u0442\u0430\u0432\u0438\u043c\u043e \u0437\u0430\u0445\u0438\u0441\u0442. \u041d\u0430\u0442\u0438\u0441\u043d\u0438 \u0449\u0438\u0442, \u0449\u043e\u0431 \u0434\u043e\u0434\u0430\u0442\u0438 \u0439\u043e\u0433\u043e \u0434\u043e \u043f\u043b\u0430\u043d\u0443.'
       ,tutorialShieldHint: '\u041e\u0434\u043d\u0435 \u043d\u0430\u0442\u0438\u0441\u043a\u0430\u043d\u043d\u044f \u2014 \u0456 \u043a\u0440\u043e\u043a \u0456\u0437 \u0449\u0438\u0442\u043e\u043c \u0437\u2019\u044f\u0432\u0438\u0442\u044c\u0441\u044f \u0432 \u0441\u043f\u0438\u0441\u043a\u0443.'
       ,tutorialConfirmPrompt: '\u0423\u0441\u0435 \u0433\u043e\u0442\u043e\u0432\u043e! \u0417\u0430\u043f\u0443\u0441\u043a\u0430\u0439 \u0440\u0430\u0443\u043d\u0434 \u0456 \u043f\u043e\u0434\u0438\u0432\u0438\u0441\u044c, \u044f\u043a \u0432\u0438\u043a\u043e\u043d\u0443\u0454\u0442\u044c\u0441\u044f \u043f\u043b\u0430\u043d.'
