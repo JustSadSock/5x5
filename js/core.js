@@ -149,19 +149,36 @@ function startNewRound() {
     root.style.setProperty('--ui-scale', '1');
     const boardRect = board.getBoundingClientRect();
     const uiRect = ui.getBoundingClientRect();
-    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : { height: 0 };
+    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : null;
     if (boardRect.width === 0 || boardRect.height === 0) {
       root.style.setProperty('--ui-scale', prev.trim() || '1');
       return;
     }
+    const rects = [boardRect, uiRect];
+    if (scoreboardRect && scoreboardRect.width > 0 && scoreboardRect.height > 0) {
+      rects.push(scoreboardRect);
+    }
+    let minLeft = rects[0].left;
+    let maxRight = rects[0].right;
+    let minTop = rects[0].top;
+    let maxBottom = rects[0].bottom;
+    for (let i = 1; i < rects.length; i += 1) {
+      const rect = rects[i];
+      if (rect.left < minLeft) minLeft = rect.left;
+      if (rect.right > maxRight) maxRight = rect.right;
+      if (rect.top < minTop) minTop = rect.top;
+      if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+    }
+    const totalWidth = Math.max(300, maxRight - minLeft);
+    const totalHeight = Math.max(320, maxBottom - minTop);
     const availableWidth = Math.max(320, window.innerWidth - 32);
-    const availableHeight = Math.max(320, window.innerHeight - 40);
-    const requiredWidth = Math.max(boardRect.width, uiRect.width, 300);
-    const verticalAllowance = Math.max(48, scoreboardRect.height) + 48;
-    const requiredHeight = boardRect.height + uiRect.height + verticalAllowance;
-    let scale = Math.min(1, availableWidth / requiredWidth);
-    scale = Math.min(scale, availableHeight / Math.max(requiredHeight, 1));
-    scale = Math.max(0.5, Math.min(scale, 1));
+    const availableHeight = Math.max(320, window.innerHeight - 32);
+    let scale = Math.min(1, availableWidth / totalWidth, availableHeight / totalHeight);
+    if (!Number.isFinite(scale) || scale <= 0) {
+      root.style.setProperty('--ui-scale', prev.trim() || '1');
+      return;
+    }
+    scale = Math.max(0.45, Math.min(scale, 1));
     root.style.setProperty('--ui-scale', scale.toFixed(3));
   }
 
