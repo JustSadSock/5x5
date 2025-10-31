@@ -115,6 +115,29 @@
       gap:20px;
       width:100%; height:100vh;
     }
+    #difficultySelect {
+      position:relative;
+      justify-content:flex-start;
+      padding:calc(var(--hud-height) + 48px) 16px 48px;
+      gap:32px;
+      min-height:100vh;
+    }
+    #difficultySelect .menu-back-row {
+      width:100%;
+      max-width:420px;
+      display:flex;
+      justify-content:flex-start;
+      margin:0 auto;
+    }
+    #difficultySelect .difficulty-grid {
+      width:100%;
+      max-width:420px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      margin-top:auto;
+      margin-bottom:auto;
+    }
     .panel, .panelDiff {
       width:90%; max-width:360px; padding:20px;
       border-radius:12px;
@@ -195,15 +218,57 @@
     .panelDiff.expert { border-color:#a855f7; }
     .panelDiff.insane { border-color:#94a3b8; }
 
+    .menu-back {
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 16px;
+      border-radius:999px;
+      border:1px solid var(--color-border);
+      background:var(--color-surface);
+      color:var(--color-text-primary);
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(15,23,42,0.26);
+      transition:background .2s ease, transform .25s ease, box-shadow .25s ease;
+    }
+    .menu-back:hover {
+      background:var(--color-surface-hover);
+      transform:translateY(-1px);
+      box-shadow:0 14px 30px rgba(15,23,42,0.32);
+    }
+    .menu-back:active {
+      transform:translateY(0);
+      box-shadow:0 6px 16px rgba(15,23,42,0.24);
+    }
+    .menu-back .back-icon {
+      font-size:20px;
+      line-height:1;
+    }
+
     #onlineMenu {
+      position:relative;
       display:none;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:32px;
       padding:calc(var(--hud-height) + 72px) 16px 48px;
       min-height:100vh;
+    }
+    #onlineMenu .menu-back-row {
+      width:100%;
+      max-width:420px;
+      display:flex;
+      justify-content:flex-start;
+      margin:0 auto;
     }
     .online-shell {
       display:flex;
       justify-content:center;
       width:100%;
+      margin-top:auto;
+      margin-bottom:auto;
     }
     .online-card {
       width:100%;
@@ -1342,6 +1407,9 @@
     }
     #scoreboard .score-divider { opacity:0.7; }
     .scoreboard-icon {
+      --icon-translate-y: 0px;
+      --icon-rotate: 0deg;
+      --icon-scale: 1;
       width:clamp(28px, calc(32px + 4px * var(--ui-scale)), 40px);
       height:clamp(28px, calc(32px + 4px * var(--ui-scale)), 40px);
       border-radius:50%;
@@ -1353,11 +1421,51 @@
       justify-content:center;
       font-size:clamp(15px, calc(15px + 3px * var(--ui-scale)), 20px);
       cursor:pointer;
-      transition:background .2s ease, transform .2s ease;
+      box-shadow:0 8px 20px rgba(15,23,42,0.26);
+      opacity:0;
+      transform:translateY(var(--icon-translate-y)) rotate(var(--icon-rotate)) scale(var(--icon-scale));
+      transition:background .2s ease, transform .35s cubic-bezier(0.22, 1.61, 0.36, 1), box-shadow .25s ease;
+      animation:hudIconAppear 0.55s cubic-bezier(0.22, 1.61, 0.36, 1) forwards;
+      animation-delay:var(--hud-icon-delay, 0s);
       flex-shrink:0;
     }
-    .scoreboard-icon:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
-    .scoreboard-icon:active { transform:scale(0.94); }
+    .scoreboard-icon:hover {
+      background:var(--color-surface-hover);
+      --icon-translate-y: -2px;
+      box-shadow:0 14px 30px rgba(15,23,42,0.32);
+    }
+    .scoreboard-icon:active {
+      --icon-scale: 0.9;
+    }
+    .scoreboard-icon.active {
+      --icon-rotate: -90deg;
+      --icon-scale: 1.08;
+    }
+    #settingsBtn.active {
+      --icon-rotate: 180deg;
+    }
+    #scoreboardToggle { --hud-icon-delay: 0.05s; }
+    #settingsBtn { --hud-icon-delay: 0.15s; }
+    @keyframes hudIconAppear {
+      0% {
+        opacity:0;
+        transform:translateY(calc(var(--icon-translate-y) - 14px)) rotate(var(--icon-rotate)) scale(0.6);
+      }
+      60% {
+        opacity:1;
+        transform:translateY(calc(var(--icon-translate-y) + 3px)) rotate(var(--icon-rotate)) scale(1.12);
+      }
+      100% {
+        opacity:1;
+        transform:translateY(var(--icon-translate-y)) rotate(var(--icon-rotate)) scale(var(--icon-scale));
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .scoreboard-icon {
+        animation:none;
+        transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
+      }
+    }
     #scoreboardMenu {
       position:fixed;
       top:calc(10px + var(--hud-height) + 8px);
@@ -1683,29 +1791,43 @@
   </div>
 
   <div id="difficultySelect">
-    <div class="panelDiff easy" data-sound="nav" data-i18n-title="easyHint" title="Подходит для первых игр">
-      <span class="difficulty-icon" aria-hidden="true">🌱</span>
-      <span class="difficulty-label" data-i18n="easy">Легко</span>
+    <div class="menu-back-row">
+      <button id="difficultyBack" class="menu-back" type="button" data-sound="nav" data-i18n-aria="toMenu" aria-label="Menu">
+        <span class="back-icon" aria-hidden="true">←</span>
+        <span data-i18n="toMenu">В меню</span>
+      </button>
     </div>
-    <div class="panelDiff medium" data-sound="nav" data-i18n-title="mediumHint" title="Баланс атаки и защиты">
-      <span class="difficulty-icon" aria-hidden="true">🛡️</span>
-      <span class="difficulty-label" data-i18n="medium">Средне</span>
-    </div>
-    <div class="panelDiff hard" data-sound="nav" data-i18n-title="hardHint" title="Быстрые враги и агрессия">
-      <span class="difficulty-icon" aria-hidden="true">⚔️</span>
-      <span class="difficulty-label" data-i18n="hard">Сложно</span>
-    </div>
-    <div class="panelDiff expert" data-sound="nav" data-i18n-title="expertHint" title="Продвинутые комбинации бота">
-      <span class="difficulty-icon" aria-hidden="true">💥</span>
-      <span class="difficulty-label" data-i18n="expert">Эксперт</span>
-    </div>
-    <div class="panelDiff insane" data-sound="nav" data-i18n-title="insaneHint" title="Максимальный вызов для чемпионов">
-      <span class="difficulty-icon" aria-hidden="true">☠️</span>
-      <span class="difficulty-label" data-i18n="insane">Безумие</span>
+    <div class="difficulty-grid">
+      <div class="panelDiff easy" data-sound="nav" data-i18n-title="easyHint" title="Подходит для первых игр">
+        <span class="difficulty-icon" aria-hidden="true">🌱</span>
+        <span class="difficulty-label" data-i18n="easy">Легко</span>
+      </div>
+      <div class="panelDiff medium" data-sound="nav" data-i18n-title="mediumHint" title="Баланс атаки и защиты">
+        <span class="difficulty-icon" aria-hidden="true">🛡️</span>
+        <span class="difficulty-label" data-i18n="medium">Средне</span>
+      </div>
+      <div class="panelDiff hard" data-sound="nav" data-i18n-title="hardHint" title="Быстрые враги и агрессия">
+        <span class="difficulty-icon" aria-hidden="true">⚔️</span>
+        <span class="difficulty-label" data-i18n="hard">Сложно</span>
+      </div>
+      <div class="panelDiff expert" data-sound="nav" data-i18n-title="expertHint" title="Продвинутые комбинации бота">
+        <span class="difficulty-icon" aria-hidden="true">💥</span>
+        <span class="difficulty-label" data-i18n="expert">Эксперт</span>
+      </div>
+      <div class="panelDiff insane" data-sound="nav" data-i18n-title="insaneHint" title="Максимальный вызов для чемпионов">
+        <span class="difficulty-icon" aria-hidden="true">☠️</span>
+        <span class="difficulty-label" data-i18n="insane">Безумие</span>
+      </div>
     </div>
   </div>
 
   <div id="onlineMenu">
+    <div class="menu-back-row">
+      <button id="onlineBack" class="menu-back" type="button" data-sound="nav" data-i18n-aria="toMenu" aria-label="Menu">
+        <span class="back-icon" aria-hidden="true">←</span>
+        <span data-i18n="toMenu">В меню</span>
+      </button>
+    </div>
     <div class="online-shell">
       <div class="online-card">
         <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">

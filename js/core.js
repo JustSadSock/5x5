@@ -126,6 +126,7 @@ function startNewRound() {
   const scoreboardToggle = document.getElementById('scoreboardToggle');
   const scoreboardMenu = document.getElementById('scoreboardMenu');
   const scoreboardBackdrop = document.getElementById('scoreboardBackdrop');
+  const settingsIcon = document.getElementById('settingsBtn');
   const roundBadge = document.getElementById('roundBadge');
   const roundNumberEl = roundBadge ? roundBadge.querySelector('.round-number') : null;
   const scoreA = document.getElementById('scoreA');
@@ -141,6 +142,7 @@ function startNewRound() {
     scoreboardMenu.setAttribute('aria-hidden', 'true');
     if (scoreboardBackdrop) scoreboardBackdrop.classList.remove('show');
     if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'false');
+    if (scoreboardToggle) scoreboardToggle.classList.remove('active');
     hudMenuOpen = false;
   }
 
@@ -150,6 +152,7 @@ function startNewRound() {
     scoreboardMenu.setAttribute('aria-hidden', 'false');
     if (scoreboardBackdrop) scoreboardBackdrop.classList.add('show');
     if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'true');
+    if (scoreboardToggle) scoreboardToggle.classList.add('active');
     const focusTarget = scoreboardMenu.querySelector('button:not([disabled])');
     if (focusTarget) focusTarget.focus();
     hudMenuOpen = true;
@@ -660,9 +663,28 @@ function startNewRound() {
     });
   }
 
+  const difficultyBack = document.getElementById('difficultyBack');
+  const onlineBack = document.getElementById('onlineBack');
+
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
   bOnline.onclick = () => { ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
+
+  if (difficultyBack) {
+    difficultyBack.addEventListener('click', () => {
+      ds.style.display = 'none';
+      ms.style.display = 'flex';
+      updateLayoutScale();
+    });
+  }
+
+  if (onlineBack) {
+    onlineBack.addEventListener('click', () => {
+      onlineMenu.style.display = 'none';
+      ms.style.display = 'flex';
+      updateLayoutScale();
+    });
+  }
   rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
   if (rulesTutorial) rulesTutorial.onclick = () => {
@@ -2361,6 +2383,12 @@ function startNewRound() {
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
     if (typeof window.disconnectPeer === 'function') window.disconnectPeer();
     exitOnlineMode();
+    const settingsModalEl = document.getElementById('settingsModal');
+    if (settingsModalEl) {
+      settingsModalEl.style.display = 'none';
+      settingsModalEl.classList.remove('show');
+    }
+    if (settingsIcon) settingsIcon.classList.remove('active');
     ms.style.display = 'flex';
     if (ds) ds.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
@@ -2426,12 +2454,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
   };
 
-  const openSettings = () => { if (settingsModal) settingsModal.style.display = 'block'; };
+  const openSettings = () => {
+    if (settingsModal) {
+      settingsModal.style.display = 'block';
+      settingsModal.classList.add('show');
+    }
+    if (settingsBtn) settingsBtn.classList.add('active');
+  };
   if (settingsBtn && settingsModal) {
     settingsBtn.onclick = openSettings;
   }
   if (settingsClose && settingsModal) {
-    settingsClose.onclick = () => { settingsModal.style.display = 'none'; };
+    settingsClose.onclick = () => {
+      settingsModal.style.display = 'none';
+      settingsModal.classList.remove('show');
+      if (settingsBtn) settingsBtn.classList.remove('active');
+    };
   }
   const syncSoundControls = () => {
     if (volumeSlider) {
