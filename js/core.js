@@ -17,6 +17,9 @@ let replayLoop = null;
 let replayPaused = false;
 let recorder = null;
 let recordedChunks = [];
+let recorderMime = 'video/webm';
+let recorderExt = 'webm';
+let recorderStream = null;
 let attackMode = false;
 let attackModeOwner = null;
 
@@ -245,13 +248,24 @@ function startNewRound() {
 
   window.addEventListener('resize', updateLayoutScale);
   window.addEventListener('orientationchange', updateLayoutScale);
+  window.addEventListener('resize', refreshTutorialHighlight);
+  window.addEventListener('orientationchange', refreshTutorialHighlight);
+
   const tutorialScript = [
-    { trigger: 'start', key: 'tutorial1' },
-    { trigger: 'afterMove', key: 'tutorial2' },
-    { trigger: 'afterConfirm', key: 'tutorial3' }
+    { key: 'tutorialIntro', highlight: '#board', hint: 'tutorialIntroHint' },
+    { key: 'tutorialGoal', highlight: '#scoreboard', hint: 'tutorialGoalHint' },
+    { key: 'tutorialMovePrompt', highlight: '#actions', hint: 'tutorialMoveHint', mode: 'practice', expect: 'moveQueued', focus: '#actions [data-act="up"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialPlanPrompt', highlight: '#planIndicator', hint: 'tutorialPlanHint' },
+    { key: 'tutorialAttackPrompt', highlight: '#actions [data-act="attack"]', hint: 'tutorialAttackHint', mode: 'practice', expect: 'attackMode', focus: '#actions [data-act="attack"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialAttackDirPrompt', highlight: '#actions', hint: 'tutorialAttackDirHint', mode: 'practice', expect: 'attackQueued', focus: '#actions [data-act="right"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialShieldPrompt', highlight: '#actions [data-act="shield"]', hint: 'tutorialShieldHint', mode: 'practice', expect: 'shieldQueued', focus: '#actions [data-act="shield"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialConfirmPrompt', highlight: '#btn-next', hint: 'tutorialConfirmHint', mode: 'practice', expect: 'roundStarted', focus: '#btn-next', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialWrap', highlight: '#gameArea', hint: 'tutorialWrapHint', buttonKey: 'tutorialFinish' }
   ];
   const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
   let pendingAttackDirs = [];
+  let tutorialExpectEvent = null;
+  let tutorialHighlightSelector = null;
 
   function resetOnlineFlags() {
     onlineConfirmed = { A: false, B: false };
@@ -288,32 +302,6 @@ function startNewRound() {
     }
   }
 
-  function showTutorial(event) {
-    if (!isTutorial) return;
-    const step = tutorialScript[tutorialIndex];
-    if (step && step.trigger === event && tutOv && tutCont && tutNext) {
-      tutCont.textContent = t(step.key);
-      if (tutorialProgress) {
-        const total = tutorialScript.length;
-        const current = Math.min(tutorialIndex + 1, total);
-        tutorialProgress.textContent = t('tutorialStepLabel', { current, total });
-      }
-      if (tutorialHint) tutorialHint.textContent = t('tutorialNextHint');
-      tutOv.classList.add('show');
-      tutOv.setAttribute('aria-hidden', 'false');
-      if (tutNext) tutNext.focus();
-      tutNext.onclick = () => {
-        tutOv.classList.remove('show');
-        tutOv.setAttribute('aria-hidden', 'true');
-        tutorialIndex++;
-        if (tutorialIndex >= tutorialScript.length) {
-          isTutorial = false;
-          localStorage.setItem('tutorialDone', '1');
-        }
-      };
-    }
-  }
-
   function hideTutorialPrompt() {
     if (!tutorialPrompt) return;
     tutorialPrompt.classList.remove('show');
@@ -331,6 +319,153 @@ function startNewRound() {
     }
   }
 
+  function applyTutorialHighlight(selector) {
+    if (!tutorialHighlightEl) return;
+    tutorialHighlightSelector = selector || null;
+    if (!selector) {
+      tutorialHighlightEl.classList.remove('show');
+      return;
+    }
+    const target = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!target) {
+      tutorialHighlightEl.classList.remove('show');
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const pad = 18;
+    const left = Math.max(8, rect.left - pad);
+    const top = Math.max(8, rect.top - pad);
+    const right = Math.min(window.innerWidth - 8, rect.right + pad);
+    const bottom = Math.min(window.innerHeight - 8, rect.bottom + pad);
+    tutorialHighlightEl.style.left = `${left}px`;
+    tutorialHighlightEl.style.top = `${top}px`;
+    tutorialHighlightEl.style.width = `${Math.max(0, right - left)}px`;
+    tutorialHighlightEl.style.height = `${Math.max(0, bottom - top)}px`;
+    tutorialHighlightEl.classList.add('show');
+  }
+
+  function clearTutorialHighlight() {
+    if (!tutorialHighlightEl) return;
+    tutorialHighlightSelector = null;
+    tutorialHighlightEl.classList.remove('show');
+  }
+
+  function refreshTutorialHighlight() {
+    if (!tutorialHighlightSelector) return;
+    requestAnimationFrame(() => applyTutorialHighlight(tutorialHighlightSelector));
+  }
+
+  function finishTutorial() {
+    isTutorial = false;
+    tutorialExpectEvent = null;
+    clearTutorialHighlight();
+    if (tutOv) {
+      tutOv.classList.remove('show');
+      tutOv.setAttribute('aria-hidden', 'true');
+    }
+    try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+  }
+
+  function isTutorialRequirementMet(event) {
+    switch (event) {
+      case 'moveQueued':
+        return Array.isArray(plans.A) && plans.A.some(act => typeof act === 'string' && DXY[act]);
+      case 'attackMode':
+        return attackMode === true;
+      case 'attackQueued':
+        return Array.isArray(plans.A) && plans.A.some(act => act && typeof act === 'object' && act.type === 'attack');
+      case 'shieldQueued':
+        return usedShield.A > 0;
+      case 'roundStarted':
+        return phase === 'execute';
+      default:
+        return false;
+    }
+  }
+
+  function showTutorialStep() {
+    if (!isTutorial) return;
+    const step = tutorialScript[tutorialIndex];
+    if (!step) {
+      finishTutorial();
+      return;
+    }
+    if (step.mode === 'practice' && step.expect && isTutorialRequirementMet(step.expect)) {
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
+      return;
+    }
+    applyTutorialHighlight(step.highlight);
+    if (!tutOv || !tutCont || !tutNext) return;
+    if (tutorialProgress) {
+      const total = tutorialScript.length;
+      const current = Math.min(tutorialIndex + 1, total);
+      tutorialProgress.textContent = t('tutorialStepLabel', { current, total });
+    }
+    tutCont.textContent = t(step.key);
+    if (tutorialHint) {
+      const hintKey = step.hint || (step.mode === 'practice' ? 'tutorialPracticeHint' : 'tutorialNextHint');
+      tutorialHint.textContent = t(hintKey);
+    }
+    const btnLabelKey = step.buttonKey || (step.mode === 'practice' ? 'tutorialTryButton' : 'nextBtn');
+    tutNext.textContent = t(btnLabelKey);
+    tutNext.disabled = false;
+    tutOv.classList.add('show');
+    tutOv.setAttribute('aria-hidden', 'false');
+    tutNext.focus();
+    tutNext.onclick = () => {
+      if (step.mode === 'practice') {
+        tutOv.classList.remove('show');
+        tutOv.setAttribute('aria-hidden', 'true');
+        if (step.expect && isTutorialRequirementMet(step.expect)) {
+          tutorialIndex++;
+          if (tutorialIndex >= tutorialScript.length) {
+            finishTutorial();
+            return;
+          }
+          showTutorialStep();
+          return;
+        }
+        tutorialExpectEvent = step.expect || null;
+        if (!tutorialExpectEvent) {
+          tutorialIndex++;
+          showTutorialStep();
+          return;
+        }
+        if (step.focus) {
+          const focusTarget = document.querySelector(step.focus);
+          if (focusTarget && typeof focusTarget.focus === 'function') {
+            setTimeout(() => focusTarget.focus(), 60);
+          }
+        }
+      } else {
+        tutorialIndex++;
+        if (tutorialIndex >= tutorialScript.length) {
+          finishTutorial();
+          return;
+        }
+        showTutorialStep();
+      }
+    };
+  }
+
+  function advanceTutorialEvent(event) {
+    if (!isTutorial) return;
+    if (tutorialExpectEvent && tutorialExpectEvent === event) {
+      tutorialExpectEvent = null;
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
+    }
+  }
+
   function startTutorial() {
     hideTutorialPrompt();
     single = true;
@@ -341,10 +476,17 @@ function startNewRound() {
     startGame();
     resetGame();
     startNewRound();
-    showTutorial('start');
+    tutorialExpectEvent = null;
+    clearTutorialHighlight();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (isTutorial) showTutorialStep();
+      });
+    });
   }
 
   window.startTutorial = startTutorial;
+  const tutorialHighlightEl = document.getElementById('tutorialHighlight');
   const tutOv = document.getElementById('tutorialOverlay');
   const tutCont = document.getElementById('tutorialContent');
   const tutNext = document.getElementById('tutorialNext');
@@ -592,6 +734,7 @@ function startNewRound() {
       shieldButton.classList.add('blocked');
     }
     updateUI();
+    advanceTutorialEvent('attackMode');
   }
 
   function toggleAttackDirection(dir) {
@@ -636,7 +779,17 @@ function startNewRound() {
     }
     updateUI();
     drawPlan(P);
-    showTutorial('afterMove');
+    if (isTutorial && P === 'A') {
+      if (typeof act === 'string') {
+        if (act === 'shield') {
+          advanceTutorialEvent('shieldQueued');
+        } else if (DXY[act]) {
+          advanceTutorialEvent('moveQueued');
+        }
+      } else if (act && typeof act === 'object' && act.type === 'attack') {
+        advanceTutorialEvent('attackQueued');
+      }
+    }
   }
 
   function deleteLast() {
@@ -692,12 +845,12 @@ function startNewRound() {
     startRecordingRound();
     btnNext.textContent = t('executeBtn');
     clearPlan(); updateUI();
-    showTutorial('afterConfirm');
+    advanceTutorialEvent('roundStarted');
     return;
   }
   if (phase !== 'execute') {
     phase = phase === 'planA' ? 'planB' : 'execute';
-    if (phase === 'execute') { startRecordingRound(); showTutorial('afterConfirm'); }
+    if (phase === 'execute') { startRecordingRound(); advanceTutorialEvent('roundStarted'); }
     btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
     clearPlan(); updateUI();
     return;
@@ -1467,38 +1620,83 @@ function startNewRound() {
     if (document.body.captureStream) {
       stream = document.body.captureStream();
     } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: true }); }
-      catch (e) { alert(t('recordingNotSupported')); return; }
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      } catch (e) {
+        alert(t('recordingNotSupported'));
+        return;
+      }
     } else {
       alert(t('recordingNotSupported'));
       return;
     }
     recordedChunks = [];
-    recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = e => recordedChunks.push(e.data);
+    let mime = null;
+    let ext = 'webm';
+    if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+      const mp4Candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=h264,aac', 'video/mp4'];
+      mime = mp4Candidates.find(type => MediaRecorder.isTypeSupported(type)) || null;
+      if (mime) {
+        ext = 'mp4';
+      } else {
+        const webmCandidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+        mime = webmCandidates.find(type => MediaRecorder.isTypeSupported(type)) || null;
+      }
+    }
+    try {
+      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    } catch (err) {
+      try {
+        recorder = new MediaRecorder(stream);
+        mime = recorder.mimeType || mime;
+        if (mime && mime.includes('mp4')) ext = 'mp4';
+      } catch (err2) {
+        stream.getTracks().forEach(track => track.stop());
+        alert(t('recordingNotSupported'));
+        return;
+      }
+    }
+    recorderMime = mime || recorder.mimeType || 'video/webm';
+    recorderExt = recorderMime.includes('mp4') ? 'mp4' : ext;
+    recorderStream = stream;
+    recorder.ondataavailable = e => {
+      if (e.data && e.data.size) recordedChunks.push(e.data);
+    };
     recorder.onstop = async () => {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const file = new File([blob], 'replay.webm', { type: 'video/webm' });
-      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file] });
-        } catch (e) {
+      try {
+        const blob = new Blob(recordedChunks, { type: recorderMime });
+        const filename = `replay.${recorderExt}`;
+        const file = new File([blob], filename, { type: recorderMime });
+        if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file] });
+          } catch (e) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+        } else {
           const url = URL.createObjectURL(file);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'replay.webm';
+          a.download = filename;
           a.click();
           URL.revokeObjectURL(url);
         }
-      } else {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'replay.webm';
-        a.click();
-        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Failed to export replay video', err);
+        alert(t('recordingNotSupported'));
+      } finally {
+        recordedChunks = [];
+        if (recorderStream) {
+          try { recorderStream.getTracks().forEach(track => track.stop()); } catch (e) {}
+          recorderStream = null;
+        }
+        recorder = null;
       }
-      recordedChunks = [];
     };
     recorder.start();
     startReplay();
@@ -1589,6 +1787,13 @@ function startNewRound() {
       try { recorder.stop(); } catch (e) {}
       recorder = null;
     }
+    if (recorderStream) {
+      try { recorderStream.getTracks().forEach(track => track.stop()); } catch (e) {}
+      recorderStream = null;
+    }
+    recordedChunks = [];
+    recorderMime = 'video/webm';
+    recorderExt = 'webm';
     const ov = document.getElementById('replayOverlay');
     if (ov) {
       ov.classList.remove('show');

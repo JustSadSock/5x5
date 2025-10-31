@@ -1109,9 +1109,36 @@
     }
 
     /* Tutorial overlay */
+    #tutorialHighlight {
+      position:fixed;
+      border-radius:18px;
+      border:3px solid var(--color-accent);
+      box-shadow:0 0 0 6px rgba(56,189,248,0.25), 0 18px 36px rgba(15,23,42,0.35);
+      pointer-events:none;
+      opacity:0;
+      transform:scale(0.96);
+      transition:opacity .2s ease, transform .2s ease;
+      z-index:35;
+    }
+    #tutorialHighlight.show {
+      opacity:1;
+      transform:scale(1);
+    }
+    #tutorialHighlight .pulse {
+      position:absolute;
+      inset:-14px;
+      border-radius:inherit;
+      border:2px solid rgba(56,189,248,0.35);
+      animation:tutorialPulse 1.6s ease-out infinite;
+    }
+    @keyframes tutorialPulse {
+      0% { opacity:0.9; transform:scale(0.9); }
+      60% { opacity:0.35; }
+      100% { opacity:0; transform:scale(1.25); }
+    }
     #tutorialOverlay,
     #tutorialPrompt {
-      position:absolute;
+      position:fixed;
       top:0;
       left:0;
       width:100%;
@@ -1850,6 +1877,7 @@
       </div>
     </div>
   </div>
+  <div id="tutorialHighlight" aria-hidden="true"><span class="pulse"></span></div>
   <div id="tutorialOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="tutorialProgress" aria-describedby="tutorialContent tutorialHint">
     <div class="tutorialCard">
       <div id="tutorialProgress" class="tutorialProgress"></div>
