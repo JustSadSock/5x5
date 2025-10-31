@@ -1588,21 +1588,29 @@ function startNewRound() {
     ov.id = 'resultOverlay';
     ov.innerHTML =
       `<div>${text}</div>` +
-      '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">' +
-      `<button id="resReplay">${t('replay')}</button>` +
-      `<button id="resSaveReplay">${t('saveReplay')}</button>` +
-      `<button id="resMenu">${t('toMenu')}</button>` +
-      `<button id="resOk">${t('ok')}</button>` +
-      '</div>' +
-      '<div id="replaySaveStatus" class="resultStatus" role="status" aria-live="polite"></div>';
+      '<div class="resultActions">' +
+      '  <div class="resultGroup">' +
+      '    <div class="resultGroupButtons">' +
+      `      <button id="resReplay">${t('replay')}</button>` +
+      `      <button id="resSaveReplay">${t('saveReplay')}</button>` +
+      '    </div>' +
+      '    <div id="replaySaveStatus" class="resultStatus" role="status" aria-live="polite"></div>' +
+      '  </div>' +
+      '  <div class="resultGroup">' +
+      '    <div class="resultGroupButtons">' +
+      `      <button id="resMenu">${t('toMenu')}</button>` +
+      `      <button id="resPlayAgain">${t('playAgain')}</button>` +
+      '    </div>' +
+      '  </div>' +
+      '</div>';
     document.body.append(ov);
-    const resOk = ov.querySelector('#resOk');
+    const resAgain = ov.querySelector('#resPlayAgain');
     const resMenu = ov.querySelector('#resMenu');
     const resReplay = ov.querySelector('#resReplay');
     const resSave = ov.querySelector('#resSaveReplay');
     const statusEl = ov.querySelector('#replaySaveStatus');
-    if (resOk) {
-      resOk.onclick = () => {
+    if (resAgain) {
+      resAgain.onclick = () => {
         ov.remove();
         resetGame();
         if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();

@@ -474,9 +474,17 @@ function showConfirmMessage(text) {
   if (!el) return;
   el.textContent = text;
   el.classList.add('show');
+  const root = document.documentElement;
+  requestAnimationFrame(() => {
+    const rect = el.getBoundingClientRect();
+    const height = rect && rect.height ? rect.height : 0;
+    if (height > 0) root.style.setProperty('--toast-offset', `${Math.ceil(height + 12)}px`);
+    else root.style.setProperty('--toast-offset', '0px');
+  });
   clearTimeout(el._hideTimer);
   el._hideTimer = setTimeout(() => {
     el.classList.remove('show');
+    root.style.setProperty('--toast-offset', '0px');
   }, 2000);
 }
 

@@ -66,6 +66,7 @@
       --action-gap: calc(6px * var(--ui-scale));
       --hud-height: clamp(44px, calc(50px * var(--ui-scale)), 64px);
       --round-gap: clamp(10px, calc(10px + 6px * var(--ui-scale)), 22px);
+      --toast-offset: 0px;
     }
 
     :root[data-theme="light"] {
@@ -497,7 +498,7 @@
       flex-direction:column;
       align-items:center;
       position:relative;
-      margin-top:var(--hud-stack-offset, calc(var(--hud-height) + var(--round-gap)));
+      margin-top:calc(var(--hud-stack-offset, calc(var(--hud-height) + var(--round-gap))) + var(--toast-offset, 0px));
       gap:var(--round-gap);
     }
     #board {
@@ -1164,8 +1165,38 @@
       font-size:14px;
       color:var(--color-text-muted);
     }
+    #resultOverlay .resultStatus:empty {
+      margin-top:0;
+      display:none;
+    }
     #resultOverlay .resultStatus.success { color:var(--color-success); }
     #resultOverlay .resultStatus.error { color:var(--color-danger); }
+    #resultOverlay .resultActions {
+      margin-top:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-width:240px;
+    }
+    #resultOverlay .resultGroup {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      border-radius:12px;
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      box-shadow:0 10px 22px rgba(15,23,42,0.24);
+    }
+    #resultOverlay .resultGroupButtons {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:10px;
+    }
+    #resultOverlay .resultGroup button {
+      margin-top:0;
+    }
 
     /* Верхняя панель */
     #scoreboard {
@@ -1468,20 +1499,21 @@
 
     /* Всплывающие сообщения */
     #confirmToast {
-      position:absolute;
-      top:40%;
+      position:fixed;
+      top:calc(12px + var(--hud-height) + 8px);
       left:50%;
-      transform:translate(-50%,-50%);
+      transform:translateX(-50%);
       background:var(--color-surface-alt);
       padding:10px 18px;
       border-radius:12px;
       color:var(--color-text-primary);
-      z-index:30;
+      z-index:920;
       pointer-events:none;
       opacity:0;
       border:1px solid var(--color-border);
       box-shadow:0 12px 24px rgba(15,23,42,0.28);
       transition:opacity .3s;
+      max-width:min(320px, calc(100vw - 32px));
     }
     #confirmToast.show { opacity:1; }
 
@@ -1719,7 +1751,7 @@
     </div>
   </div>
 
-  <div id="confirmToast"></div>
+  <div id="confirmToast" role="status" aria-live="polite"></div>
 
   <div id="replayOverlay">
     <button id="replayClose" data-i18n="close" data-sound="nav">Close</button>
