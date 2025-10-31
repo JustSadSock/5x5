@@ -976,29 +976,30 @@
     /* Overlay for replay mode */
     #replayOverlay {
       position:fixed;
-      inset:0;
+      left:0;
+      right:0;
+      top:auto;
+      bottom:clamp(12px, 4vh, 36px);
       display:none;
-      align-items:center;
       justify-content:center;
-      padding:24px;
-      background:rgba(15,23,42,0.35);
+      align-items:flex-end;
+      padding:0 16px;
+      background:none;
       pointer-events:none;
       z-index:950;
     }
-    #replayOverlay.show {
-      display:flex;
-      pointer-events:auto;
-    }
+    #replayOverlay.show { display:flex; }
     #replayOverlay .replayPanel {
-      width:min(440px, 100%);
+      pointer-events:auto;
+      width:min(520px, calc(100% - 32px));
       background:var(--color-overlay);
-      border-radius:20px;
-      padding:20px;
+      border-radius:18px;
+      padding:18px 20px;
       display:flex;
       flex-direction:column;
       gap:16px;
       border:1px solid var(--color-border);
-      box-shadow:0 22px 44px rgba(15,23,42,0.32);
+      box-shadow:0 18px 36px rgba(15,23,42,0.28);
     }
     #replayOverlay .replayHeader {
       display:flex;
@@ -1093,9 +1094,11 @@
     }
     @media (max-width: 520px) {
       #replayOverlay {
-        padding:16px;
+        bottom:16px;
+        padding:0 12px;
       }
       #replayOverlay .replayPanel {
+        width:100%;
         padding:16px;
         gap:14px;
       }

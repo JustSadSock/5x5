@@ -1601,6 +1601,8 @@ function startNewRound() {
   }
 
   window.startReplay = startReplay;
+  window.endReplay = endReplay;
+  window.seekReplay = seekReplay;
 
   function updateReplayButton() {
     const btn = document.getElementById('replayBtn');
@@ -1631,6 +1633,8 @@ function startNewRound() {
       };
     });
   }
+
+  window.showSaveSpeedModal = showSaveSpeedModal;
 
   function removeResultOverlay() {
     if (activeResultOverlay && activeResultOverlay.parentNode) {
@@ -1958,18 +1962,34 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  if (menuBtn) menuBtn.onclick = () => { hideHudMenu(); returnToMenu(); };
-  if (replayClose) replayClose.onclick = () => endReplay();
-  if (replayBtn) {
-    replayBtn.onclick = () => { hideHudMenu(); startReplay(); };
-    updateReplayButton();
+  if (menuBtn) {
+    menuBtn.onclick = () => {
+      hideHudMenu();
+      if (typeof window.returnToMenu === 'function') window.returnToMenu();
+    };
   }
-  if (saveReplayBtn) saveReplayBtn.onclick = () => showSaveSpeedModal();
+  if (replayClose) {
+    replayClose.onclick = () => {
+      if (typeof window.endReplay === 'function') window.endReplay();
+    };
+  }
+  if (replayBtn) {
+    replayBtn.onclick = () => {
+      hideHudMenu();
+      if (typeof window.startReplay === 'function') window.startReplay();
+    };
+    if (typeof window.updateReplayButton === 'function') window.updateReplayButton();
+  }
+  if (saveReplayBtn) {
+    saveReplayBtn.onclick = () => {
+      if (typeof window.showSaveSpeedModal === 'function') window.showSaveSpeedModal();
+    };
+  }
   if (replaySeek) {
     replaySeek.oninput = () => {
       const target = parseInt(replaySeek.value, 10);
       if (!Number.isNaN(target)) {
-        seekReplay(target);
+        if (typeof window.seekReplay === 'function') window.seekReplay(target);
       }
     };
   }
