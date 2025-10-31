@@ -378,6 +378,15 @@
       flex-direction:column;
       align-items:center;
       gap:16px;
+      width:100%;
+    }
+    .room-input-row {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+      width:100%;
     }
     #onlineMenu input {
       padding:14px 18px;
@@ -386,10 +395,11 @@
       background:var(--color-input-bg);
       color:var(--color-text-primary);
       font-size:18px;
-      letter-spacing:2px;
+      letter-spacing:1.8px;
       text-transform:uppercase;
-      width:180px;
+      width:min(260px, 100%);
       text-align:center;
+      flex:1 1 220px;
     }
     #onlineMenu input.input-error {
       border-color:var(--color-danger);
@@ -418,7 +428,8 @@
       letter-spacing:3px;
     }
     .room-code { min-width:0; }
-    #copyRoomCode {
+    #copyRoomCode,
+    #pasteRoomCode {
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
       border-radius:12px;
@@ -431,8 +442,10 @@
       cursor:pointer;
       transition:background .2s ease, transform .2s ease;
     }
-    #copyRoomCode:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
-    #copyRoomCode:disabled { opacity:0.4; cursor:default; transform:none; }
+    #copyRoomCode:hover,
+    #pasteRoomCode:hover { background:var(--color-surface-hover); transform:translateY(-1px); }
+    #copyRoomCode:disabled,
+    #pasteRoomCode:disabled { opacity:0.4; cursor:default; transform:none; }
     .online-hint {
       font-size:14px;
       color:var(--color-text-muted);
@@ -871,6 +884,28 @@
       z-index:5;
       box-shadow:0 0 6px rgba(0,0,0,0.6);
       will-change:transform, opacity;
+    }
+    .planGhost {
+      position:absolute;
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      opacity:0.45;
+      pointer-events:none;
+      box-shadow:0 0 14px rgba(15,23,42,0.25);
+      transition:opacity .2s ease;
+      z-index:3;
+    }
+    .planGhostA {
+      background:radial-gradient(circle, rgba(56,189,248,0.5) 0%, rgba(14,116,144,0.18) 70%);
+      border:2px dashed rgba(56,189,248,0.65);
+    }
+    .planGhostB {
+      background:radial-gradient(circle, rgba(248,113,113,0.5) 0%, rgba(220,38,38,0.18) 70%);
+      border:2px dashed rgba(239,68,68,0.65);
     }
     .moveAnim {
       animation:moveAnim 0.38s cubic-bezier(.22,.74,.27,1.02);
@@ -1932,7 +1967,10 @@
           <button id="onlineJoin" class="online-btn secondary" type="button" data-i18n="joinRoom" data-sound="nav">Присоединиться</button>
         </div>
         <div class="online-form">
-          <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
+          <div class="room-input-row">
+            <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
+            <button id="pasteRoomCode" class="room-clip-btn" type="button" data-sound="nav" data-i18n-title="pasteRoomCode" data-i18n-aria="pasteRoomCode" aria-label="Вставить код" title="Paste code">⎘</button>
+          </div>
           <div class="room-display empty" id="roomDisplay" aria-live="polite">
             <span id="roomCode" class="room-code">----</span>
             <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>

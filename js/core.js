@@ -1387,19 +1387,26 @@ function startNewRound() {
     clearPlan();
     if (phase === 'execute') return;
     let { x, y } = units[P];
+    let finalX = Math.max(0, Math.min(4, x));
+    let finalY = Math.max(0, Math.min(4, y));
+    const hasMove = plans[P].some(r => typeof r === 'string' && DXY[r]);
     plans[P].forEach(r => {
       if (typeof r === 'string' && DXY[r]) {
         x += DXY[r][0]; y += DXY[r][1];
       }
       x = Math.max(0, Math.min(4, x)); y = Math.max(0, Math.min(4, y));
+      finalX = x; finalY = y;
       const cell = document.getElementById(`c${x}${y}`);
-      let ov = document.createElement('div');
+      if (!cell) return;
+      const ov = document.createElement('div');
       if (typeof r === 'object') {
         ov.className = 'planAttack'; ov.textContent = '•'; cell.append(ov);
         r.dirs.forEach(d => {
           const [dx, dy] = DXY[d], nx = x + dx, ny = y + dy;
           if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
-          const c2 = document.getElementById(`c${nx}${ny}`), ov2 = document.createElement('div');
+          const c2 = document.getElementById(`c${nx}${ny}`);
+          if (!c2) return;
+          const ov2 = document.createElement('div');
           ov2.className = 'planAttack';
           ov2.textContent = { up: '↑', down: '↓', left: '←', right: '→' }[d];
           c2.append(ov2);
@@ -1412,6 +1419,15 @@ function startNewRound() {
         cell.append(ov);
       }
     });
+    if (plans[P].length && hasMove) {
+      const ghostCell = document.getElementById(`c${finalX}${finalY}`);
+      if (ghostCell) {
+        const ghost = document.createElement('div');
+        ghost.className = `planGhost ${P === 'A' ? 'planGhostA' : 'planGhostB'}`;
+        ghost.setAttribute('aria-hidden', 'true');
+        ghostCell.append(ghost);
+      }
+    }
   }
 
 
@@ -1639,21 +1655,47 @@ function startNewRound() {
     if (!unitEl) {
       unitEl = newCell.querySelector('.playerBoth');
     }
-    if (!unitEl || unitEl.classList.contains('moveAnim')) return;
+    if (!unitEl || unitEl.dataset.moving === 'true') return;
     const fromRect = oldCell.getBoundingClientRect();
     const toRect = newCell.getBoundingClientRect();
-    const dx = fromRect.left - toRect.left;
-    const dy = fromRect.top - toRect.top;
-    requestAnimationFrame(() => {
-      unitEl.style.setProperty('--fromX', `${dx}px`);
-      unitEl.style.setProperty('--fromY', `${dy}px`);
-      unitEl.classList.add('moveAnim');
-      unitEl.addEventListener('animationend', () => {
-        unitEl.classList.remove('moveAnim');
-        unitEl.style.removeProperty('--fromX');
-        unitEl.style.removeProperty('--fromY');
-      }, { once: true });
-    });
+    const dx = (fromRect.left + fromRect.width / 2) - (toRect.left + toRect.width / 2);
+    const dy = (fromRect.top + fromRect.height / 2) - (toRect.top + toRect.height / 2);
+    unitEl.dataset.moving = 'true';
+    const cleanup = () => {
+      delete unitEl.dataset.moving;
+    };
+    if (typeof unitEl.animate === 'function') {
+      const animation = unitEl.animate([
+        {
+          transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.9)`,
+          opacity: 0.35,
+          filter: 'drop-shadow(0 0 8px rgba(148,163,184,0.45))'
+        },
+        {
+          transform: 'translate(-50%, -50%) scale(1)',
+          opacity: 1,
+          filter: 'drop-shadow(0 0 4px rgba(15,23,42,0.45))'
+        }
+      ], {
+        duration: 420,
+        easing: 'cubic-bezier(.22,.74,.27,1.02)',
+        fill: 'forwards'
+      });
+      animation.addEventListener('finish', cleanup, { once: true });
+      animation.addEventListener('cancel', cleanup, { once: true });
+    } else {
+      requestAnimationFrame(() => {
+        unitEl.style.setProperty('--fromX', `${dx}px`);
+        unitEl.style.setProperty('--fromY', `${dy}px`);
+        unitEl.classList.add('moveAnim');
+        unitEl.addEventListener('animationend', () => {
+          unitEl.classList.remove('moveAnim');
+          unitEl.style.removeProperty('--fromX');
+          unitEl.style.removeProperty('--fromY');
+          cleanup();
+        }, { once: true });
+      });
+    }
   }
 
   function render() {
@@ -2369,7 +2411,7 @@ function startNewRound() {
   }
 
   function clearPlan() {
-    document.querySelectorAll('.planMove,.planAttack,.planShield').forEach(e => e.remove());
+    document.querySelectorAll('.planMove,.planAttack,.planShield,.planGhost').forEach(e => e.remove());
   }
 
   window.launchGame = startGame;

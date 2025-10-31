@@ -36,6 +36,8 @@ let connectivityHasInitialResult = false;
 
 const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
 const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
+const pasteRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('pasteRoomCode') : null;
+const roomInputField = typeof document !== 'undefined' ? document.getElementById('roomInput') : null;
 const onlineToasts = typeof document !== 'undefined' ? document.getElementById('onlineToasts') : null;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
@@ -549,6 +551,36 @@ document.addEventListener('DOMContentLoaded', () => {
   resetRoomState();
   setRoomCodeDisplay(null);
   scheduleConnectivityPoll();
+  if (pasteRoomCodeBtn) {
+    if (!(navigator.clipboard && navigator.clipboard.readText) || !roomInputField) {
+      pasteRoomCodeBtn.disabled = true;
+    } else {
+      pasteRoomCodeBtn.addEventListener('click', async () => {
+        try {
+          const raw = await navigator.clipboard.readText();
+          const sanitized = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!sanitized) {
+            showOnlineToast('error', t('pasteFail'));
+            return;
+          }
+          const match = sanitized.match(ROOM_CODE_PATTERN);
+          const code = match ? match[0] : sanitized.slice(0, 4);
+          if (!ROOM_CODE_PATTERN.test(code)) {
+            showOnlineToast('error', t('invalidRoomCode'));
+            return;
+          }
+          roomInputField.value = code;
+          roomInputField.classList.remove('input-error');
+          roomInputField.dispatchEvent(new Event('input', { bubbles: true }));
+          roomInputField.focus();
+          showOnlineToast('success', t('pasteSuccess', { code }));
+        } catch (err) {
+          console.warn('Paste failed', err);
+          showOnlineToast('error', t('pasteFail'));
+        }
+      });
+    }
+  }
   if (copyRoomCodeBtn) {
     copyRoomCodeBtn.disabled = true;
     copyRoomCodeBtn.addEventListener('click', async () => {
