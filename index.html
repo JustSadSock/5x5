@@ -257,14 +257,14 @@
       align-items:center;
       justify-content:center;
       gap:32px;
-      padding:calc(var(--hud-height) + 48px) 16px 48px;
+      padding:calc(var(--hud-height) + 48px) 16px 64px;
       min-height:100vh;
     }
     #onlineMenu .menu-back-row {
       width:100%;
-      max-width:420px;
+      max-width:960px;
       display:flex;
-      justify-content:center;
+      justify-content:flex-start;
       margin:0 auto;
     }
     .online-shell {
@@ -273,17 +273,89 @@
       width:100%;
       margin:0 auto;
     }
-    .online-card {
+    .online-layout {
       width:100%;
-      max-width:420px;
+      max-width:960px;
+      display:flex;
+      flex-direction:column;
+      gap:32px;
+    }
+    .online-header {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:space-between;
+      align-items:center;
+      gap:20px;
+    }
+    .online-heading {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      max-width:520px;
+    }
+    .online-title {
+      font-size:clamp(24px, calc(26px + 4px * var(--ui-scale)), 36px);
+      font-weight:700;
+      color:var(--color-heading);
+      margin:0;
+    }
+    .online-subtitle {
+      font-size:clamp(15px, calc(16px + 2px * var(--ui-scale)), 18px);
+      color:var(--color-text-muted);
+      margin:0;
+    }
+    .online-panels {
+      display:grid;
+      gap:24px;
+      width:100%;
+      grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .online-card {
+      position:relative;
+      width:100%;
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
       border-radius:24px;
       box-shadow:0 20px 44px rgba(15,23,42,0.35);
-      padding:24px;
+      padding:28px;
       display:flex;
       flex-direction:column;
-      gap:20px;
+      gap:18px;
+      overflow:hidden;
+    }
+    .online-card::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      background:linear-gradient(135deg, rgba(56,189,248,0.18), transparent 45%);
+      opacity:0;
+      transition:opacity .35s ease;
+    }
+    .online-card:hover::before {
+      opacity:1;
+    }
+    .online-card h3 {
+      font-size:clamp(18px, calc(18px + 2px * var(--ui-scale)), 22px);
+      font-weight:700;
+      color:var(--color-heading);
+      margin:0;
+    }
+    .online-card p {
+      margin:0;
+      color:var(--color-text-primary);
+      line-height:1.5;
+      font-size:clamp(14px, calc(14px + 2px * var(--ui-scale)), 17px);
+    }
+    .online-card .online-btn {
+      width:100%;
+    }
+    .host-card .room-display {
+      margin-top:4px;
+    }
+    .join-card .online-btn {
+      margin-top:8px;
     }
     .online-status {
       display:flex;
@@ -335,13 +407,7 @@
       0%, 100% { transform:scale(0.9); opacity:0.7; }
       50% { transform:scale(1.1); opacity:1; }
     }
-    .online-actions {
-      display:flex;
-      gap:14px;
-      width:100%;
-    }
     .online-btn {
-      flex:1;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -373,17 +439,10 @@
       box-shadow:none;
       cursor:default;
     }
-    .online-form {
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:16px;
-      width:100%;
-    }
     .room-input-row {
       display:flex;
       align-items:center;
-      justify-content:center;
+      justify-content:flex-start;
       gap:12px;
       flex-wrap:wrap;
       width:100%;
@@ -422,6 +481,7 @@
       text-transform:uppercase;
       color:var(--color-heading);
       width:100%;
+      transition:border-color .2s ease, box-shadow .2s ease, color .2s ease;
     }
     .room-display.empty {
       color:var(--color-text-muted);
@@ -449,9 +509,9 @@
     .online-hint {
       font-size:14px;
       color:var(--color-text-muted);
-      text-align:center;
-      line-height:1.4;
-      margin-top:-4px;
+      text-align:left;
+      line-height:1.5;
+      margin-top:4px;
       transition:color .2s ease;
     }
     .online-hint[data-state="success"] { color:var(--color-success); }
@@ -459,18 +519,18 @@
     .online-hint[data-state="info"] { color:var(--color-text-primary); }
     @media (max-width: 640px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 64px) 12px 32px;
+        padding:calc(var(--hud-height) + 64px) 12px 36px;
+      }
+      .online-header {
+        flex-direction:column;
+        align-items:flex-start;
       }
       .online-card {
-        padding:20px;
+        padding:22px;
         border-radius:20px;
       }
-      .online-actions {
-        flex-direction:column;
-        gap:12px;
-      }
-      .online-btn {
-        width:100%;
+      .online-panels {
+        gap:20px;
       }
       .room-display {
         font-size:24px;
@@ -1398,6 +1458,7 @@
       font-family:'Roboto Mono', monospace;
       justify-content:center;
       flex:1;
+      transition:opacity .28s ease;
     }
     #scoreboard .score-divider { opacity:0.7; }
     .scoreboard-icon {
@@ -1443,6 +1504,9 @@
       text-align:center;
       padding:0 12px;
       transition:opacity .28s ease, transform .42s cubic-bezier(0.16, 1, 0.3, 1), color .28s ease;
+    }
+    #scoreboard.showing-message .scoreboard-scores {
+      opacity:0;
     }
     #scoreboard.showing-message {
       background:var(--color-accent);
@@ -1886,25 +1950,37 @@
       </button>
     </div>
     <div class="online-shell">
-      <div class="online-card">
-        <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="status-text" data-i18n="checkingConnection">Проверяем соединение…</span>
-        </div>
-        <div class="online-actions">
-          <button id="onlineCreate" class="online-btn primary" type="button" data-i18n="createRoom" data-sound="nav">Создать комнату</button>
-          <button id="onlineJoin" class="online-btn secondary" type="button" data-i18n="joinRoom" data-sound="nav">Присоединиться</button>
-        </div>
-        <div class="online-form">
-          <div class="room-input-row">
-            <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
-            <button id="pasteRoomCode" class="room-clip-btn" type="button" data-sound="nav" data-i18n-title="pasteRoomCode" data-i18n-aria="pasteRoomCode" aria-label="Вставить код" title="Paste code">⎘</button>
+      <div class="online-layout">
+        <div class="online-header">
+          <div class="online-heading">
+            <h2 class="online-title" data-i18n="onlineLobbyTitle">Онлайн-дуэль</h2>
+            <p class="online-subtitle" data-i18n="onlineLobbySubtitle">Создайте комнату или присоединитесь по коду, чтобы сыграть с другом.</p>
           </div>
-          <div class="room-display empty" id="roomDisplay" aria-live="polite">
-            <span id="roomCode" class="room-code">----</span>
-            <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
+          <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text" data-i18n="checkingConnection">Проверяем соединение…</span>
           </div>
-          <p id="onlineHint" class="online-hint" data-i18n="roomCodeHint" aria-live="polite">Поделитесь кодом с другом или введите его, чтобы подключиться.</p>
+        </div>
+        <div class="online-panels">
+          <section class="online-card host-card">
+            <h3 data-i18n="onlineCreateTitle">Создать комнату</h3>
+            <p data-i18n="onlineCreateDescription">Сгенерируйте код, поделитесь им с другом и дождитесь его подключения.</p>
+            <button id="onlineCreate" class="online-btn primary" type="button" data-i18n="createRoom" data-sound="nav">Создать комнату</button>
+            <div class="room-display empty" id="roomDisplay" aria-live="polite">
+              <span id="roomCode" class="room-code">----</span>
+              <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
+            </div>
+          </section>
+          <section class="online-card join-card">
+            <h3 data-i18n="onlineJoinTitle">Присоединиться к комнате</h3>
+            <p data-i18n="onlineJoinDescription">Вставьте или введите код, чтобы сразу подключиться к матчу.</p>
+            <div class="room-input-row">
+              <input id="roomInput" data-i18n="roomCodePlaceholder" data-i18n-placeholder placeholder="Код комнаты">
+              <button id="pasteRoomCode" class="room-clip-btn" type="button" data-sound="nav" data-i18n-title="pasteRoomCode" data-i18n-aria="pasteRoomCode" aria-label="Вставить код" title="Paste code">⎘</button>
+            </div>
+            <button id="onlineJoin" class="online-btn secondary" type="button" data-i18n="joinRoom" data-sound="nav">Присоединиться</button>
+            <p id="onlineHint" class="online-hint" data-i18n="roomCodeHint" aria-live="polite">Поделитесь кодом с другом или введите его, чтобы подключиться.</p>
+          </section>
         </div>
       </div>
     </div>

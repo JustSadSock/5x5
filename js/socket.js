@@ -508,11 +508,15 @@ function showConfirmMessage(text) {
     messageEl.setAttribute('aria-hidden', 'false');
     scoreboard.classList.add('showing-message');
     scoreboard.setAttribute('aria-busy', 'true');
+    const scoreRow = scoreboard.querySelector('.scoreboard-scores');
+    if (scoreRow) scoreRow.setAttribute('aria-hidden', 'true');
     clearTimeout(messageEl._hideTimer);
     messageEl._hideTimer = setTimeout(() => {
       scoreboard.classList.remove('showing-message');
       scoreboard.removeAttribute('aria-busy');
       messageEl.setAttribute('aria-hidden', 'true');
+      const currentScoreRow = scoreboard.querySelector('.scoreboard-scores');
+      if (currentScoreRow) currentScoreRow.removeAttribute('aria-hidden');
       messageEl._hideTimer = null;
     }, 2400);
     if (root) root.style.setProperty('--toast-offset', '0px');
