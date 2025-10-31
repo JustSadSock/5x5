@@ -255,12 +255,12 @@
       display:none;
       flex-direction:column;
       align-items:center;
-      gap:32px;
-      padding:calc(var(--hud-height) + 40px) 16px 56px;
+      gap:28px;
+      padding:calc(var(--hud-height) + 36px) 14px 48px;
       min-height:100vh;
       overflow-y:auto;
       overscroll-behavior:contain;
-      scroll-padding-top:calc(var(--hud-height) + 24px);
+      scroll-padding-top:calc(var(--hud-height) + 20px);
     }
     #onlineMenu .menu-back-row {
       width:100%;
@@ -317,12 +317,12 @@
       width:100%;
       background:var(--color-surface-alt);
       border:1px solid var(--color-border);
-      border-radius:24px;
-      box-shadow:0 20px 44px rgba(15,23,42,0.35);
-      padding:clamp(20px, 3.6vw + 12px, 28px);
+      border-radius:22px;
+      box-shadow:0 18px 38px rgba(15,23,42,0.32);
+      padding:clamp(18px, 3vw + 12px, 26px);
       display:flex;
       flex-direction:column;
-      gap:clamp(14px, 2.8vw + 8px, 18px);
+      gap:clamp(12px, 2.5vw + 8px, 18px);
       overflow:hidden;
     }
     .online-card::before {
@@ -521,8 +521,8 @@
     .online-hint[data-state="info"] { color:var(--color-text-primary); }
     @media (max-width: 640px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 48px) 14px 32px;
-        gap:28px;
+        padding:calc(var(--hud-height) + 34px) 12px 32px;
+        gap:24px;
       }
       .online-header {
         flex-direction:column;
@@ -530,43 +530,45 @@
       }
       .online-card {
         border-radius:20px;
+        padding:clamp(18px, 5vw + 8px, 24px);
       }
       .online-panels {
-        gap:20px;
+        gap:18px;
       }
       .room-display {
-        font-size:22px;
-        letter-spacing:4px;
-        padding:12px 16px;
+        font-size:20px;
+        letter-spacing:3px;
+        padding:12px 14px;
       }
     }
     @media (max-width: 480px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 36px) 12px 28px;
-        gap:24px;
+        padding:calc(var(--hud-height) + 28px) 10px 24px;
+        gap:20px;
       }
       #onlineMenu .menu-back-row {
         position:sticky;
         top:calc(var(--hud-height) + 12px);
         z-index:2;
-        background:linear-gradient(180deg, var(--color-surface) 70%, transparent);
-        padding-bottom:8px;
+        background:var(--color-surface);
+        padding-bottom:6px;
+        box-shadow:0 4px 12px rgba(15,23,42,0.22);
       }
       .online-shell {
         width:100%;
       }
       .online-layout {
-        gap:22px;
+        gap:18px;
       }
       .online-header {
-        gap:14px;
+        gap:12px;
         align-items:stretch;
       }
       .online-heading {
-        gap:4px;
+        gap:3px;
       }
       .online-title {
-        font-size:24px;
+        font-size:22px;
       }
       .online-subtitle {
         font-size:15px;
@@ -585,98 +587,98 @@
       .online-card {
         border-radius:18px;
         padding:20px;
-        gap:16px;
-        box-shadow:0 14px 32px rgba(15,23,42,0.28);
-      }
-      .online-card h3 {
-        font-size:20px;
-      }
-      .online-card p {
-        font-size:15px;
-      }
-      .room-display {
-        flex-wrap:wrap;
-        justify-content:center;
-        gap:12px;
-        padding:12px 14px;
-        font-size:20px;
-        letter-spacing:3px;
-      }
-      .room-input-row {
-        gap:10px;
-      }
-      .room-input-row input {
-        font-size:16px;
-        padding:12px 14px;
-        letter-spacing:3px;
-        flex:1 1 160px;
-      }
-      .room-clip-btn {
-        width:42px;
-        height:42px;
-      }
-      .online-btn {
-        min-height:48px;
-        font-size:16px;
-      }
-      .online-hint {
-        font-size:13px;
-      }
-    }
-    @media (max-width: 360px) {
-      #onlineMenu {
-        padding:calc(var(--hud-height) + 32px) 10px 24px;
-      }
-      .online-title {
-        font-size:22px;
-      }
-      .online-card {
-        padding:18px;
         gap:14px;
+        box-shadow:0 14px 30px rgba(15,23,42,0.26);
       }
       .online-card h3 {
-        font-size:18px;
+        font-size:19px;
       }
       .online-card p {
         font-size:14px;
       }
       .room-display {
+        flex-wrap:wrap;
+        justify-content:center;
+        gap:12px;
+        padding:12px 12px;
         font-size:18px;
+        letter-spacing:2.5px;
+      }
+      .room-input-row {
+        gap:10px;
+      }
+      .room-input-row input {
+        font-size:15px;
+        padding:11px 12px;
+        letter-spacing:2.5px;
+        flex:1 1 150px;
+      }
+      .room-clip-btn {
+        width:40px;
+        height:40px;
+      }
+      .online-btn {
+        min-height:46px;
+        font-size:15px;
+      }
+      .online-hint {
+        font-size:12.5px;
+      }
+    }
+    @media (max-width: 360px) {
+      #onlineMenu {
+        padding:calc(var(--hud-height) + 26px) 8px 20px;
+      }
+      .online-title {
+        font-size:20px;
+      }
+      .online-card {
+        padding:18px;
+        gap:12px;
+      }
+      .online-card h3 {
+        font-size:17px;
+      }
+      .online-card p {
+        font-size:13px;
+      }
+      .room-display {
+        font-size:17px;
         letter-spacing:2px;
         padding:10px 12px;
       }
       .room-input-row input {
-        font-size:15px;
+        font-size:14px;
       }
       .online-btn {
-        min-height:44px;
-        font-size:15px;
+        min-height:42px;
+        font-size:14px;
       }
     }
     @media (max-height: 820px) {
       #onlineMenu {
         justify-content:flex-start;
-        padding:calc(var(--hud-height) + 36px) 16px 48px;
+        padding:calc(var(--hud-height) + 32px) 14px 40px;
       }
       .online-layout {
-        gap:24px;
+        gap:22px;
       }
       .online-shell {
-        padding-bottom:32px;
+        padding-bottom:28px;
       }
     }
     @media (max-height: 640px) {
       #onlineMenu {
-        padding:calc(var(--hud-height) + 28px) 12px 32px;
+        padding:calc(var(--hud-height) + 24px) 10px 26px;
       }
       .online-layout {
-        gap:20px;
+        gap:18px;
       }
       .online-card {
-        padding:20px;
+        padding:18px;
       }
       .online-header {
-        gap:16px;
+        gap:14px;
       }
     }
 
