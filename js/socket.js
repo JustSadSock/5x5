@@ -12,13 +12,14 @@ let pendingRoomAction = null;
 let reconnectAttempts = 0;
 let reconnectTimer = null;
 
+let currentPlayerIndex = null;
+
 const CONNECT_TIMEOUT_MS = 10000;
 const ROOM_ACTION_TIMEOUT_MS = 8000;
 const ROOM_CODE_PATTERN = /^[A-Z0-9]{4}$/;
 const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_BACKOFF_FACTOR = 1.5;
 const RECONNECT_MAX_DELAY_MS = 20000;
-const TOAST_LIFETIME = 4200;
 const CONNECTIVITY_INTERVAL_MS = 3000;
 const CONNECTIVITY_TIMEOUT_MS = 2500;
 
@@ -38,7 +39,9 @@ const roomDisplay = typeof document !== 'undefined' ? document.getElementById('r
 const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
 const pasteRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('pasteRoomCode') : null;
 const roomInputField = typeof document !== 'undefined' ? document.getElementById('roomInput') : null;
-const onlineToasts = typeof document !== 'undefined' ? document.getElementById('onlineToasts') : null;
+const onlineHint = typeof document !== 'undefined' ? document.getElementById('onlineHint') : null;
+let onlineHintDefault = null;
+let onlineHintTimer = null;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
@@ -93,25 +96,29 @@ function updateConnectionStatus(text, state) {
 }
 
 function showOnlineToast(type, message) {
-  if (!onlineToasts || !message) return;
-  const toast = document.createElement('div');
-  toast.className = `online-toast ${type || 'info'}`;
-  toast.style.transition = 'opacity .25s ease, transform .25s ease';
-  const iconSpan = document.createElement('span');
-  iconSpan.className = 'toast-icon';
-  iconSpan.textContent = ({ success: '✨', error: '⚠️', info: 'ℹ️' })[type] || 'ℹ️';
-  const textSpan = document.createElement('span');
-  textSpan.className = 'toast-text';
-  textSpan.textContent = message;
-  toast.append(iconSpan, textSpan);
-  onlineToasts.append(toast);
-  setTimeout(() => {
-    toast.classList.add('dismiss');
-    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-  }, TOAST_LIFETIME);
-  while (onlineToasts.childNodes.length > 4) {
-    onlineToasts.removeChild(onlineToasts.firstChild);
+  if (!message) return;
+  if (!onlineHint) {
+    log(message);
+    return;
   }
+  if (!onlineHintDefault) {
+    onlineHintDefault = typeof t === 'function' ? t('roomCodeHint') : (onlineHint.textContent || '');
+  }
+  onlineHint.textContent = message;
+  if (type) {
+    onlineHint.dataset.state = type;
+  } else {
+    onlineHint.removeAttribute('data-state');
+  }
+  if (onlineHintTimer) clearTimeout(onlineHintTimer);
+  onlineHintTimer = setTimeout(() => {
+    if (!onlineHint) return;
+    const fallback = typeof t === 'function' ? t('roomCodeHint') : (onlineHintDefault || '');
+    onlineHint.textContent = fallback;
+    onlineHint.removeAttribute('data-state');
+    onlineHintDefault = fallback;
+    onlineHintTimer = null;
+  }, 4000);
 }
 
 function scheduleConnectivityPoll() {
@@ -227,6 +234,17 @@ function cleanupRoom() {
   updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
   clearRoomUI();
+  currentPlayerIndex = null;
+  if (onlineHintTimer) {
+    clearTimeout(onlineHintTimer);
+    onlineHintTimer = null;
+  }
+  if (onlineHint) {
+    const fallback = typeof t === 'function' ? t('roomCodeHint') : (onlineHintDefault || onlineHint.textContent || '');
+    onlineHint.textContent = fallback;
+    onlineHint.removeAttribute('data-state');
+    onlineHintDefault = fallback;
+  }
   if (typeof window.onOnlineDisconnected === 'function') {
     window.onOnlineDisconnected();
   }
@@ -343,6 +361,7 @@ function initSocket(onReady) {
     }
     if (data.type === 'start_game') {
       clearPendingRoomAction('join');
+      currentPlayerIndex = typeof data.playerIndex === 'number' ? data.playerIndex : null;
       startOnlineGame(data.playerIndex);
     }
     if (data.type === 'opponent_move') {
@@ -350,7 +369,9 @@ function initSocket(onReady) {
     }
     if (data.type === 'player_confirmed') {
       const who = data.playerIndex === 0 ? t('playerA') : t('playerB');
-      showConfirmMessage(who + ' ' + t('confirmed'));
+      if (currentPlayerIndex === null || data.playerIndex !== currentPlayerIndex) {
+        showConfirmMessage(who + ' ' + t('confirmed'));
+      }
       log(who + ' ' + t('confirmed'));
       if (typeof window.onPlayerConfirmed === 'function') {
         window.onPlayerConfirmed(data.playerIndex);
@@ -476,8 +497,6 @@ function showConfirmMessage(text) {
   const scoreboard = document.getElementById('scoreboard');
   const messageEl = document.getElementById('scoreboardMessage');
   if (scoreboard && messageEl) {
-    const shell = scoreboard.querySelector('.scoreboard-shell');
-    const settingsBtn = document.getElementById('settingsBtn');
     if (typeof window.closeHudMenu === 'function') {
       try {
         window.closeHudMenu();
@@ -489,30 +508,16 @@ function showConfirmMessage(text) {
     messageEl.setAttribute('aria-hidden', 'false');
     scoreboard.classList.add('showing-message');
     scoreboard.setAttribute('aria-busy', 'true');
-    if (shell) shell.setAttribute('aria-hidden', 'true');
-    if (settingsBtn) settingsBtn.setAttribute('aria-hidden', 'true');
     clearTimeout(messageEl._hideTimer);
     messageEl._hideTimer = setTimeout(() => {
       scoreboard.classList.remove('showing-message');
       scoreboard.removeAttribute('aria-busy');
       messageEl.setAttribute('aria-hidden', 'true');
-      if (shell) shell.removeAttribute('aria-hidden');
-      if (settingsBtn) settingsBtn.removeAttribute('aria-hidden');
       messageEl._hideTimer = null;
     }, 2400);
     if (root) root.style.setProperty('--toast-offset', '0px');
     return;
   }
-
-  const el = document.getElementById('confirmToast');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.add('show');
-  if (root) root.style.setProperty('--toast-offset', '0px');
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(() => {
-    el.classList.remove('show');
-  }, 2000);
 }
 
 function showOpponentLeftModal() {

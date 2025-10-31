@@ -452,45 +452,11 @@
       text-align:center;
       line-height:1.4;
       margin-top:-4px;
+      transition:color .2s ease;
     }
-    .online-toasts {
-      position:fixed;
-      top:calc(var(--hud-height) + 24px);
-      right:24px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      z-index:950;
-      pointer-events:none;
-    }
-    .online-toast {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:12px 16px;
-      border-radius:14px;
-      background:var(--color-surface);
-      border:1px solid var(--color-border);
-      color:var(--color-text-primary);
-      box-shadow:0 12px 24px rgba(15,23,42,0.28);
-      opacity:1;
-      transition:opacity .25s ease, transform .25s ease;
-    }
-    .online-toast.dismiss {
-      opacity:0;
-      transform:translateY(-8px);
-    }
-    .online-toast.success {
-      border-color:rgba(34,197,94,0.5);
-      color:var(--color-success);
-    }
-    .online-toast.error {
-      border-color:rgba(239,68,68,0.55);
-      color:var(--color-danger);
-    }
-    .online-toast .toast-icon {
-      font-size:18px;
-    }
+    .online-hint[data-state="success"] { color:var(--color-success); }
+    .online-hint[data-state="error"] { color:var(--color-danger); }
+    .online-hint[data-state="info"] { color:var(--color-text-primary); }
     @media (max-width: 640px) {
       #onlineMenu {
         padding:calc(var(--hud-height) + 64px) 12px 32px;
@@ -510,19 +476,6 @@
         font-size:24px;
         letter-spacing:4px;
         padding:14px 18px;
-      }
-      .online-toasts {
-        right:auto;
-        left:50%;
-        transform:translateX(-50%);
-        top:auto;
-        bottom:24px;
-        width:min(90vw, 320px);
-        align-items:center;
-      }
-      .online-toast {
-        width:100%;
-        justify-content:center;
       }
     }
 
@@ -1496,12 +1449,6 @@
       border-color:transparent;
       box-shadow:0 14px 32px rgba(14,116,144,0.32);
     }
-    #scoreboard.showing-message .scoreboard-shell,
-    #scoreboard.showing-message #settingsBtn {
-      opacity:0;
-      transform:translateY(-12px) scale(0.88);
-      pointer-events:none;
-    }
     #scoreboard.showing-message .scoreboard-message {
       opacity:1;
       transform:translate(-50%, -50%) scale(1);
@@ -1839,24 +1786,6 @@
     .dropdown-option:hover { background:var(--color-surface-hover); }
 
     /* Всплывающие сообщения */
-    #confirmToast {
-      position:fixed;
-      top:calc(12px + var(--hud-height) + 8px);
-      left:50%;
-      transform:translateX(-50%);
-      background:var(--color-surface-alt);
-      padding:10px 18px;
-      border-radius:12px;
-      color:var(--color-text-primary);
-      z-index:920;
-      pointer-events:none;
-      opacity:0;
-      border:1px solid var(--color-border);
-      box-shadow:0 12px 24px rgba(15,23,42,0.28);
-      transition:opacity .3s;
-      max-width:min(320px, calc(100vw - 32px));
-    }
-    #confirmToast.show { opacity:1; }
 
     button {
       font-family:inherit;
@@ -1975,13 +1904,11 @@
             <span id="roomCode" class="room-code">----</span>
             <button id="copyRoomCode" data-i18n-title="copyRoomCode" data-i18n-aria="copyRoomCode" aria-label="Скопировать код" title="Copy code">⧉</button>
           </div>
-          <p class="online-hint" data-i18n="roomCodeHint">Поделитесь кодом с другом или введите его, чтобы подключиться.</p>
+          <p id="onlineHint" class="online-hint" data-i18n="roomCodeHint" aria-live="polite">Поделитесь кодом с другом или введите его, чтобы подключиться.</p>
         </div>
       </div>
     </div>
   </div>
-  <div class="online-toasts" id="onlineToasts" aria-live="assertive" aria-atomic="true"></div>
-
   <div id="scoreboard" role="banner">
     <div class="scoreboard-shell">
       <button id="scoreboardToggle" class="scoreboard-icon" type="button" data-sound="nav" data-i18n-title="hudMenu" data-i18n-aria="hudMenu" aria-label="Menu" title="Menu">☰</button>
@@ -2109,9 +2036,6 @@
       </div>
     </div>
   </div>
-
-  <div id="confirmToast" role="status" aria-live="polite"></div>
-
   <div id="replayOverlay" aria-hidden="true">
     <div class="replayPanel" role="dialog" aria-modal="true" aria-labelledby="replayTitle" aria-describedby="replayControls">
       <div class="replayHeader">
