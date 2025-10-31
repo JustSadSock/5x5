@@ -20,6 +20,7 @@ let recordedChunks = [];
 let recorderMime = 'video/webm';
 let recorderExt = 'webm';
 let recorderStream = null;
+let recorderCanvas = null;
 let attackMode = false;
 let attackModeOwner = null;
 
@@ -267,6 +268,8 @@ function startNewRound() {
   let pendingAttackDirs = [];
   let tutorialExpectEvent = null;
   let tutorialHighlightSelector = null;
+  let tutorialHighlightRect = null;
+  let tutorialCard = null;
 
   function resetOnlineFlags() {
     onlineConfirmed = { A: false, B: false };
@@ -324,12 +327,16 @@ function startNewRound() {
     if (!tutorialHighlightEl) return;
     tutorialHighlightSelector = selector || null;
     if (!selector) {
+      tutorialHighlightRect = null;
       tutorialHighlightEl.classList.remove('show');
+      requestAnimationFrame(() => positionTutorialCard());
       return;
     }
     const target = typeof selector === 'string' ? document.querySelector(selector) : selector;
     if (!target) {
+      tutorialHighlightRect = null;
       tutorialHighlightEl.classList.remove('show');
+      requestAnimationFrame(() => positionTutorialCard());
       return;
     }
     const rect = target.getBoundingClientRect();
@@ -338,17 +345,33 @@ function startNewRound() {
     const top = Math.max(8, rect.top - pad);
     const right = Math.min(window.innerWidth - 8, rect.right + pad);
     const bottom = Math.min(window.innerHeight - 8, rect.bottom + pad);
+    tutorialHighlightRect = {
+      left,
+      top,
+      right,
+      bottom,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top)
+    };
     tutorialHighlightEl.style.left = `${left}px`;
     tutorialHighlightEl.style.top = `${top}px`;
     tutorialHighlightEl.style.width = `${Math.max(0, right - left)}px`;
     tutorialHighlightEl.style.height = `${Math.max(0, bottom - top)}px`;
     tutorialHighlightEl.classList.add('show');
+    requestAnimationFrame(() => positionTutorialCard());
   }
 
   function clearTutorialHighlight() {
     if (!tutorialHighlightEl) return;
     tutorialHighlightSelector = null;
+    tutorialHighlightRect = null;
     tutorialHighlightEl.classList.remove('show');
+    if (tutorialCard) {
+      tutorialCard.style.removeProperty('left');
+      tutorialCard.style.removeProperty('top');
+      tutorialCard.style.removeProperty('transform');
+    }
+    requestAnimationFrame(() => positionTutorialCard());
   }
 
   function refreshTutorialHighlight() {
@@ -356,7 +379,65 @@ function startNewRound() {
     requestAnimationFrame(() => applyTutorialHighlight(tutorialHighlightSelector));
   }
 
-  function finishTutorial() {
+  function positionTutorialCard() {
+    if (!tutOv || !tutorialCard) return;
+    if (!tutOv.classList.contains('show')) {
+      tutorialCard.style.removeProperty('left');
+      tutorialCard.style.removeProperty('top');
+      tutorialCard.style.removeProperty('transform');
+      return;
+    }
+    const margin = 20;
+    const viewportW = window.innerWidth || document.documentElement.clientWidth;
+    const viewportH = window.innerHeight || document.documentElement.clientHeight;
+    const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+    const prevTransform = tutorialCard.style.transform;
+    tutorialCard.style.transform = 'none';
+    const cardWidth = tutorialCard.offsetWidth || tutorialCard.getBoundingClientRect().width || 320;
+    const cardHeight = tutorialCard.offsetHeight || tutorialCard.getBoundingClientRect().height || 200;
+    tutorialCard.style.transform = prevTransform;
+    let left = (viewportW - cardWidth) / 2;
+    let top = (viewportH - cardHeight) / 2;
+    if (tutorialHighlightRect) {
+      const rect = tutorialHighlightRect;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const positions = [
+        { left: centerX - cardWidth / 2, top: rect.bottom + margin },
+        { left: centerX - cardWidth / 2, top: rect.top - margin - cardHeight },
+        { left: rect.right + margin, top: centerY - cardHeight / 2 },
+        { left: rect.left - margin - cardWidth, top: centerY - cardHeight / 2 }
+      ];
+      const fits = positions.find(pos =>
+        pos.left >= margin &&
+        pos.top >= margin &&
+        pos.left + cardWidth <= viewportW - margin &&
+        pos.top + cardHeight <= viewportH - margin
+      );
+      if (fits) {
+        left = fits.left;
+        top = fits.top;
+      } else {
+        left = clamp(centerX - cardWidth / 2, margin, Math.max(margin, viewportW - margin - cardWidth));
+        const below = rect.bottom + margin;
+        const above = rect.top - margin - cardHeight;
+        if (below + cardHeight <= viewportH - margin) {
+          top = below;
+        } else if (above >= margin) {
+          top = above;
+        } else {
+          top = clamp(centerY - cardHeight / 2, margin, Math.max(margin, viewportH - margin - cardHeight));
+        }
+      }
+    }
+    left = clamp(left, margin, Math.max(margin, viewportW - margin - cardWidth));
+    top = clamp(top, margin, Math.max(margin, viewportH - margin - cardHeight));
+    tutorialCard.style.left = `${Math.round(left)}px`;
+    tutorialCard.style.top = `${Math.round(top)}px`;
+    tutorialCard.style.transform = 'translate(0, 0)';
+  }
+
+  function stopTutorial(markComplete) {
     isTutorial = false;
     tutorialExpectEvent = null;
     clearTutorialHighlight();
@@ -364,7 +445,18 @@ function startNewRound() {
       tutOv.classList.remove('show');
       tutOv.setAttribute('aria-hidden', 'true');
     }
-    try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+    if (markComplete) {
+      try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+    }
+    hideTutorialPrompt();
+  }
+
+  function finishTutorial() {
+    stopTutorial(true);
+  }
+
+  function abortTutorial() {
+    stopTutorial(false);
   }
 
   function isTutorialRequirementMet(event) {
@@ -418,10 +510,12 @@ function startNewRound() {
     tutOv.classList.add('show');
     tutOv.setAttribute('aria-hidden', 'false');
     tutNext.focus();
+    requestAnimationFrame(() => positionTutorialCard());
     tutNext.onclick = () => {
       if (step.mode === 'practice') {
         tutOv.classList.remove('show');
         tutOv.setAttribute('aria-hidden', 'true');
+        positionTutorialCard();
         if (step.expect && isTutorialRequirementMet(step.expect)) {
           tutorialIndex++;
           if (tutorialIndex >= tutorialScript.length) {
@@ -489,6 +583,7 @@ function startNewRound() {
   window.startTutorial = startTutorial;
   const tutorialHighlightEl = document.getElementById('tutorialHighlight');
   const tutOv = document.getElementById('tutorialOverlay');
+  if (tutOv) tutorialCard = tutOv.querySelector('.tutorialCard');
   const tutCont = document.getElementById('tutorialContent');
   const tutNext = document.getElementById('tutorialNext');
   const tutorialProgress = document.getElementById('tutorialProgress');
@@ -1540,16 +1635,7 @@ function startNewRound() {
     }
     replayLoop = null;
     resetGame();
-    replayFrames = [];
-    replayHistory.forEach(r => {
-      if (r.states.length) replayFrames.push({ state: r.states[0] });
-      for (let i = 1; i < r.states.length; i++) {
-        replayFrames.push({
-          state: r.states[i],
-          actions: { A: r.actions.A[i - 1], B: r.actions.B[i - 1] }
-        });
-      }
-    });
+    replayFrames = buildReplayFrames();
     if (!replayFrames.length) {
       endReplay();
       return;
@@ -1616,25 +1702,142 @@ function startNewRound() {
     }
   }
 
+  function buildReplayFrames() {
+    const frames = [];
+    replayHistory.forEach(r => {
+      if (!r || !Array.isArray(r.states) || !r.states.length) return;
+      frames.push({ state: r.states[0] });
+      for (let i = 1; i < r.states.length; i += 1) {
+        const frameActions = r.actions && r.actions.A && r.actions.B ? {
+          A: r.actions.A[i - 1],
+          B: r.actions.B[i - 1]
+        } : undefined;
+        frames.push({ state: r.states[i], actions: frameActions });
+      }
+    });
+    return frames;
+  }
+
+  function drawReplayCanvasFrame(ctx, frame) {
+    if (!ctx || !frame || !frame.state) return;
+    const canvas = ctx.canvas;
+    const width = canvas.width;
+    const height = canvas.height;
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const background = isLight ? '#f8fafc' : '#020617';
+    const boardFill = isLight ? '#e2e8f0' : '#0f172a';
+    const edgeFill = isLight ? '#fecdd3' : '#7f1d1d';
+    const gridColor = isLight ? 'rgba(15,23,42,0.18)' : 'rgba(148,163,184,0.35)';
+    const textColor = isLight ? '#0f172a' : '#f8fafc';
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
+    const padding = Math.round(Math.min(width, height) * 0.12);
+    const boardSize = Math.min(width, height) - padding * 2;
+    const originX = (width - boardSize) / 2;
+    const originY = (height - boardSize) / 2 + 32;
+    const cellSize = boardSize / 5;
+    const gap = Math.max(3, Math.round(cellSize * 0.08));
+    const state = frame.state;
+    for (let y = 0; y < 5; y += 1) {
+      for (let x = 0; x < 5; x += 1) {
+        const cellX = originX + x * cellSize;
+        const cellY = originY + y * cellSize;
+        const collapsed = state.edgesCollapsed && (x === 0 || x === 4 || y === 0 || y === 4);
+        ctx.fillStyle = collapsed ? edgeFill : boardFill;
+        ctx.fillRect(cellX, cellY, cellSize - gap, cellSize - gap);
+      }
+    }
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= 5; i += 1) {
+      const pos = originX + i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(pos, originY);
+      ctx.lineTo(pos, originY + boardSize - cellSize + gap);
+      ctx.stroke();
+      const posY = originY + i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(originX, posY);
+      ctx.lineTo(originX + boardSize - cellSize + gap, posY);
+      ctx.stroke();
+    }
+
+    const drawToken = (x, y, color, clipStart = 0, clipEnd = Math.PI * 2) => {
+      const centerX = originX + x * cellSize + (cellSize - gap) / 2;
+      const centerY = originY + y * cellSize + (cellSize - gap) / 2;
+      const radius = (cellSize - gap) * 0.32;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, clipStart, clipEnd, false);
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+
+    const aColor = '#38bdf8';
+    const bColor = '#f97316';
+    if (state.units && state.units.A && state.units.B && state.units.A.alive && state.units.B.alive &&
+        state.units.A.x === state.units.B.x && state.units.A.y === state.units.B.y) {
+      drawToken(state.units.A.x, state.units.A.y, aColor, Math.PI * 1.5, Math.PI * 0.5);
+      drawToken(state.units.B.x, state.units.B.y, bColor, Math.PI * 0.5, Math.PI * 1.5);
+    } else {
+      if (state.units && state.units.A && state.units.A.alive) {
+        drawToken(state.units.A.x, state.units.A.y, aColor);
+      }
+      if (state.units && state.units.B && state.units.B.alive) {
+        drawToken(state.units.B.x, state.units.B.y, bColor);
+      }
+    }
+
+    ctx.fillStyle = textColor;
+    ctx.font = '600 32px "Inter", "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    const roundLabel = typeof t === 'function' ? `${t('round')} ${state.round}` : `Round ${state.round}`;
+    ctx.fillText(roundLabel, width / 2, originY - 40);
+    ctx.font = '500 20px "Inter", "Segoe UI", sans-serif';
+    const stepLabel = typeof t === 'function' ? t('phaseExecuting', { step: state.step }) : `Step ${state.step}`;
+    ctx.fillText(stepLabel, width / 2, originY - 12);
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   async function saveReplayVideo() {
     if (!replayHistory.length || recorder) return;
-    let stream;
-    if (document.body.captureStream) {
-      stream = document.body.captureStream();
-    } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-      try {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      } catch (e) {
-        alert(t('recordingNotSupported'));
-        return;
-      }
-    } else {
+    const frames = buildReplayFrames();
+    if (!frames.length) {
+      alert(typeof t === 'function' ? t('replaySaveFailed') : 'Unable to save replay.');
+      return;
+    }
+    if (typeof HTMLCanvasElement === 'undefined') {
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 720;
+    canvas.style.position = 'fixed';
+    canvas.style.left = '-9999px';
+    canvas.style.top = '-9999px';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0';
+    document.body.append(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx || typeof canvas.captureStream !== 'function') {
+      canvas.remove();
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const stream = canvas.captureStream(30);
+    if (!stream) {
+      canvas.remove();
       alert(t('recordingNotSupported'));
       return;
     }
     recordedChunks = [];
     if (typeof MediaRecorder === 'undefined') {
       try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      canvas.remove();
       alert(t('recordingNotSupported'));
       return;
     }
@@ -1661,67 +1864,106 @@ function startNewRound() {
     }
     if (!selectedRecorder || !mime || !mime.includes('mp4')) {
       try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      canvas.remove();
       alert(t('recordingNotSupported'));
       return;
     }
+
     recorder = selectedRecorder;
     recorderMime = mime;
     recorderExt = 'mp4';
     recorderStream = stream;
+    recorderCanvas = canvas;
     recorder.ondataavailable = e => {
       if (e.data && e.data.size) recordedChunks.push(e.data);
     };
-    recorder.onstop = async () => {
-      try {
-        const blob = new Blob(recordedChunks, { type: recorderMime });
-        const filename = `replay.${recorderExt}`;
-        const file = new File([blob], filename, { type: recorderMime });
-        const triggerDownload = () => {
-          const url = URL.createObjectURL(file);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-        if (recorderExt === 'mp4' && typeof window.showSaveFilePicker === 'function') {
-          try {
-            const handle = await window.showSaveFilePicker({
-              suggestedName: filename,
-              types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
-            });
-            const writable = await handle.createWritable();
-            await writable.write(file);
-            await writable.close();
-            return;
-          } catch (err) {
-            // fall through to alternate delivery mechanisms
-          }
-        }
-        if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file] });
-            return;
-          } catch (e) {
-            triggerDownload();
-          }
-        } else {
-          triggerDownload();
-        }
-      } catch (err) {
-        console.error('Failed to export replay video', err);
-        alert(t('recordingNotSupported'));
-      } finally {
-        recordedChunks = [];
-        if (recorderStream) {
-          try { recorderStream.getTracks().forEach(track => track.stop()); } catch (e) {}
-          recorderStream = null;
-        }
-        recorder = null;
+
+    const finishRecording = () => {
+      recordedChunks = [];
+      if (recorderStream) {
+        try { recorderStream.getTracks().forEach(track => track.stop()); } catch (err) {}
+        recorderStream = null;
       }
+      if (recorderCanvas) {
+        try { recorderCanvas.remove(); } catch (err) {}
+        recorderCanvas = null;
+      }
+      recorder = null;
     };
-    recorder.start();
-    startReplay();
+
+    let resolveRecording;
+    let started = false;
+    const completion = new Promise(resolve => {
+      resolveRecording = resolve;
+      recorder.onstop = async () => {
+        try {
+          const blob = new Blob(recordedChunks, { type: recorderMime });
+          const filename = `replay.${recorderExt}`;
+          const fileObject = typeof File === 'function' ? new File([blob], filename, { type: recorderMime }) : null;
+          const triggerDownload = () => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+          };
+          if (recorderExt === 'mp4' && typeof window.showSaveFilePicker === 'function') {
+            try {
+              const handle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+              });
+              const writable = await handle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              return;
+            } catch (err) {
+              // fallback to sharing or download
+            }
+          }
+          if (fileObject && navigator.canShare && navigator.share && navigator.canShare({ files: [fileObject] })) {
+            try {
+              await navigator.share({ files: [fileObject] });
+              return;
+            } catch (err) {
+              triggerDownload();
+              return;
+            }
+          }
+          triggerDownload();
+        } catch (err) {
+          console.error('Failed to export replay video', err);
+          alert(t('replaySaveFailed'));
+        } finally {
+          finishRecording();
+          if (typeof resolveRecording === 'function') resolveRecording();
+        }
+      };
+    });
+
+    try {
+      recorder.start();
+      started = true;
+      const frameDuration = frames.length > 1 ? 450 : 800;
+      for (let i = 0; i < frames.length; i += 1) {
+        drawReplayCanvasFrame(ctx, frames[i]);
+        await delay(frameDuration);
+      }
+      await delay(320);
+      stopReplayRecordingIfNeeded();
+      await completion;
+    } catch (err) {
+      console.error('Failed to render replay video', err);
+      alert(typeof t === 'function' ? t('replaySaveFailed') : 'Unable to save replay.');
+      if (started) {
+        try { stopReplayRecordingIfNeeded(); } catch (e) {}
+        await completion;
+      } else {
+        finishRecording();
+        if (typeof resolveRecording === 'function') resolveRecording();
+      }
+    }
   }
 
   function stopReplayRecordingIfNeeded() {
@@ -2063,6 +2305,7 @@ function startNewRound() {
     removeResultOverlay();
     resetGame();
     hideAttackOverlay();
+    abortTutorial();
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
     closeHudMenu();
