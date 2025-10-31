@@ -117,8 +117,8 @@
     }
     #difficultySelect {
       position:relative;
-      justify-content:flex-start;
-      padding:calc(var(--hud-height) + 48px) 16px 48px;
+      justify-content:center;
+      padding:calc(var(--hud-height) + 32px) 16px 48px;
       gap:32px;
       min-height:100vh;
     }
@@ -126,7 +126,7 @@
       width:100%;
       max-width:420px;
       display:flex;
-      justify-content:flex-start;
+      justify-content:center;
       margin:0 auto;
     }
     #difficultySelect .difficulty-grid {
@@ -136,10 +136,7 @@
       flex-direction:column;
       align-items:center;
       gap:16px;
-      margin-left:auto;
-      margin-right:auto;
-      margin-top:auto;
-      margin-bottom:auto;
+      margin:0 auto;
     }
     #difficultySelect .difficulty-grid .panelDiff {
       width:100%;
@@ -258,24 +255,23 @@
       display:none;
       flex-direction:column;
       align-items:center;
-      justify-content:flex-start;
+      justify-content:center;
       gap:32px;
-      padding:calc(var(--hud-height) + 72px) 16px 48px;
+      padding:calc(var(--hud-height) + 48px) 16px 48px;
       min-height:100vh;
     }
     #onlineMenu .menu-back-row {
       width:100%;
       max-width:420px;
       display:flex;
-      justify-content:flex-start;
+      justify-content:center;
       margin:0 auto;
     }
     .online-shell {
       display:flex;
       justify-content:center;
       width:100%;
-      margin-top:auto;
-      margin-bottom:auto;
+      margin:0 auto;
     }
     .online-card {
       width:100%;
@@ -1415,7 +1411,7 @@
     #scoreboard .score-divider { opacity:0.7; }
     .scoreboard-icon {
       --icon-open-rotate: 0deg;
-      --icon-open-translate: -4px;
+      --icon-open-translate: 0px;
       --icon-translate-y: 0px;
       --icon-rotate: 0deg;
       --icon-scale: 1;
@@ -1451,20 +1447,20 @@
     .scoreboard-icon.active {
       --icon-translate-y: var(--icon-open-translate);
       --icon-rotate: var(--icon-open-rotate);
-      --icon-scale: 1.05;
+      --icon-scale: 1.03;
     }
     .scoreboard-icon.active:hover {
-      --icon-scale: 1.12;
+      --icon-scale: 1.08;
     }
     #scoreboardToggle {
       --hud-icon-delay: 0.05s;
-      --icon-open-rotate: -120deg;
-      --icon-open-translate: -3px;
+      --icon-open-rotate: 90deg;
+      --icon-open-translate: 0px;
     }
     #settingsBtn {
       --hud-icon-delay: 0.15s;
-      --icon-open-rotate: 210deg;
-      --icon-open-translate: -3px;
+      --icon-open-rotate: 120deg;
+      --icon-open-translate: 0px;
     }
     @keyframes hudIconAppear {
       0% {
@@ -1485,12 +1481,20 @@
         animation:none;
         transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
       }
+      #scoreboardMenu,
+      #settingsModal {
+        transition:none;
+        transform:translate(-50%, 0) scale(1);
+      }
+      #settingsModal {
+        transform:translate(-50%, -50%) scale(1);
+      }
     }
     #scoreboardMenu {
       position:fixed;
       top:calc(10px + var(--hud-height) + 8px);
       left:50%;
-      transform:translateX(-50%);
+      transform:translate(-50%, -8px) scale(0.96);
       background:var(--color-surface);
       border:1px solid var(--color-border);
       border-radius:16px;
@@ -1501,8 +1505,18 @@
       gap:8px;
       z-index:890;
       width:min(260px, calc(100vw - 32px));
+      opacity:0;
+      pointer-events:none;
+      visibility:hidden;
+      transition:opacity .24s ease, transform .28s cubic-bezier(0.22, 1, 0.36, 1);
     }
     #scoreboardMenu.show { display:flex; }
+    #scoreboardMenu.visible {
+      opacity:1;
+      transform:translate(-50%, 0) scale(1);
+      pointer-events:auto;
+      visibility:visible;
+    }
     #scoreboardMenu button {
       width:100%;
       padding:10px 14px;
@@ -1551,17 +1565,32 @@
     }
 
     #settingsModal {
-      display:none; position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
+      display:none;
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, calc(-50% + 16px)) scale(0.95);
       background:var(--color-overlay);
       padding:26px 28px;
       border-radius:18px;
       border:1px solid var(--color-border);
       box-shadow:0 20px 44px rgba(15,23,42,0.35);
-      z-index:30; color:var(--color-text-primary);
+      z-index:900;
+      color:var(--color-text-primary);
       font-family:'Roboto','Manrope',sans-serif;
       min-width:300px;
       max-width:90vw;
+      opacity:0;
+      pointer-events:none;
+      visibility:hidden;
+      transition:opacity .26s ease, transform .32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #settingsModal.show { display:block; }
+    #settingsModal.visible {
+      opacity:1;
+      transform:translate(-50%, -50%) scale(1);
+      pointer-events:auto;
+      visibility:visible;
     }
     #settingsModal h2 {
       margin:0 0 20px;

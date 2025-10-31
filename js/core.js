@@ -189,7 +189,24 @@ function startNewRound() {
     if (scoreboardToggle && scoreboardToggle.classList.contains('active')) {
       playHudIconAnimation(scoreboardToggle, false);
     }
-    scoreboardMenu.classList.remove('show');
+    if (scoreboardMenu.classList.contains('show')) {
+      if (scoreboardMenu.classList.contains('visible')) {
+        scoreboardMenu.classList.remove('visible');
+        const onTransition = evt => {
+          if (evt && evt.target !== scoreboardMenu) return;
+          if (evt && evt.propertyName && evt.propertyName !== 'opacity') return;
+          scoreboardMenu.classList.remove('show');
+          scoreboardMenu.removeEventListener('transitionend', onTransition);
+        };
+        scoreboardMenu.addEventListener('transitionend', onTransition);
+        setTimeout(() => {
+          scoreboardMenu.classList.remove('show');
+          scoreboardMenu.removeEventListener('transitionend', onTransition);
+        }, 320);
+      } else {
+        scoreboardMenu.classList.remove('show');
+      }
+    }
     scoreboardMenu.setAttribute('aria-hidden', 'true');
     if (scoreboardBackdrop) scoreboardBackdrop.classList.remove('show');
     if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'false');
@@ -205,6 +222,9 @@ function startNewRound() {
     }
     scoreboardMenu.classList.add('show');
     scoreboardMenu.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      scoreboardMenu.classList.add('visible');
+    });
     if (scoreboardBackdrop) scoreboardBackdrop.classList.add('show');
     if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'true');
     if (scoreboardToggle) scoreboardToggle.classList.add('active');
@@ -2438,12 +2458,16 @@ function startNewRound() {
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
     if (typeof window.disconnectPeer === 'function') window.disconnectPeer();
     exitOnlineMode();
-    const settingsModalEl = document.getElementById('settingsModal');
-    if (settingsModalEl) {
-      settingsModalEl.style.display = 'none';
-      settingsModalEl.classList.remove('show');
+    if (typeof window.hideSettingsModal === 'function') {
+      window.hideSettingsModal({ immediate: true, returnFocus: false });
+    } else {
+      const settingsModalEl = document.getElementById('settingsModal');
+      if (settingsModalEl) {
+        settingsModalEl.classList.remove('visible', 'show');
+        settingsModalEl.setAttribute('aria-hidden', 'true');
+      }
+      if (settingsIcon) settingsIcon.classList.remove('active');
     }
-    if (settingsIcon) settingsIcon.classList.remove('active');
     ms.style.display = 'flex';
     if (ds) ds.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
@@ -2509,27 +2533,94 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
   };
 
-  const openSettings = () => {
-    if (settingsModal) {
-      settingsModal.style.display = 'block';
+  if (settingsModal) {
+    settingsModal.setAttribute('aria-hidden', 'true');
+  }
+
+  const showSettingsModal = () => {
+    if (!settingsModal) return;
+    hideHudMenu();
+    if (!settingsModal.classList.contains('show')) {
       settingsModal.classList.add('show');
     }
-    if (settingsBtn) {
+    settingsModal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      settingsModal.classList.add('visible');
+    });
+    if (settingsBtn && !settingsBtn.classList.contains('active')) {
       playHudIconAnimation(settingsBtn, true);
       settingsBtn.classList.add('active');
     }
+    const focusTarget = settingsModal.querySelector('button, input, select, [tabindex]:not([tabindex="-1"])');
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      try {
+        focusTarget.focus({ preventScroll: true });
+      } catch (err) {
+        focusTarget.focus();
+      }
+    }
   };
+
+  const hideSettingsModal = (options = {}) => {
+    if (!settingsModal) return;
+    if (!settingsModal.classList.contains('show')) {
+      settingsModal.setAttribute('aria-hidden', 'true');
+      if (settingsBtn) settingsBtn.classList.remove('active');
+      return;
+    }
+    const immediate = options.immediate === true;
+    const finalize = () => {
+      settingsModal.classList.remove('show');
+      settingsModal.setAttribute('aria-hidden', 'true');
+    };
+    if (immediate) {
+      settingsModal.classList.remove('visible');
+      finalize();
+    } else {
+      if (settingsModal.classList.contains('visible')) {
+        settingsModal.classList.remove('visible');
+        const onTransition = evt => {
+          if (evt && evt.target !== settingsModal) return;
+          if (evt && evt.propertyName && evt.propertyName !== 'opacity') return;
+          finalize();
+          settingsModal.removeEventListener('transitionend', onTransition);
+        };
+        settingsModal.addEventListener('transitionend', onTransition);
+        setTimeout(() => {
+          finalize();
+          settingsModal.removeEventListener('transitionend', onTransition);
+        }, 360);
+      } else {
+        finalize();
+      }
+    }
+    if (settingsBtn && settingsBtn.classList.contains('active')) {
+      playHudIconAnimation(settingsBtn, false);
+      settingsBtn.classList.remove('active');
+    }
+    if (options.returnFocus && settingsBtn && typeof settingsBtn.focus === 'function') {
+      try {
+        settingsBtn.focus({ preventScroll: true });
+      } catch (err) {
+        settingsBtn.focus();
+      }
+    }
+  };
+
+  window.hideSettingsModal = hideSettingsModal;
+
   if (settingsBtn && settingsModal) {
-    settingsBtn.onclick = openSettings;
+    settingsBtn.onclick = () => {
+      if (settingsModal.classList.contains('show') && settingsModal.classList.contains('visible')) {
+        hideSettingsModal({ returnFocus: false });
+      } else {
+        showSettingsModal();
+      }
+    };
   }
   if (settingsClose && settingsModal) {
     settingsClose.onclick = () => {
-      settingsModal.style.display = 'none';
-      settingsModal.classList.remove('show');
-      if (settingsBtn) {
-        playHudIconAnimation(settingsBtn, false);
-        settingsBtn.classList.remove('active');
-      }
+      hideSettingsModal({ returnFocus: true });
     };
   }
   const syncSoundControls = () => {
