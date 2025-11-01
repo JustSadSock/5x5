@@ -6,6 +6,42 @@ let startRoundTimer = null;
 let lastRoomId = null;
 let wasCreator = false;
 let intentionalClose = false;
+let connectionWatchdog = null;
+let pendingRoomActionTimer = null;
+let pendingRoomAction = null;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+
+let currentPlayerIndex = null;
+
+const CONNECT_TIMEOUT_MS = 10000;
+const ROOM_ACTION_TIMEOUT_MS = 8000;
+const ROOM_CODE_PATTERN = /^[A-Z0-9]{4}$/;
+const RECONNECT_BASE_DELAY_MS = 2000;
+const RECONNECT_BACKOFF_FACTOR = 1.5;
+const RECONNECT_MAX_DELAY_MS = 20000;
+const CONNECTIVITY_INTERVAL_MS = 3000;
+const CONNECTIVITY_TIMEOUT_MS = 2500;
+
+const runtimeConfig = typeof window !== 'undefined' ? (window.__CROSSLINE_RUNTIME__ || {}) : {};
+const API_ORIGIN = (() => {
+  if (typeof window === 'undefined') return null;
+  if (runtimeConfig.apiOrigin) return runtimeConfig.apiOrigin;
+  if (window.CROSSLINE_API_URL) return window.CROSSLINE_API_URL;
+  if (window.location && window.location.origin) return window.location.origin;
+  return null;
+})();
+
+let connectivityTimer = null;
+let connectivityHasInitialResult = false;
+
+const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
+const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
+const pasteRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('pasteRoomCode') : null;
+const roomInputField = typeof document !== 'undefined' ? document.getElementById('roomInput') : null;
+const onlineHint = typeof document !== 'undefined' ? document.getElementById('onlineHint') : null;
+let onlineHintDefault = null;
+let onlineHintTimer = null;
 // Connect to the dedicated WebSocket server by default. The URL can be
 // overridden by setting `window.WS_SERVER_URL` before this script runs or by
 // providing a `ws` query parameter in the page URL.
@@ -47,11 +83,91 @@ if (typeof window !== 'undefined') {
 
 WS_SERVER_URL = addNgrokBypassParam(WS_SERVER_URL);
 
-function updateConnectionStatus(text, color) {
+function updateConnectionStatus(text, state) {
   const el = document.getElementById('connectionStatus');
-  if (el) {
-    el.textContent = text;
-    if (color) el.style.color = color;
+  if (!el) return;
+  const textSpan = el.querySelector('.status-text');
+  if (textSpan) textSpan.textContent = text;
+  if (state) {
+    el.dataset.state = state;
+  } else {
+    delete el.dataset.state;
+  }
+}
+
+function showOnlineToast(type, message) {
+  if (!message) return;
+  if (!onlineHint) {
+    log(message);
+    return;
+  }
+  if (!onlineHintDefault) {
+    onlineHintDefault = typeof t === 'function' ? t('roomCodeHint') : (onlineHint.textContent || '');
+  }
+  onlineHint.textContent = message;
+  if (type) {
+    onlineHint.dataset.state = type;
+  } else {
+    onlineHint.removeAttribute('data-state');
+  }
+  if (onlineHintTimer) clearTimeout(onlineHintTimer);
+  onlineHintTimer = setTimeout(() => {
+    if (!onlineHint) return;
+    const fallback = typeof t === 'function' ? t('roomCodeHint') : (onlineHintDefault || '');
+    onlineHint.textContent = fallback;
+    onlineHint.removeAttribute('data-state');
+    onlineHintDefault = fallback;
+    onlineHintTimer = null;
+  }, 4000);
+}
+
+function scheduleConnectivityPoll() {
+  connectivityHasInitialResult = false;
+  if (connectivityTimer) clearTimeout(connectivityTimer);
+  if (typeof fetch !== 'function' || !API_ORIGIN) return;
+  const poll = async () => {
+    const statusEl = document.getElementById('connectionStatus');
+    const currentState = statusEl ? statusEl.dataset.state : null;
+    if (
+      !connectivityHasInitialResult &&
+      statusEl &&
+      (!socket || socket.readyState !== WebSocket.OPEN) &&
+      currentState !== 'connecting' &&
+      currentState !== 'reconnecting'
+    ) {
+      updateConnectionStatus(t('checkingConnection'), 'checking');
+    }
+    try {
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS) : null;
+      await fetch(API_ORIGIN, { method: 'HEAD', cache: 'no-store', signal: controller ? controller.signal : undefined });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        updateConnectionStatus(t('onlineStatus'), 'online');
+      }
+      connectivityHasInitialResult = true;
+    } catch (err) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        updateConnectionStatus(t('serverUnavailable'), 'offline');
+      }
+      connectivityHasInitialResult = true;
+    } finally {
+      connectivityTimer = setTimeout(poll, CONNECTIVITY_INTERVAL_MS);
+    }
+  };
+  poll();
+}
+
+function setRoomCodeDisplay(code) {
+  const codeEl = document.getElementById('roomCode');
+  if (codeEl) {
+    codeEl.textContent = code ? code : '----';
+  }
+  if (roomDisplay) {
+    roomDisplay.classList.toggle('empty', !code);
+  }
+  if (copyRoomCodeBtn) {
+    copyRoomCodeBtn.disabled = !code;
   }
 }
 
@@ -61,12 +177,39 @@ function resetRoomState() {
 }
 
 function clearRoomUI() {
-  const codeEl = document.getElementById('roomCode');
-  if (codeEl) codeEl.innerText = '';
-  const logEl = document.getElementById('log');
-  if (logEl) logEl.innerHTML = '';
+  setRoomCodeDisplay(null);
   const btn = document.getElementById('btn-next');
   if (btn) btn.disabled = true;
+}
+
+function clearPendingRoomAction(action) {
+  if (pendingRoomAction && (!action || action === pendingRoomAction)) {
+    clearTimeout(pendingRoomActionTimer);
+    pendingRoomActionTimer = null;
+    pendingRoomAction = null;
+  }
+}
+
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function resetReconnectBackoff() {
+  reconnectAttempts = 0;
+  clearReconnectTimer();
+}
+
+function startRoomActionWatch(action) {
+  clearPendingRoomAction();
+  pendingRoomAction = action;
+  pendingRoomActionTimer = setTimeout(() => {
+    pendingRoomActionTimer = null;
+    const key = action === 'join' ? 'roomJoinTimeout' : 'roomCreateTimeout';
+    log('⛔ ' + t(key));
+  }, ROOM_ACTION_TIMEOUT_MS);
 }
 
 function cleanupRoom() {
@@ -74,6 +217,8 @@ function cleanupRoom() {
     clearTimeout(startRoundTimer);
     startRoundTimer = null;
   }
+  clearPendingRoomAction();
+  resetReconnectBackoff();
   if (socket) {
     socket.removeEventListener('close', handleClose);
     socket.removeEventListener('message', handleMessage);
@@ -82,9 +227,24 @@ function cleanupRoom() {
     socket = null; // ensure old connection isn't reused
   }
   isConnected = false;
-  updateConnectionStatus(t('offline'), 'orange');
+  if (connectionWatchdog) {
+    clearTimeout(connectionWatchdog);
+    connectionWatchdog = null;
+  }
+  updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
   clearRoomUI();
+  currentPlayerIndex = null;
+  if (onlineHintTimer) {
+    clearTimeout(onlineHintTimer);
+    onlineHintTimer = null;
+  }
+  if (onlineHint) {
+    const fallback = typeof t === 'function' ? t('roomCodeHint') : (onlineHintDefault || onlineHint.textContent || '');
+    onlineHint.textContent = fallback;
+    onlineHint.removeAttribute('data-state');
+    onlineHintDefault = fallback;
+  }
   if (typeof window.onOnlineDisconnected === 'function') {
     window.onOnlineDisconnected();
   }
@@ -100,36 +260,84 @@ function initSocket(onReady) {
     if (onReady) socket.addEventListener('open', onReady, { once: true });
     return;
   }
+  clearReconnectTimer();
   socket = new WebSocket(addNgrokBypassParam(WS_SERVER_URL));
-  updateConnectionStatus(t('connecting'), 'yellow');
+  updateConnectionStatus(t('connecting'), 'connecting');
+  if (connectionWatchdog) clearTimeout(connectionWatchdog);
+  connectionWatchdog = setTimeout(() => {
+    connectionWatchdog = null;
+    if (!socket || socket.readyState === WebSocket.OPEN) return;
+    log('⛔ ' + t('serverUnavailable'));
+    updateConnectionStatus(t('serverUnavailable'), 'offline');
+    showOnlineToast('error', t('serverUnavailable'));
+    try {
+      socket.close();
+    } catch (err) {}
+  }, CONNECT_TIMEOUT_MS);
   socket.addEventListener('open', () => {
     isConnected = true;
+    resetReconnectBackoff();
+    if (connectionWatchdog) {
+      clearTimeout(connectionWatchdog);
+      connectionWatchdog = null;
+    }
     log('✅ ' + t('onlineStatus')); // connection established
+    showOnlineToast('success', t('connectedToast'));
     if (typeof socket.pong === 'function') {
       socket.addEventListener('ping', () => {
         try { socket.pong(); } catch (e) {}
       });
     }
     if (!onReady && (wasCreator || lastRoomId)) {
-      updateConnectionStatus(t('rejoin'), 'lime');
+      updateConnectionStatus(t('rejoin'), 'online');
       const msg = wasCreator ? { type: 'create' } : { type: 'join', roomId: lastRoomId };
+      startRoomActionWatch(wasCreator ? 'create' : 'join');
       socket.send(JSON.stringify(msg));
     } else {
-      updateConnectionStatus(t('onlineStatus'), 'lime');
+      updateConnectionStatus(t('onlineStatus'), 'online');
     }
     if (onReady) onReady();
+  });
+  socket.addEventListener('error', () => {
+    if (connectionWatchdog) {
+      clearTimeout(connectionWatchdog);
+      connectionWatchdog = null;
+    }
+    if (!isConnected) {
+      log('⛔ ' + t('serverUnavailable'));
+      updateConnectionStatus(t('serverUnavailable'), 'offline');
+      showOnlineToast('error', t('serverUnavailable'));
+    }
   });
   handleClose = function handleClose(event) {
     if (event.target !== socket) return;  // ignore old sockets
     isConnected = false;
     log('⚠ ' + t('connection_lost'));
+    showOnlineToast('error', t('connection_lost'));
+    if (connectionWatchdog) {
+      clearTimeout(connectionWatchdog);
+      connectionWatchdog = null;
+    }
+    clearPendingRoomAction();
     if (intentionalClose) {
       intentionalClose = false;
-      updateConnectionStatus(t('offline'), 'orange');
+      updateConnectionStatus(t('offline'), 'offline');
       return;
     }
-    updateConnectionStatus(t('reconnecting'), 'orange');
-    setTimeout(() => initSocket(), 2000);
+    updateConnectionStatus(t('reconnecting'), 'reconnecting');
+    clearReconnectTimer();
+    const attempt = Math.min(reconnectAttempts + 1, 20);
+    reconnectAttempts = attempt;
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(RECONNECT_BACKOFF_FACTOR, attempt - 1),
+      RECONNECT_MAX_DELAY_MS
+    );
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      if (!socket || socket.readyState === WebSocket.CLOSED) {
+        initSocket();
+      }
+    }, delay);
   };
   socket.addEventListener('close', handleClose);
   handleMessage = function handleMessage(event) {
@@ -146,11 +354,14 @@ function initSocket(onReady) {
       return;
     }
     if (data.type === 'room_created') {
-      const el = document.getElementById('roomCode');
-      if (el) el.innerText = `${t('room')}: ${data.roomId}`;
+      setRoomCodeDisplay(data.roomId);
       lastRoomId = data.roomId;
+      clearPendingRoomAction('create');
+      showOnlineToast('success', t('roomCreatedToast', { code: data.roomId }));
     }
     if (data.type === 'start_game') {
+      clearPendingRoomAction('join');
+      currentPlayerIndex = typeof data.playerIndex === 'number' ? data.playerIndex : null;
       startOnlineGame(data.playerIndex);
     }
     if (data.type === 'opponent_move') {
@@ -158,7 +369,9 @@ function initSocket(onReady) {
     }
     if (data.type === 'player_confirmed') {
       const who = data.playerIndex === 0 ? t('playerA') : t('playerB');
-      showConfirmMessage(who + ' ' + t('confirmed'));
+      if (currentPlayerIndex === null || data.playerIndex !== currentPlayerIndex) {
+        showConfirmMessage(who + ' ' + t('confirmed'));
+      }
       log(who + ' ' + t('confirmed'));
       if (typeof window.onPlayerConfirmed === 'function') {
         window.onPlayerConfirmed(data.playerIndex);
@@ -175,16 +388,30 @@ function initSocket(onReady) {
       console.log('start_round moves:', data.moves);
       onStartRound(data.moves);
     }
-    if (data.type === 'error') log('⚠ ' + data.message);
+    if (data.type === 'error') {
+      clearPendingRoomAction();
+      let messageKey = null;
+      if (data.message === 'Room unavailable') messageKey = 'roomNotFound';
+      else if (data.message === 'Waiting for opponent') messageKey = 'waitingForOpponent';
+      else if (data.message === 'Moves already confirmed') messageKey = 'movesAlreadyConfirmed';
+      else if (data.message === 'Must send exactly 5 moves') messageKey = 'mustSendFiveMoves';
+      const msg = messageKey ? t(messageKey) : data.message;
+      log('⚠ ' + msg);
+      showOnlineToast('error', msg);
+    }
     if (data.type === 'state_ok') log('✔ ' + t('state_ok'));
     if (data.type === 'state_mismatch') log('❌ ' + t('state_mismatch'));
     if (data.type === 'opponent_left') {
-      log('⚠ ' + t('opponent_left_room'));
+      const msg = t('opponent_left_room');
+      log('⚠ ' + msg);
+      showOnlineToast('error', msg);
       cleanupRoom();
       showOpponentLeftModal();
     }
     if (data.type === 'room_expired') {
-      log('⌛ ' + t('room_closed_inactivity'));
+      const msg = t('room_closed_inactivity');
+      log('⌛ ' + msg);
+      showOnlineToast('error', msg);
       cleanupRoom();
     }
   };
@@ -196,16 +423,34 @@ function createRoom() {
   wasCreator = true;
   lastRoomId = null;
   initSocket(() => {
-    socket.send(JSON.stringify({ type: 'create' }));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      startRoomActionWatch('create');
+      socket.send(JSON.stringify({ type: 'create' }));
+    }
   });
 }
 
 function joinRoom(roomId) {
+  const input = document.getElementById('roomInput');
+  const normalized = (roomId || '').toUpperCase();
+  if (!ROOM_CODE_PATTERN.test(normalized)) {
+    log('⚠ ' + t('invalidRoomCode'));
+    showOnlineToast('error', t('invalidRoomCode'));
+    if (input) input.classList.add('input-error');
+    return;
+  }
+  if (input) {
+    input.value = normalized;
+    input.classList.remove('input-error');
+  }
   cleanupRoom();
   wasCreator = false;
-  lastRoomId = roomId;
+  lastRoomId = normalized;
   initSocket(() => {
-    socket.send(JSON.stringify({ type: 'join', roomId }));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      startRoomActionWatch('join');
+      socket.send(JSON.stringify({ type: 'join', roomId: normalized }));
+    }
   });
 }
 
@@ -239,19 +484,44 @@ function sendState(state) {
 }
 
 function log(text) {
-  const el = document.getElementById('log');
-  if (el) el.innerHTML += text + '<br>';
+  if (!text) return;
+  try {
+    console.log('[online]', text);
+  } catch (err) {
+    /* ignore console errors */
+  }
 }
 
 function showConfirmMessage(text) {
-  const el = document.getElementById('confirmToast');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(() => {
-    el.classList.remove('show');
-  }, 2000);
+  const root = document.documentElement;
+  const scoreboard = document.getElementById('scoreboard');
+  const messageEl = document.getElementById('scoreboardMessage');
+  if (scoreboard && messageEl) {
+    if (typeof window.closeHudMenu === 'function') {
+      try {
+        window.closeHudMenu();
+      } catch (err) {
+        /* ignore close errors */
+      }
+    }
+    messageEl.textContent = text;
+    messageEl.setAttribute('aria-hidden', 'false');
+    scoreboard.classList.add('showing-message');
+    scoreboard.setAttribute('aria-busy', 'true');
+    const scoreRow = scoreboard.querySelector('.scoreboard-scores');
+    if (scoreRow) scoreRow.setAttribute('aria-hidden', 'true');
+    clearTimeout(messageEl._hideTimer);
+    messageEl._hideTimer = setTimeout(() => {
+      scoreboard.classList.remove('showing-message');
+      scoreboard.removeAttribute('aria-busy');
+      messageEl.setAttribute('aria-hidden', 'true');
+      const currentScoreRow = scoreboard.querySelector('.scoreboard-scores');
+      if (currentScoreRow) currentScoreRow.removeAttribute('aria-hidden');
+      messageEl._hideTimer = null;
+    }, 2400);
+    if (root) root.style.setProperty('--toast-offset', '0px');
+    return;
+  }
 }
 
 function showOpponentLeftModal() {
@@ -286,8 +556,68 @@ function showOpponentLeftModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateConnectionStatus(t('offline'), 'orange');
+  updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
+  setRoomCodeDisplay(null);
+  scheduleConnectivityPoll();
+  if (pasteRoomCodeBtn) {
+    if (!(navigator.clipboard && navigator.clipboard.readText) || !roomInputField) {
+      pasteRoomCodeBtn.disabled = true;
+    } else {
+      pasteRoomCodeBtn.addEventListener('click', async () => {
+        try {
+          const raw = await navigator.clipboard.readText();
+          const sanitized = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!sanitized) {
+            showOnlineToast('error', t('pasteFail'));
+            return;
+          }
+          const match = sanitized.match(ROOM_CODE_PATTERN);
+          const code = match ? match[0] : sanitized.slice(0, 4);
+          if (!ROOM_CODE_PATTERN.test(code)) {
+            showOnlineToast('error', t('invalidRoomCode'));
+            return;
+          }
+          roomInputField.value = code;
+          roomInputField.classList.remove('input-error');
+          roomInputField.dispatchEvent(new Event('input', { bubbles: true }));
+          roomInputField.focus();
+          showOnlineToast('success', t('pasteSuccess', { code }));
+        } catch (err) {
+          console.warn('Paste failed', err);
+          showOnlineToast('error', t('pasteFail'));
+        }
+      });
+    }
+  }
+  if (copyRoomCodeBtn) {
+    copyRoomCodeBtn.disabled = true;
+    copyRoomCodeBtn.addEventListener('click', async () => {
+      const code = (document.getElementById('roomCode')?.textContent || '').trim();
+      if (!code || code === '----') {
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(code);
+        } else {
+          const tmp = document.createElement('textarea');
+          tmp.value = code;
+          tmp.setAttribute('readonly', '');
+          tmp.style.position = 'absolute';
+          tmp.style.opacity = '0';
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+        }
+        showOnlineToast('success', t('copySuccess'));
+      } catch (err) {
+        console.warn('Copy failed', err);
+        showOnlineToast('error', t('copyFail'));
+      }
+    });
+  }
 });
 
 window.resetRoomState = resetRoomState;

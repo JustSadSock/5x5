@@ -5,41 +5,100 @@ let canPlay = false;
 let isOnline = false;
 let soundVolume = parseFloat(localStorage.getItem('volume'));
 if (isNaN(soundVolume)) soundVolume = 1;
+soundVolume = Math.min(Math.max(soundVolume, 0), 1);
+const storedMuted = localStorage.getItem('soundMuted');
+let soundMuted = storedMuted === '1';
+if (storedMuted === null && soundVolume === 0) soundMuted = true;
 let replaySpeed = 1;
 let replayFrames = [];
 let replayIndex = 0;
 let replayTimer = null;
+let replayLoop = null;
 let replayPaused = false;
 let recorder = null;
 let recordedChunks = [];
+let recorderMime = 'video/webm';
+let recorderExt = 'webm';
+let recorderStream = null;
+let recorderCanvas = null;
+let attackMode = false;
+let attackModeOwner = null;
+
+const hudMotionQuery = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+  ? window.matchMedia('(prefers-reduced-motion: reduce)')
+  : null;
+
+function playHudIconAnimation(icon, opening) {
+  if (!icon || typeof icon.animate !== 'function') return;
+  if (hudMotionQuery && hudMotionQuery.matches) return;
+  if (opening && icon.classList.contains('active')) return;
+  if (!opening && !icon.classList.contains('active')) return;
+  const styles = getComputedStyle(icon);
+  const rotateValue = parseFloat(styles.getPropertyValue('--icon-open-rotate'));
+  const translateValue = parseFloat(styles.getPropertyValue('--icon-open-translate'));
+  const targetRotate = Number.isFinite(rotateValue) ? rotateValue : 0;
+  const targetTranslate = Number.isFinite(translateValue) ? translateValue : -3;
+  if (icon._hudAnimation && typeof icon._hudAnimation.cancel === 'function') {
+    icon._hudAnimation.cancel();
+  }
+  const frames = opening
+    ? [
+        { transform: 'translateY(0px) rotate(0deg) scale(0.88)' },
+        { transform: `translateY(${targetTranslate - 1}px) rotate(${targetRotate * 0.78}deg) scale(1.12)` },
+        { transform: `translateY(${targetTranslate}px) rotate(${targetRotate}deg) scale(1)` }
+      ]
+    : [
+        { transform: `translateY(${targetTranslate}px) rotate(${targetRotate}deg) scale(1.04)` },
+        { transform: `translateY(${targetTranslate * 0.45}px) rotate(${targetRotate * 0.4}deg) scale(0.9)` },
+        { transform: 'translateY(0px) rotate(0deg) scale(1)' }
+      ];
+  const animation = icon.animate(frames, {
+    duration: 420,
+    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    fill: 'forwards'
+  });
+  icon._hudAnimation = animation;
+  const clear = () => {
+    if (icon._hudAnimation === animation) {
+      icon._hudAnimation = null;
+    }
+  };
+  if (typeof animation.addEventListener === 'function') {
+    animation.addEventListener('finish', clear, { once: true });
+    animation.addEventListener('cancel', clear, { once: true });
+  } else {
+    animation.onfinish = clear;
+    animation.oncancel = clear;
+  }
+}
 
 const mySide = () => (playerIndex === 0 ? 'A' : 'B');
 
-function placeSymbol(x, y, who) {
+function placeSymbol(x, y) {
   const cell = document.getElementById(`c${x}${y}`);
   if (cell) {
-    cell.textContent = who === 0 ? 'X' : 'O';
+    cell.textContent = '';
+    cell.classList.remove('cell-marked');
   }
 }
 
 function onCellClick(x, y) {
-  if (!canPlay) return;
-  if (localMoves.length >= 5) return;
-  localMoves.push({ x, y });
-  applyMove({ x, y }, playerIndex);
-  // confirmation handled via Next button in online mode
-  if (localMoves.length === 5) {
-    updateUI();
+  if (typeof window.toggleCellMark === 'function') {
+    window.toggleCellMark(x, y);
+    return;
   }
+  const cell = document.getElementById(`c${x}${y}`);
+  if (!cell) return;
+  cell.classList.toggle('cell-marked');
 }
 
 function handleOpponentMove(move) {
-  placeSymbol(move.x, move.y, 1 - playerIndex);
+  placeSymbol(move.x, move.y);
   yourTurn = true;
 }
 
-function applyMove(move, who) {
-  placeSymbol(move.x, move.y, who);
+function applyMove(move) {
+  placeSymbol(move.x, move.y);
 }
 
 function startNewRound() {
@@ -75,7 +134,12 @@ function startNewRound() {
   let isReplaying = false;
   let isTutorial = false;
   let tutorialIndex = 0;
-
+  let activeTutorialStep = null;
+  let markedCells = { A: new Set(), B: new Set() };
+  let markedOwner = null;
+  let activeResultOverlay = null;
+  let resultOverlaySuppressed = false;
+  let displayedRound = 0;
   const ms = document.getElementById('modeSelect');
   const ds = document.getElementById('difficultySelect');
   const b1p = document.getElementById('btn1p');
@@ -89,22 +153,208 @@ function startNewRound() {
   const onlineCreate = document.getElementById('onlineCreate');
   const onlineJoin = document.getElementById('onlineJoin');
   const roomInput = document.getElementById('roomInput');
+  if (roomInput) {
+    roomInput.addEventListener('input', () => {
+      roomInput.classList.remove('input-error');
+    });
+  }
   const board = document.getElementById('board');
+  const gameArea = document.getElementById('gameArea');
   const ui = document.getElementById('ui');
   const phaseEl = document.getElementById('phase');
-  const pcs = [...Array(STEPS)].map((_, i) => document.getElementById('pc' + i));
+  const planCells = [...Array(STEPS)].map((_, i) => document.getElementById('pc' + i));
+  const planValues = planCells.map(cell => cell ? cell.querySelector('.planStepValue') : null);
   const acts = Array.from(document.querySelectorAll('#actions button'));
+  const actionGrid = document.getElementById('actions');
+  const moveButtons = acts.filter(b => DXY[b.dataset.act]);
+  const attackButton = acts.find(b => b.dataset.act === 'attack');
+  const shieldButton = acts.find(b => b.dataset.act === 'shield');
   const btnDel = document.getElementById('btn-del');
   const btnNext = document.getElementById('btn-next');
-  const atkOv = document.getElementById('atkOverlay');
+  const scoreboard = document.getElementById('scoreboard');
+  const scoreboardToggle = document.getElementById('scoreboardToggle');
+  const scoreboardMenu = document.getElementById('scoreboardMenu');
+  const scoreboardBackdrop = document.getElementById('scoreboardBackdrop');
+  const settingsIcon = document.getElementById('settingsBtn');
+  const roundBadge = document.getElementById('roundBadge');
+  const roundNumberEl = roundBadge ? roundBadge.querySelector('.round-number') : null;
   const scoreA = document.getElementById('scoreA');
   const scoreB = document.getElementById('scoreB');
   const scoreReset = document.getElementById('scoreReset');
+  const root = document.documentElement;
+  let layoutScaleRaf = null;
+  let hudMenuOpen = false;
+
+  function closeHudMenu() {
+    if (!scoreboardMenu) return;
+    if (scoreboardToggle && scoreboardToggle.classList.contains('active')) {
+      playHudIconAnimation(scoreboardToggle, false);
+    }
+    if (scoreboardMenu.classList.contains('show')) {
+      if (scoreboardMenu.classList.contains('visible')) {
+        scoreboardMenu.classList.remove('visible');
+        const onTransition = evt => {
+          if (evt && evt.target !== scoreboardMenu) return;
+          if (evt && evt.propertyName && evt.propertyName !== 'opacity') return;
+          scoreboardMenu.classList.remove('show');
+          scoreboardMenu.removeEventListener('transitionend', onTransition);
+        };
+        scoreboardMenu.addEventListener('transitionend', onTransition);
+        setTimeout(() => {
+          scoreboardMenu.classList.remove('show');
+          scoreboardMenu.removeEventListener('transitionend', onTransition);
+        }, 320);
+      } else {
+        scoreboardMenu.classList.remove('show');
+      }
+    }
+    scoreboardMenu.setAttribute('aria-hidden', 'true');
+    if (scoreboardBackdrop) scoreboardBackdrop.classList.remove('show');
+    if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'false');
+    if (scoreboardToggle) scoreboardToggle.classList.remove('active');
+    hudMenuOpen = false;
+  }
+
+  function openHudMenu() {
+    if (!scoreboardMenu) return;
+    if (scoreboardMenu.classList.contains('show')) return;
+    if (scoreboardToggle) {
+      playHudIconAnimation(scoreboardToggle, true);
+    }
+    scoreboardMenu.classList.add('show');
+    scoreboardMenu.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      scoreboardMenu.classList.add('visible');
+    });
+    if (scoreboardBackdrop) scoreboardBackdrop.classList.add('show');
+    if (scoreboardToggle) scoreboardToggle.setAttribute('aria-expanded', 'true');
+    if (scoreboardToggle) scoreboardToggle.classList.add('active');
+    const focusTarget = scoreboardMenu.querySelector('button:not([disabled])');
+    if (focusTarget) focusTarget.focus();
+    hudMenuOpen = true;
+  }
+
+  function syncHudSpacing() {
+    if (!gameArea) return;
+    if (!scoreboard) {
+      root.style.removeProperty('--hud-stack-offset');
+      gameArea.style.marginTop = '';
+      return;
+    }
+    const rect = scoreboard.getBoundingClientRect();
+    if (!rect || rect.height <= 0) {
+      root.style.removeProperty('--hud-stack-offset');
+      gameArea.style.marginTop = '';
+      return;
+    }
+    const computed = getComputedStyle(gameArea);
+    const gapStr = (computed.rowGap && computed.rowGap !== 'normal') ? computed.rowGap : computed.gap;
+    let gapValue = parseFloat(gapStr);
+    if (!Number.isFinite(gapValue)) gapValue = 0;
+    const offset = Math.ceil(rect.bottom + gapValue);
+    root.style.setProperty('--hud-stack-offset', `${offset}px`);
+    gameArea.style.marginTop = '';
+  }
+
+  function recalcLayoutScale() {
+    layoutScaleRaf = null;
+    if (!board || !ui) return;
+    const prev = getComputedStyle(root).getPropertyValue('--ui-scale') || '1';
+    root.style.setProperty('--ui-scale', '1');
+    const scoreboardRect = scoreboard ? scoreboard.getBoundingClientRect() : null;
+    const boardRect = board.getBoundingClientRect();
+    const uiRect = ui.getBoundingClientRect();
+    if (boardRect.width === 0 || boardRect.height === 0) {
+      root.style.setProperty('--ui-scale', prev.trim() || '1');
+      return;
+    }
+    const rects = [boardRect, uiRect];
+    if (scoreboardRect && scoreboardRect.width > 0 && scoreboardRect.height > 0) {
+      rects.push(scoreboardRect);
+    }
+    let minLeft = rects[0].left;
+    let maxRight = rects[0].right;
+    let minTop = rects[0].top;
+    let maxBottom = rects[0].bottom;
+    for (let i = 1; i < rects.length; i += 1) {
+      const rect = rects[i];
+      if (rect.left < minLeft) minLeft = rect.left;
+      if (rect.right > maxRight) maxRight = rect.right;
+      if (rect.top < minTop) minTop = rect.top;
+      if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+    }
+    const totalWidth = Math.max(300, maxRight - minLeft);
+    const totalHeight = Math.max(320, maxBottom - minTop);
+    const availableWidth = Math.max(320, window.innerWidth - 32);
+    const availableHeight = Math.max(320, window.innerHeight - 32);
+    let scale = Math.min(1, availableWidth / totalWidth, availableHeight / totalHeight);
+    if (!Number.isFinite(scale) || scale <= 0) {
+      root.style.setProperty('--ui-scale', prev.trim() || '1');
+      return;
+    }
+    scale = Math.max(0.45, Math.min(scale, 1));
+    root.style.setProperty('--ui-scale', scale.toFixed(3));
+    requestAnimationFrame(syncHudSpacing);
+  }
+
+  function updateLayoutScale() {
+    if (layoutScaleRaf !== null) cancelAnimationFrame(layoutScaleRaf);
+    layoutScaleRaf = requestAnimationFrame(recalcLayoutScale);
+  }
+
+  if (scoreboardMenu) {
+    scoreboardMenu.setAttribute('aria-hidden', 'true');
+    scoreboardMenu.addEventListener('click', evt => {
+      if (evt.target instanceof HTMLElement && evt.target.closest('button')) {
+        closeHudMenu();
+      }
+    });
+  }
+  if (scoreboardBackdrop) {
+    scoreboardBackdrop.addEventListener('click', closeHudMenu);
+  }
+  if (scoreboardToggle && scoreboardMenu) {
+    scoreboardToggle.setAttribute('aria-expanded', 'false');
+    scoreboardToggle.addEventListener('click', () => {
+      if (scoreboardMenu.classList.contains('show')) {
+        closeHudMenu();
+      } else {
+        openHudMenu();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', evt => {
+    if (evt.key === 'Escape' && hudMenuOpen) {
+      closeHudMenu();
+    }
+  });
+
+  window.closeHudMenu = closeHudMenu;
+
+  window.addEventListener('resize', updateLayoutScale);
+  window.addEventListener('orientationchange', updateLayoutScale);
+  window.addEventListener('resize', refreshTutorialHighlight);
+  window.addEventListener('orientationchange', refreshTutorialHighlight);
+
   const tutorialScript = [
-    { trigger: 'start', key: 'tutorial1' },
-    { trigger: 'afterMove', key: 'tutorial2' },
-    { trigger: 'afterConfirm', key: 'tutorial3' }
+    { key: 'tutorialIntro', highlight: '#board', hint: 'tutorialIntroHint' },
+    { key: 'tutorialGoal', highlight: '#scoreboard', hint: 'tutorialGoalHint' },
+    { key: 'tutorialMovePrompt', highlight: '#actions', hint: 'tutorialMoveHint', mode: 'practice', expect: 'moveQueued', focus: '#actions [data-act="up"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialPlanPrompt', highlight: '#planIndicator', hint: 'tutorialPlanHint' },
+    { key: 'tutorialDirectionRule', highlight: '#planIndicator', hint: 'tutorialDirectionRuleHint' },
+    { key: 'tutorialAttackPrompt', highlight: '#actions [data-act="attack"]', hint: 'tutorialAttackHint', mode: 'practice', expect: 'attackMode', focus: '#actions [data-act="attack"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialAttackDirPrompt', highlight: '#actions', hint: 'tutorialAttackDirHint', mode: 'practice', expect: 'attackQueued', focus: '#actions [data-act="right"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialShieldPrompt', highlight: '#actions [data-act="shield"]', hint: 'tutorialShieldHint', mode: 'practice', expect: 'shieldQueued', focus: '#actions [data-act="shield"]', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialConfirmPrompt', highlight: '#btn-next', hint: 'tutorialConfirmHint', mode: 'practice', expect: 'roundStarted', focus: '#btn-next', buttonKey: 'tutorialTryButton' },
+    { key: 'tutorialWrap', highlight: '#gameArea', hint: 'tutorialWrapHint', buttonKey: 'tutorialFinish' }
   ];
+  const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
+  let pendingAttackDirs = [];
+  let tutorialExpectEvent = null;
+  let tutorialHighlightSelector = null;
+  let tutorialHighlightRect = null;
+  let tutorialCard = null;
 
   function resetOnlineFlags() {
     onlineConfirmed = { A: false, B: false };
@@ -112,43 +362,334 @@ function startNewRound() {
     revealReady = false;
   }
 
-  function showTutorial(event) {
+  function clearAttackButtons() {
+    pendingAttackDirs = [];
+    moveButtons.forEach(btn => {
+      btn.classList.remove('attack-selected', 'attack-disabled');
+      btn.disabled = false;
+    });
+    if (actionGrid) {
+      actionGrid.classList.remove('attack-mode');
+    }
+  }
+
+  function hideAttackOverlay(options = {}) {
+    attackMode = false;
+    attackModeOwner = null;
+    clearAttackButtons();
+    pendingAttackDirs = [];
+    if (attackButton) {
+      attackButton.classList.remove('blocked');
+      attackButton.disabled = false;
+    }
+    if (shieldButton) {
+      shieldButton.classList.remove('blocked');
+      shieldButton.disabled = false;
+    }
+    if (!options || !options.silent) {
+      updateUI();
+    }
+  }
+
+  function hideTutorialPrompt() {
+    if (!tutorialPrompt) return;
+    tutorialPrompt.classList.remove('show');
+    tutorialPrompt.setAttribute('aria-hidden', 'true');
+  }
+
+  function showTutorialPrompt() {
+    if (!tutorialPrompt) return;
+    tutorialPrompt.classList.add('show');
+    tutorialPrompt.setAttribute('aria-hidden', 'false');
+    if (tutorialPromptStart) {
+      tutorialPromptStart.focus();
+    } else if (tutorialPromptSkip) {
+      tutorialPromptSkip.focus();
+    }
+  }
+
+  function applyTutorialHighlight(selector) {
+    if (!tutorialHighlightEl) return;
+    tutorialHighlightSelector = selector || null;
+    if (!selector) {
+      tutorialHighlightRect = null;
+      tutorialHighlightEl.classList.remove('show');
+      requestAnimationFrame(() => positionTutorialCard());
+      return;
+    }
+    const target = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!target) {
+      tutorialHighlightRect = null;
+      tutorialHighlightEl.classList.remove('show');
+      requestAnimationFrame(() => positionTutorialCard());
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const pad = 18;
+    const left = Math.max(8, rect.left - pad);
+    const top = Math.max(8, rect.top - pad);
+    const right = Math.min(window.innerWidth - 8, rect.right + pad);
+    const bottom = Math.min(window.innerHeight - 8, rect.bottom + pad);
+    tutorialHighlightRect = {
+      left,
+      top,
+      right,
+      bottom,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top)
+    };
+    tutorialHighlightEl.style.left = `${left}px`;
+    tutorialHighlightEl.style.top = `${top}px`;
+    tutorialHighlightEl.style.width = `${Math.max(0, right - left)}px`;
+    tutorialHighlightEl.style.height = `${Math.max(0, bottom - top)}px`;
+    tutorialHighlightEl.classList.add('show');
+    requestAnimationFrame(() => positionTutorialCard());
+  }
+
+  function clearTutorialHighlight() {
+    if (!tutorialHighlightEl) return;
+    tutorialHighlightSelector = null;
+    tutorialHighlightRect = null;
+    tutorialHighlightEl.classList.remove('show');
+    if (tutorialCard) {
+      tutorialCard.style.removeProperty('left');
+      tutorialCard.style.removeProperty('top');
+      tutorialCard.style.removeProperty('transform');
+    }
+    requestAnimationFrame(() => positionTutorialCard());
+  }
+
+  function refreshTutorialHighlight() {
+    if (!tutorialHighlightSelector) return;
+    requestAnimationFrame(() => applyTutorialHighlight(tutorialHighlightSelector));
+  }
+
+  function positionTutorialCard() {
+    if (!tutOv || !tutorialCard) return;
+    if (!tutOv.classList.contains('show')) {
+      tutorialCard.style.removeProperty('left');
+      tutorialCard.style.removeProperty('top');
+      tutorialCard.style.removeProperty('transform');
+      return;
+    }
+    const margin = 20;
+    const viewportW = window.innerWidth || document.documentElement.clientWidth;
+    const viewportH = window.innerHeight || document.documentElement.clientHeight;
+    const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+    const prevTransform = tutorialCard.style.transform;
+    tutorialCard.style.transform = 'none';
+    const cardWidth = tutorialCard.offsetWidth || tutorialCard.getBoundingClientRect().width || 320;
+    const cardHeight = tutorialCard.offsetHeight || tutorialCard.getBoundingClientRect().height || 200;
+    tutorialCard.style.transform = prevTransform;
+    let left = (viewportW - cardWidth) / 2;
+    let top = (viewportH - cardHeight) / 2;
+    if (tutorialHighlightRect) {
+      const rect = tutorialHighlightRect;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const positions = [
+        { left: centerX - cardWidth / 2, top: rect.bottom + margin },
+        { left: centerX - cardWidth / 2, top: rect.top - margin - cardHeight },
+        { left: rect.right + margin, top: centerY - cardHeight / 2 },
+        { left: rect.left - margin - cardWidth, top: centerY - cardHeight / 2 }
+      ];
+      const fits = positions.find(pos =>
+        pos.left >= margin &&
+        pos.top >= margin &&
+        pos.left + cardWidth <= viewportW - margin &&
+        pos.top + cardHeight <= viewportH - margin
+      );
+      if (fits) {
+        left = fits.left;
+        top = fits.top;
+      } else {
+        left = clamp(centerX - cardWidth / 2, margin, Math.max(margin, viewportW - margin - cardWidth));
+        const below = rect.bottom + margin;
+        const above = rect.top - margin - cardHeight;
+        if (below + cardHeight <= viewportH - margin) {
+          top = below;
+        } else if (above >= margin) {
+          top = above;
+        } else {
+          top = clamp(centerY - cardHeight / 2, margin, Math.max(margin, viewportH - margin - cardHeight));
+        }
+      }
+    }
+    left = clamp(left, margin, Math.max(margin, viewportW - margin - cardWidth));
+    top = clamp(top, margin, Math.max(margin, viewportH - margin - cardHeight));
+    tutorialCard.style.left = `${Math.round(left)}px`;
+    tutorialCard.style.top = `${Math.round(top)}px`;
+    tutorialCard.style.transform = 'translate(0, 0)';
+  }
+
+  function stopTutorial(markComplete) {
+    isTutorial = false;
+    tutorialExpectEvent = null;
+    activeTutorialStep = null;
+    clearTutorialHighlight();
+    if (tutOv) {
+      tutOv.classList.remove('show');
+      tutOv.setAttribute('aria-hidden', 'true');
+    }
+    if (markComplete) {
+      try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+    }
+    hideTutorialPrompt();
+  }
+
+  function finishTutorial() {
+    stopTutorial(true);
+  }
+
+  function abortTutorial() {
+    stopTutorial(false);
+  }
+
+  function isTutorialRequirementMet(event) {
+    switch (event) {
+      case 'moveQueued':
+        return Array.isArray(plans.A) && plans.A.some(act => typeof act === 'string' && DXY[act]);
+      case 'attackMode':
+        return attackMode === true;
+      case 'attackQueued':
+        return Array.isArray(plans.A) && plans.A.some(act => act && typeof act === 'object' && act.type === 'attack');
+      case 'shieldQueued':
+        return usedShield.A > 0;
+      case 'roundStarted':
+        return phase === 'execute';
+      default:
+        return false;
+    }
+  }
+
+  function hideTutorialOverlay() {
+    if (!tutOv) return;
+    tutOv.classList.remove('show');
+    tutOv.setAttribute('aria-hidden', 'true');
+  }
+
+  function showTutorialStep() {
     if (!isTutorial) return;
     const step = tutorialScript[tutorialIndex];
-    if (step && step.trigger === event && tutOv && tutCont && tutNext) {
-      tutCont.textContent = t(step.key);
-      tutOv.classList.add('show');
-      tutNext.onclick = () => {
-        tutOv.classList.remove('show');
-        tutorialIndex++;
-        if (tutorialIndex >= tutorialScript.length) {
-          isTutorial = false;
-          localStorage.setItem('tutorialDone', '1');
+    if (!step) {
+      finishTutorial();
+      return;
+    }
+    if (step.mode === 'practice' && step.expect && isTutorialRequirementMet(step.expect)) {
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
+      return;
+    }
+    activeTutorialStep = step;
+    tutorialExpectEvent = step.mode === 'practice' ? (step.expect || null) : null;
+    applyTutorialHighlight(step.highlight);
+    if (!tutOv || !tutCont || !tutNext) return;
+    if (tutorialProgress) {
+      const total = tutorialScript.length;
+      const current = Math.min(tutorialIndex + 1, total);
+      tutorialProgress.textContent = t('tutorialStepLabel', { current, total });
+    }
+    tutCont.textContent = t(step.key);
+    if (tutorialHint) {
+      const hintKey = step.hint || (step.mode === 'practice' ? 'tutorialPracticeHint' : 'tutorialNextHint');
+      tutorialHint.textContent = t(hintKey);
+    }
+    const btnLabelKey = step.buttonKey || (step.mode === 'practice' ? 'tutorialTryButton' : 'nextBtn');
+    tutNext.textContent = t(btnLabelKey);
+    tutNext.disabled = false;
+    tutOv.classList.add('show');
+    tutOv.setAttribute('aria-hidden', 'false');
+    tutNext.focus();
+    requestAnimationFrame(() => positionTutorialCard());
+    tutNext.onclick = () => {
+      if (!isTutorial || activeTutorialStep !== step) return;
+      if (step.mode === 'practice') {
+        hideTutorialOverlay();
+        positionTutorialCard();
+        if (!step.expect || isTutorialRequirementMet(step.expect)) {
+          tutorialExpectEvent = null;
+          activeTutorialStep = null;
+          tutorialIndex++;
+          if (tutorialIndex >= tutorialScript.length) {
+            finishTutorial();
+            return;
+          }
+          showTutorialStep();
+          return;
         }
-      };
+        if (step.focus) {
+          const focusTarget = document.querySelector(step.focus);
+          if (focusTarget && typeof focusTarget.focus === 'function') {
+            setTimeout(() => focusTarget.focus(), 60);
+          }
+        }
+        return;
+      }
+      activeTutorialStep = null;
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
+    };
+  }
+
+  function advanceTutorialEvent(event) {
+    if (!isTutorial) return;
+    if (tutorialExpectEvent && tutorialExpectEvent === event) {
+      tutorialExpectEvent = null;
+      hideTutorialOverlay();
+      activeTutorialStep = null;
+      tutorialIndex++;
+      if (tutorialIndex >= tutorialScript.length) {
+        finishTutorial();
+        return;
+      }
+      showTutorialStep();
     }
   }
 
   function startTutorial() {
+    hideTutorialPrompt();
     single = true;
     isTutorial = true;
     tutorialIndex = 0;
+    activeTutorialStep = null;
     ms.style.display = 'none';
     if (ds) ds.style.display = 'none';
     startGame();
     resetGame();
     startNewRound();
-    showTutorial('start');
+    tutorialExpectEvent = null;
+    clearTutorialHighlight();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (isTutorial) showTutorialStep();
+      });
+    });
   }
 
   window.startTutorial = startTutorial;
+  const tutorialHighlightEl = document.getElementById('tutorialHighlight');
   const tutOv = document.getElementById('tutorialOverlay');
+  if (tutOv) tutorialCard = tutOv.querySelector('.tutorialCard');
   const tutCont = document.getElementById('tutorialContent');
   const tutNext = document.getElementById('tutorialNext');
+  const tutorialProgress = document.getElementById('tutorialProgress');
+  const tutorialHint = document.getElementById('tutorialHint');
+  const tutorialPrompt = document.getElementById('tutorialPrompt');
+  const tutorialPromptStart = document.getElementById('tutorialPromptStart');
+  const tutorialPromptSkip = document.getElementById('tutorialPromptSkip');
 
   let audioCtx;
 
   function playSound(type) {
+    if (soundMuted || soundVolume <= 0) return;
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -170,14 +711,84 @@ function startNewRound() {
   scoreReset.onclick = () => {
     score = { A: 0, B: 0 };
     updateScore();
+    closeHudMenu();
   };
+
+  function updateThemeToggle(theme) {
+    if (!themeToggleButtons.length) return;
+    const normalized = theme === 'light' ? 'light' : 'dark';
+    const label = typeof t === 'function' ? t('themeTooltip') : 'Switch theme';
+    themeToggleButtons.forEach(btn => {
+      btn.textContent = normalized === 'light' ? '🌙' : '☀️';
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    });
+  }
+
+  function applyTheme(theme) {
+    const normalized = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = normalized;
+    try {
+      localStorage.setItem('theme', normalized);
+    } catch (err) {
+      // ignore storage errors
+    }
+    updateThemeToggle(normalized);
+  }
+
+  if (themeToggleButtons.length) {
+    const initial = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    updateThemeToggle(initial);
+    themeToggleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+        const next = current === 'light' ? 'dark' : 'light';
+        applyTheme(next);
+      });
+    });
+  }
+
+  const difficultyBack = document.getElementById('difficultyBack');
+  const onlineBack = document.getElementById('onlineBack');
 
   b1p.onclick = () => { single = true; ms.style.display = 'none'; ds.style.display = 'flex'; };
   b2p.onclick = () => { single = false; ms.style.display = 'none'; startGame(); };
   bOnline.onclick = () => { ms.style.display = 'none'; onlineMenu.style.display = 'flex'; };
+
+  if (difficultyBack) {
+    difficultyBack.addEventListener('click', () => {
+      ds.style.display = 'none';
+      ms.style.display = 'flex';
+      updateLayoutScale();
+    });
+  }
+
+  if (onlineBack) {
+    onlineBack.addEventListener('click', () => {
+      onlineMenu.style.display = 'none';
+      ms.style.display = 'flex';
+      updateLayoutScale();
+    });
+  }
   rulesInit.onclick = () => { rulesOv.style.display = 'block'; };
   rulesClose.onclick = () => rulesOv.style.display = 'none';
-  if (rulesTutorial) rulesTutorial.onclick = () => { rulesOv.style.display = 'none'; startTutorial(); };
+  if (rulesTutorial) rulesTutorial.onclick = () => {
+    rulesOv.style.display = 'none';
+    try { localStorage.removeItem('tutorialDone'); } catch (err) {}
+    startTutorial();
+  };
+  if (tutorialPromptStart) {
+    tutorialPromptStart.onclick = () => {
+      try { localStorage.removeItem('tutorialDone'); } catch (err) {}
+      startTutorial();
+    };
+  }
+  if (tutorialPromptSkip) {
+    tutorialPromptSkip.onclick = () => {
+      try { localStorage.setItem('tutorialDone', '1'); } catch (err) {}
+      hideTutorialPrompt();
+    };
+  }
 
   ds.querySelector('.easy').onclick   = () => {
     aiRand = 0.6;  aiMistake = 0.5; aiSamples = 20;
@@ -208,12 +819,21 @@ function startNewRound() {
   onlineCreate.onclick = () => { createRoom(); };
   onlineJoin.onclick = () => { joinRoom(roomInput.value.trim()); };
   function startGame() {
+    hideAttackOverlay();
+    closeHudMenu();
     board.style.visibility = 'visible';
     ui.classList.add('show');
-    buildBoard(); bindUI(); render(); updateUI();
+    if (roundBadge) {
+      roundBadge.classList.remove('visible', 'bump');
+      displayedRound = 0;
+    }
+    buildBoard();
+    resetMarkedCells();
+    bindUI(); render(); updateUI();
     updateScore();
     edgesCollapsed = false;
     replayHistory = [];
+    updateLayoutScale();
   }
 
   function buildBoard() {
@@ -229,23 +849,96 @@ function startNewRound() {
     }
   }
 
+  function getMarkOwner() {
+    if (phase === 'execute') return null;
+    if (isOnline) return mySide();
+    if (phase === 'planA') return 'A';
+    if (phase === 'planB') return 'B';
+    return null;
+  }
+
+  function refreshMarkedCells(owner, force = false) {
+    if (!force && markedOwner === owner) return;
+    markedOwner = owner || null;
+    document.querySelectorAll('.cell.cell-marked').forEach(cell => cell.classList.remove('cell-marked'));
+    if (!owner || !markedCells[owner]) return;
+    markedCells[owner].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('cell-marked');
+    });
+  }
+
+  function resetMarkedCells() {
+    markedCells = { A: new Set(), B: new Set() };
+    refreshMarkedCells(null, true);
+  }
+
+  function toggleCellMark(x, y) {
+    if (isReplaying) return;
+    const owner = getMarkOwner();
+    if (!owner) return;
+    if (!markedCells[owner]) markedCells[owner] = new Set();
+    const id = `c${x}${y}`;
+    const set = markedCells[owner];
+    if (set.has(id)) set.delete(id); else set.add(id);
+    refreshMarkedCells(owner, true);
+  }
+
   function bindUI() {
     acts.forEach(b => {
       b.onclick = () => {
-        const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
-        if (phase === 'execute' || plans[P].length >= STEPS) return;
         const act = b.dataset.act;
+        const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
+        if (attackMode) {
+          if (attackModeOwner && attackModeOwner !== P) return;
+          if (!DXY[act]) return;
+          if (b.disabled || b.classList.contains('attack-disabled')) return;
+          toggleAttackDirection(act);
+          return;
+        }
+        if (b.disabled) return;
+        if (phase === 'execute' || plans[P].length >= STEPS) return;
         if (DXY[act] && usedAtkDirs[P].has(act)) return;
         if (act === 'attack' && usedAtk[P] >= 1) return;
         if (act === 'shield' && usedShield[P] >= 1) return;
         act === 'attack' ? openAttack(P) : record(P, act);
       };
     });
-    btnDel.onclick = () => { if (phase.startsWith('plan')) deleteLast(); };
-    btnNext.onclick = () => nextStep();
+    btnDel.onclick = () => {
+      if (attackMode) {
+        hideAttackOverlay();
+        return;
+      }
+      if (phase.startsWith('plan')) deleteLast();
+    };
+    btnNext.onclick = () => {
+      if (attackMode) {
+        confirmAttackSelection();
+        return;
+      }
+      nextStep();
+    };
 
     document.addEventListener('keydown', e => {
-      if (atkOv.style.visibility === 'visible') return;
+      if (attackMode) {
+        if (e.key === 'Escape') {
+          hideAttackOverlay();
+          e.preventDefault();
+          return;
+        }
+        if (e.key === 'Enter') {
+          confirmAttackSelection();
+          e.preventDefault();
+          return;
+        }
+        const attackMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+        if (attackMap[e.key]) {
+          const btn = moveButtons.find(x => x.dataset.act === attackMap[e.key]);
+          if (btn && !btn.disabled && !btn.classList.contains('attack-disabled')) btn.click();
+          e.preventDefault();
+          return;
+        }
+      }
       const map = {
         ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
         a: 'attack', s: 'shield'
@@ -263,42 +956,58 @@ function startNewRound() {
   }
 
   function openAttack(P) {
-    atkOv.innerHTML = '';
-    atkOv.style.visibility = 'visible';
-    let tmp = [];
-    ['up', 'left', 'right', 'down'].forEach(d => {
-      if (usedMove[P].has(d)) return;
-      const btn = document.createElement('button');
-      btn.className = d;
-      btn.textContent = { up: '▲', down: '▼', left: '◀', right: '▶' }[d];
-      btn.onclick = () => {
-        if (tmp.includes(d)) {
-          tmp = tmp.filter(x => x !== d);
-          btn.classList.remove('sel');
-        } else {
-          tmp.push(d);
-          btn.classList.add('sel');
-        }
-      };
-      atkOv.append(btn);
+    clearAttackButtons();
+    attackMode = true;
+    attackModeOwner = P;
+    pendingAttackDirs = [];
+    if (actionGrid) {
+      actionGrid.classList.add('attack-mode');
+    }
+    moveButtons.forEach(btn => {
+      const dir = btn.dataset.act;
+      if (!DXY[dir]) return;
+      const locked = usedMove[P].has(dir);
+      btn.disabled = locked;
+      btn.classList.toggle('attack-disabled', locked);
+      btn.classList.remove('attack-selected');
     });
-    const ok = document.createElement('button');
-    ok.textContent = t('ok');
-    ok.className = 'confirm';
-    ok.onclick = () => {
-      record(P, { type: 'attack', dirs: tmp.slice() });
-      usedAtk[P]++; tmp.forEach(d => usedAtkDirs[P].add(d));
-      atkOv.style.visibility = 'hidden';
-    };
-    atkOv.append(ok);
+    if (attackButton) {
+      attackButton.disabled = true;
+      attackButton.classList.add('blocked');
+    }
+    if (shieldButton) {
+      shieldButton.disabled = true;
+      shieldButton.classList.add('blocked');
+    }
+    updateUI();
+    advanceTutorialEvent('attackMode');
+  }
 
-    const cancel = document.createElement('button');
-    cancel.textContent = t('cancel');
-    cancel.className = 'cancel';
-    cancel.onclick = () => {
-      atkOv.style.visibility = 'hidden';
-    };
-    atkOv.append(cancel);
+  function toggleAttackDirection(dir) {
+    if (!attackMode) return;
+    const btn = moveButtons.find(b => b.dataset.act === dir);
+    if (!btn || btn.disabled || btn.classList.contains('attack-disabled')) return;
+    if (pendingAttackDirs.includes(dir)) {
+      pendingAttackDirs = pendingAttackDirs.filter(x => x !== dir);
+      btn.classList.remove('attack-selected');
+    } else {
+      pendingAttackDirs.push(dir);
+      btn.classList.add('attack-selected');
+    }
+    updateUI();
+  }
+
+  function confirmAttackSelection() {
+    if (!attackMode) return;
+    if (!pendingAttackDirs.length) {
+      playSound('ui');
+      return;
+    }
+    const owner = attackModeOwner || (isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B'));
+    record(owner, { type: 'attack', dirs: pendingAttackDirs.slice() });
+    usedAtk[owner]++;
+    pendingAttackDirs.forEach(d => usedAtkDirs[owner].add(d));
+    hideAttackOverlay();
   }
 
   function record(P, act) {
@@ -316,7 +1025,17 @@ function startNewRound() {
     }
     updateUI();
     drawPlan(P);
-    showTutorial('afterMove');
+    if (isTutorial && P === 'A') {
+      if (typeof act === 'string') {
+        if (act === 'shield') {
+          advanceTutorialEvent('shieldQueued');
+        } else if (DXY[act]) {
+          advanceTutorialEvent('moveQueued');
+        }
+      } else if (act && typeof act === 'object' && act.type === 'attack') {
+        advanceTutorialEvent('attackQueued');
+      }
+    }
   }
 
   function deleteLast() {
@@ -367,17 +1086,26 @@ function startNewRound() {
       return;
     }
   if (phase === 'planA' && single) {
+    const tutorialPlanReady = isTutorial && Array.isArray(plans.A) && plans.A.length === STEPS;
     autoPlanB();
     phase = 'execute';
     startRecordingRound();
     btnNext.textContent = t('executeBtn');
     clearPlan(); updateUI();
-    showTutorial('afterConfirm');
+    if (!isTutorial || tutorialPlanReady) {
+      advanceTutorialEvent('roundStarted');
+    }
     return;
   }
   if (phase !== 'execute') {
+    const tutorialPlanReady = isTutorial && Array.isArray(plans.A) && plans.A.length === STEPS;
     phase = phase === 'planA' ? 'planB' : 'execute';
-    if (phase === 'execute') { startRecordingRound(); showTutorial('afterConfirm'); }
+    if (phase === 'execute') {
+      startRecordingRound();
+      if (!isTutorial || tutorialPlanReady) {
+        advanceTutorialEvent('roundStarted');
+      }
+    }
     btnNext.textContent = phase === 'execute' ? t('executeBtn') : t('nextBtn');
     clearPlan(); updateUI();
     return;
@@ -547,23 +1275,73 @@ function startNewRound() {
 
   function updateUI() {
     const P = isOnline ? mySide() : (phase === 'planA' ? 'A' : 'B');
-    phaseEl.textContent =
-      `${t('round')} ${round}/${MAX_R}, ${P}: ` +
-      (phase === 'execute' ? t('turn') : t('plan')) +
-      ` ${phase === 'execute' ? step : plans[P].length}/${STEPS}`;
-    pcs.forEach((pc, i) => {
-      const a = plans[P][i];
-      pc.textContent = a
-        ? typeof a === 'object' ? '⚔'
-          : a === 'shield' ? '🛡'
-          : { up: '↑', down: '↓', left: '←', right: '→' }[a]
-        : '';
-    });
+    refreshMarkedCells(getMarkOwner());
+    if (attackMode && attackModeOwner && attackModeOwner !== P) {
+      hideAttackOverlay({ silent: true });
+    }
+    if (attackMode && phase === 'execute') {
+      hideAttackOverlay({ silent: true });
+    }
     const executing = phase === 'execute';
     const locked = isOnline && !executing && onlineConfirmed[mySide()];
+    if (phaseEl) {
+      if (executing) {
+        phaseEl.textContent = t('phaseExecuting', { step });
+      } else {
+        const playerLabel = P === 'A' ? t('playerA') : t('playerB');
+        phaseEl.textContent = t('phasePlanning', { player: playerLabel });
+      }
+    }
+    if (roundBadge && roundNumberEl) {
+      if (!ui.classList.contains('show')) {
+        roundBadge.classList.remove('visible', 'bump');
+      } else {
+        if (!roundBadge.classList.contains('visible')) {
+          roundBadge.classList.add('visible');
+        }
+        if (displayedRound !== round) {
+          displayedRound = round;
+          roundNumberEl.textContent = String(round);
+          roundBadge.classList.remove('bump');
+          void roundBadge.offsetWidth;
+          roundBadge.classList.add('bump');
+        }
+      }
+    }
+    const activeIdx = phase === 'execute'
+      ? Math.max(0, Math.min(STEPS - 1, step - 1))
+      : Math.max(0, Math.min(STEPS - 1, plans[P].length));
+    planCells.forEach((cell, i) => {
+      if (!cell) return;
+      const a = plans[P][i];
+      const valEl = planValues[i];
+      if (valEl) {
+        valEl.textContent = a
+          ? typeof a === 'object' ? '⚔'
+            : a === 'shield' ? '🛡'
+            : { up: '↑', down: '↓', left: '←', right: '→' }[a]
+          : '';
+      }
+      cell.classList.toggle('current', i === activeIdx);
+    });
     acts.forEach(b => {
       const a = b.dataset.act;
       b.disabled = false; b.classList.remove('blocked');
+      b.classList.remove('attack-disabled');
+      if (attackMode) {
+        if (DXY[a]) {
+          const owner = attackModeOwner || P;
+          const lockedDir = usedMove[owner].has(a);
+          const selected = pendingAttackDirs.includes(a);
+          b.disabled = lockedDir;
+          b.classList.toggle('attack-disabled', lockedDir);
+          b.classList.toggle('attack-selected', selected);
+        } else {
+          b.disabled = true;
+          b.classList.add('blocked');
+        }
+        return;
+      }
       if (executing || locked) {
         b.disabled = true;
         b.classList.add('blocked');
@@ -575,26 +1353,6 @@ function startNewRound() {
       if (a === 'attack' && usedAtk[P] >= 1) b.disabled = true;
       if (a === 'shield' && usedShield[P] >= 1) b.disabled = true;
     });
-    if (single && phase === 'planA') {
-      btnNext.textContent = t('nextBtn');
-      btnNext.disabled = plans[P].length !== STEPS;
-    } else if (isOnline) {
-      if (executing) {
-        btnNext.textContent = t('revealBtn');
-        btnNext.disabled = !revealReady;
-      } else if (locked) {
-        btnNext.textContent = waitingForServer ? t('confirmPendingBtn') : t('confirmBtn');
-        btnNext.disabled = true;
-      } else {
-        btnNext.textContent = t('confirmBtn');
-        btnNext.disabled = plans[P].length !== STEPS;
-      }
-    } else {
-      btnNext.textContent = executing ? t('executeBtn') : t('nextBtn');
-      btnNext.disabled = plans[P].length < STEPS && !executing;
-    }
-    btnDel.disabled = executing || locked;
-    btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
     document.querySelectorAll('.cell').forEach(c => {
       const x = +c.id[1], y = +c.id[2], edge = x === 0 || x === 4 || y === 0 || y === 4;
       c.classList.remove('cracked', 'lava');
@@ -604,6 +1362,43 @@ function startNewRound() {
         c.classList.add('lava');
       }
     });
+    if (attackMode) {
+      btnDel.style.visibility = 'visible';
+      btnDel.disabled = false;
+      btnDel.textContent = t('cancel');
+      btnDel.setAttribute('data-i18n', 'cancel');
+      btnNext.textContent = t('ok');
+      btnNext.setAttribute('data-i18n', 'ok');
+      btnNext.disabled = pendingAttackDirs.length === 0;
+      return;
+    }
+
+    btnDel.setAttribute('data-i18n', 'deleteBtn');
+    btnDel.textContent = t('deleteBtn');
+    btnDel.disabled = executing || locked;
+    btnDel.style.visibility = phase.startsWith('plan') ? 'visible' : 'hidden';
+
+    let nextKey = 'nextBtn';
+    if (single && phase === 'planA') {
+      nextKey = 'nextBtn';
+      btnNext.disabled = plans[P].length !== STEPS;
+    } else if (isOnline) {
+      if (executing) {
+        nextKey = 'revealBtn';
+        btnNext.disabled = !revealReady;
+      } else if (locked) {
+        nextKey = waitingForServer ? 'confirmPendingBtn' : 'confirmBtn';
+        btnNext.disabled = true;
+      } else {
+        nextKey = 'confirmBtn';
+        btnNext.disabled = plans[P].length !== STEPS;
+      }
+    } else {
+      nextKey = executing ? 'executeBtn' : 'nextBtn';
+      btnNext.disabled = plans[P].length < STEPS && !executing;
+    }
+    btnNext.textContent = t(nextKey);
+    btnNext.setAttribute('data-i18n', nextKey);
   }
 
   function drawPlan(P) {
@@ -611,19 +1406,26 @@ function startNewRound() {
     clearPlan();
     if (phase === 'execute') return;
     let { x, y } = units[P];
+    let finalX = Math.max(0, Math.min(4, x));
+    let finalY = Math.max(0, Math.min(4, y));
+    const hasMove = plans[P].some(r => typeof r === 'string' && DXY[r]);
     plans[P].forEach(r => {
       if (typeof r === 'string' && DXY[r]) {
         x += DXY[r][0]; y += DXY[r][1];
       }
       x = Math.max(0, Math.min(4, x)); y = Math.max(0, Math.min(4, y));
+      finalX = x; finalY = y;
       const cell = document.getElementById(`c${x}${y}`);
-      let ov = document.createElement('div');
+      if (!cell) return;
+      const ov = document.createElement('div');
       if (typeof r === 'object') {
         ov.className = 'planAttack'; ov.textContent = '•'; cell.append(ov);
         r.dirs.forEach(d => {
           const [dx, dy] = DXY[d], nx = x + dx, ny = y + dy;
           if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
-          const c2 = document.getElementById(`c${nx}${ny}`), ov2 = document.createElement('div');
+          const c2 = document.getElementById(`c${nx}${ny}`);
+          if (!c2) return;
+          const ov2 = document.createElement('div');
           ov2.className = 'planAttack';
           ov2.textContent = { up: '↑', down: '↓', left: '←', right: '→' }[d];
           c2.append(ov2);
@@ -636,72 +1438,201 @@ function startNewRound() {
         cell.append(ov);
       }
     });
+    if (plans[P].length && hasMove) {
+      const ghostCell = document.getElementById(`c${finalX}${finalY}`);
+      if (ghostCell) {
+        const ghost = document.createElement('div');
+        ghost.className = `planGhost ${P === 'A' ? 'planGhostA' : 'planGhostB'}`;
+        ghost.setAttribute('aria-hidden', 'true');
+        ghostCell.append(ghost);
+      }
+    }
   }
 
 
   function execStep() {
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
-    const [aA, aB] = [plans.A[step - 1], plans.B[step - 1]];
+    const actions = { A: plans.A[step - 1], B: plans.B[step - 1] };
+    const prevUnits = { A: { ...units.A }, B: { ...units.B } };
+    const executedStep = step;
+    const stepSummary = {
+      step: executedStep,
+      perPlayer: {
+        A: {
+          action: actions.A,
+          events: [],
+          startedAlive: prevUnits.A.alive,
+          endAlive: prevUnits.A.alive,
+          startCell: { x: prevUnits.A.x, y: prevUnits.A.y },
+          endCell: { x: prevUnits.A.x, y: prevUnits.A.y }
+        },
+        B: {
+          action: actions.B,
+          events: [],
+          startedAlive: prevUnits.B.alive,
+          endAlive: prevUnits.B.alive,
+          startCell: { x: prevUnits.B.x, y: prevUnits.B.y },
+          endCell: { x: prevUnits.B.x, y: prevUnits.B.y }
+        }
+      }
+    };
+    const ensureShieldEvent = info => {
+      let shieldEvt = info.events.find(evt => evt.type === 'shield');
+      if (!shieldEvt) {
+        shieldEvt = { type: 'shield', blocked: false, blocks: [], cell: { ...info.endCell } };
+        info.events.push(shieldEvt);
+      }
+      if (!Array.isArray(shieldEvt.blocks)) shieldEvt.blocks = [];
+      return shieldEvt;
+    };
+
+    ['A', 'B'].forEach(pl => {
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) {
+        info.events.push({ type: 'inactive', cell: { ...info.startCell } });
+        return;
+      }
+      const act = actions[pl];
+      if (act === 'shield') {
+        info.events.push({ type: 'shield', blocked: false, blocks: [], cell: { ...info.startCell } });
+      } else if (typeof act === 'object') {
+        info.events.push({ type: 'attack', dirs: Array.isArray(act.dirs) ? act.dirs.slice() : [] });
+      }
+    });
+
     const moved = { A: false, B: false };
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB;
-      if (typeof r === 'string' && DXY[r]) {
-        let nx = units[pl].x + DXY[r][0];
-        let ny = units[pl].y + DXY[r][1];
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) return;
+      const act = actions[pl];
+      if (typeof act === 'string' && DXY[act]) {
+        let nx = units[pl].x + DXY[act][0];
+        let ny = units[pl].y + DXY[act][1];
         nx = Math.max(0, Math.min(4, nx));
         ny = Math.max(0, Math.min(4, ny));
         if (edgesCollapsed && (nx === 0 || nx === 4 || ny === 0 || ny === 4)) {
+          info.events.push({ type: 'damage', cause: 'collapse', cell: { x: nx, y: ny }, attemptedMove: act });
+          info.endAlive = false;
           units[pl].alive = false;
           showDeath(nx, ny);
           playSound('death');
         } else {
-          units[pl].x = nx; units[pl].y = ny; playSound('move');
-          moved[pl] = true;
+          if (prevUnits[pl].x !== nx || prevUnits[pl].y !== ny) {
+            info.events.push({ type: 'move', dir: act, from: { ...prevUnits[pl] }, to: { x: nx, y: ny } });
+            units[pl].x = nx;
+            units[pl].y = ny;
+            info.endCell = { x: nx, y: ny };
+            playSound('move');
+            moved[pl] = true;
+          }
         }
       }
     });
+
     render();
     Object.keys(moved).forEach(pl => {
       if (moved[pl]) {
-        const el = document.querySelector(`#c${units[pl].x}${units[pl].y} .player${pl}`);
-        if (el) el.classList.add('moveAnim');
+        animateUnitMove(pl, prevUnits[pl]);
       }
     });
+
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB, other = pl === 'A' ? 'B' : 'A';
-      if (typeof r === 'object') {
-        const u = units[pl], tx = u.x, ty = u.y;
-        const sh = plans[other][step - 1] === 'shield';
-        const cellS = document.getElementById(`c${tx}${ty}`), ovS = document.createElement('div');
-        ovS.className = 'attack'; cellS.append(ovS);
-        if (!sh && units[other].x === tx && units[other].y === ty) {
-          units[other].alive = false;
-          showDeath(tx, ty);
-          playSound('death');
+      const info = stepSummary.perPlayer[pl];
+      if (info.startedAlive) {
+        info.endCell = { x: units[pl].x, y: units[pl].y };
+      }
+    });
+
+    ['A', 'B'].forEach(pl => {
+      const act = actions[pl];
+      const other = pl === 'A' ? 'B' : 'A';
+      if (typeof act === 'object') {
+        const u = units[pl];
+        const tx = u.x;
+        const ty = u.y;
+        const otherInfo = stepSummary.perPlayer[other];
+        const sh = actions[other] === 'shield';
+        const cellS = document.getElementById(`c${tx}${ty}`);
+        if (cellS) {
+          const ovS = document.createElement('div');
+          ovS.className = 'attack';
+          cellS.append(ovS);
         }
-        r.dirs.forEach(d => {
-          const [dx, dy] = DXY[d], nx = tx + dx, ny = ty + dy;
-          if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
-          const cell2 = document.getElementById(`c${nx}${ny}`), ov2 = document.createElement('div');
-          ov2.className = 'attack'; cell2.append(ov2);
-          if (!sh && units[other].x === nx && units[other].y === ny) {
+        if (units[other].x === tx && units[other].y === ty && units[other].alive) {
+          if (sh && otherInfo.startedAlive) {
+            const shieldEvt = ensureShieldEvent(otherInfo);
+            shieldEvt.blocked = true;
+            shieldEvt.blocks.push({ source: pl, cell: { x: tx, y: ty } });
+          } else {
             units[other].alive = false;
-            showDeath(nx, ny);
+            otherInfo.events.push({ type: 'damage', cause: 'attack', source: pl, cell: { x: tx, y: ty } });
+            otherInfo.endAlive = false;
+            showDeath(tx, ty);
             playSound('death');
           }
-        });
+        }
+        if (Array.isArray(act.dirs)) {
+          act.dirs.forEach(d => {
+            const delta = DXY[d];
+            if (!delta) return;
+            const nx = tx + delta[0];
+            const ny = ty + delta[1];
+            if (nx < 0 || nx > 4 || ny < 0 || ny > 4) return;
+            const cell2 = document.getElementById(`c${nx}${ny}`);
+            if (cell2) {
+              const ov2 = document.createElement('div');
+              ov2.className = 'attack';
+              cell2.append(ov2);
+            }
+            if (units[other].alive && units[other].x === nx && units[other].y === ny) {
+              if (sh && otherInfo.startedAlive) {
+                const shieldEvt = ensureShieldEvent(otherInfo);
+                shieldEvt.blocked = true;
+                shieldEvt.blocks.push({ source: pl, cell: { x: nx, y: ny } });
+              } else {
+                units[other].alive = false;
+                otherInfo.events.push({ type: 'damage', cause: 'attack', source: pl, cell: { x: nx, y: ny } });
+                otherInfo.endAlive = false;
+                showDeath(nx, ny);
+                playSound('death');
+              }
+            }
+          });
+        }
         playSound('attack');
       }
     });
+
     ['A', 'B'].forEach(pl => {
-      const r = pl === 'A' ? aA : aB;
-      if (r === 'shield') {
-        const u = units[pl], ov = document.createElement('div');
-        ov.className = 'shield'; document.getElementById(`c${u.x}${u.y}`).append(ov);
+      const act = actions[pl];
+      if (act === 'shield' && units[pl].alive) {
+        const u = units[pl];
+        const cell = document.getElementById(`c${u.x}${u.y}`);
+        if (cell) {
+          const ov = document.createElement('div');
+          ov.className = 'shield';
+          cell.append(ov);
+        }
         playSound('shield');
       }
     });
+
+    ['A', 'B'].forEach(pl => {
+      const info = stepSummary.perPlayer[pl];
+      if (!info.startedAlive) return;
+      info.endAlive = units[pl].alive;
+      info.endCell = { x: units[pl].x, y: units[pl].y };
+      const hasMoveOrDamage = info.events.some(evt => evt.type === 'move' || evt.type === 'damage');
+      if (!hasMoveOrDamage) {
+        info.events.push({ type: 'wait', at: { ...info.endCell } });
+      }
+      const shieldEvt = info.events.find(evt => evt.type === 'shield');
+      if (shieldEvt) {
+        shieldEvt.cell = { ...info.endCell };
+      }
+    });
+
     render();
     recordState();
 
@@ -732,15 +1663,70 @@ function startNewRound() {
     updateUI();
   }
 
+  function animateUnitMove(player, prev) {
+    const current = units[player];
+    if (!current || !current.alive) return;
+    if (prev.x === current.x && prev.y === current.y) return;
+    const newCell = document.getElementById(`c${current.x}${current.y}`);
+    const oldCell = document.getElementById(`c${prev.x}${prev.y}`);
+    if (!newCell || !oldCell) return;
+    let unitEl = newCell.querySelector(player === 'A' ? '.playerA' : '.playerB');
+    if (!unitEl) {
+      unitEl = newCell.querySelector('.playerBoth');
+    }
+    if (!unitEl || unitEl.dataset.moving === 'true') return;
+    const fromRect = oldCell.getBoundingClientRect();
+    const toRect = newCell.getBoundingClientRect();
+    const dx = (fromRect.left + fromRect.width / 2) - (toRect.left + toRect.width / 2);
+    const dy = (fromRect.top + fromRect.height / 2) - (toRect.top + toRect.height / 2);
+    unitEl.dataset.moving = 'true';
+    const cleanup = () => {
+      delete unitEl.dataset.moving;
+    };
+    if (typeof unitEl.animate === 'function') {
+      const animation = unitEl.animate([
+        {
+          transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.9)`,
+          opacity: 0.35,
+          filter: 'drop-shadow(0 0 8px rgba(148,163,184,0.45))'
+        },
+        {
+          transform: 'translate(-50%, -50%) scale(1)',
+          opacity: 1,
+          filter: 'drop-shadow(0 0 4px rgba(15,23,42,0.45))'
+        }
+      ], {
+        duration: 420,
+        easing: 'cubic-bezier(.22,.74,.27,1.02)',
+        fill: 'forwards'
+      });
+      animation.addEventListener('finish', cleanup, { once: true });
+      animation.addEventListener('cancel', cleanup, { once: true });
+    } else {
+      requestAnimationFrame(() => {
+        unitEl.style.setProperty('--fromX', `${dx}px`);
+        unitEl.style.setProperty('--fromY', `${dy}px`);
+        unitEl.classList.add('moveAnim');
+        unitEl.addEventListener('animationend', () => {
+          unitEl.classList.remove('moveAnim');
+          unitEl.style.removeProperty('--fromX');
+          unitEl.style.removeProperty('--fromY');
+          cleanup();
+        }, { once: true });
+      });
+    }
+  }
+
   function render() {
     if (!document.getElementById('c00')) return;
-    document.querySelectorAll('.playerA,.playerB,.playerHalf').forEach(e => e.remove());
+    document.querySelectorAll('.playerA,.playerB,.playerBoth').forEach(e => e.remove());
     if (units.A.alive && units.B.alive && units.A.x === units.B.x && units.A.y === units.B.y) {
       const cell = document.getElementById(`c${units.A.x}${units.A.y}`);
-      ['halfA', 'halfB'].forEach(cls => {
-        const h = document.createElement('div'); h.className = 'playerHalf ' + cls;
-        cell.append(h);
-      });
+      if (cell) {
+        const merged = document.createElement('div');
+        merged.className = 'playerBoth';
+        cell.append(merged);
+      }
     } else {
       ['A', 'B'].forEach(pl => {
         const u = units[pl]; if (!u.alive) return;
@@ -775,7 +1761,12 @@ function startNewRound() {
       if (x === 0 || x === 4 || y === 0 || y === 4) {
         c.classList.remove('cracked');
         c.classList.add('collapse');
-        setTimeout(() => { c.classList.remove('collapse'); c.classList.add('lava'); }, 600);
+        c.classList.add('cell-shatter');
+        setTimeout(() => {
+          c.classList.remove('collapse');
+          c.classList.remove('cell-shatter');
+          c.classList.add('lava');
+        }, 600);
       }
     });
     ['A', 'B'].forEach(pl => {
@@ -827,22 +1818,30 @@ function startNewRound() {
   function startReplay() {
     if (isReplaying || replayHistory.length === 0) return;
     isReplaying = true;
+    suppressResultOverlay();
     const ov = document.getElementById('replayOverlay');
-    if (ov) ov.classList.add('show');
+    if (ov) {
+      ov.classList.add('show');
+      ov.setAttribute('aria-hidden', 'false');
+    }
     replayPaused = false;
     const pauseBtn = document.getElementById('replayPause');
-    if (pauseBtn) pauseBtn.textContent = '❚❚';
+    if (pauseBtn) {
+      pauseBtn.textContent = '❚❚';
+      pauseBtn.setAttribute('aria-label', t('pauseReplay'));
+      pauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
+    }
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
+    replayLoop = null;
     resetGame();
-    replayFrames = [];
-    replayHistory.forEach(r => {
-      if (r.states.length) replayFrames.push({ state: r.states[0] });
-      for (let i = 1; i < r.states.length; i++) {
-        replayFrames.push({
-          state: r.states[i],
-          actions: { A: r.actions.A[i - 1], B: r.actions.B[i - 1] }
-        });
-      }
-    });
+    replayFrames = buildReplayFrames();
+    if (!replayFrames.length) {
+      endReplay();
+      return;
+    }
     replayIndex = 0;
     const seek = document.getElementById('replaySeek');
     if (seek) {
@@ -851,20 +1850,29 @@ function startNewRound() {
     }
     function play() {
       if (!isReplaying) return;
-      if (replayPaused) { replayTimer = setTimeout(play, 100); return; }
+      if (replayPaused) {
+        replayTimer = null;
+        return;
+      }
       if (replayIndex >= replayFrames.length) {
         replayPaused = true;
         replayIndex = replayFrames.length - 1;
         if (seek) seek.value = replayIndex;
         const pauseBtn = document.getElementById('replayPause');
-        if (pauseBtn) pauseBtn.textContent = '▶';
+        if (pauseBtn) {
+          pauseBtn.textContent = '▶';
+          pauseBtn.setAttribute('aria-label', t('resumeReplay'));
+          pauseBtn.setAttribute('data-i18n-aria', 'resumeReplay');
+        }
+        stopReplayRecordingIfNeeded();
         return;
       }
       const f = replayFrames[replayIndex++];
       renderReplayFrame(f);
       if (seek) seek.value = replayIndex;
-      replayTimer = setTimeout(play, 700 / (replaySpeed || 0.1));
+      replayTimer = setTimeout(play, 700 / Math.max(replaySpeed || 0.1, 0.1));
     }
+    replayLoop = play;
     play();
   }
 
@@ -881,53 +1889,314 @@ function startNewRound() {
     if (idx < 0) idx = 0;
     if (idx >= replayFrames.length) idx = replayFrames.length - 1;
     replayIndex = idx;
-    clearTimeout(replayTimer);
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
     const seek = document.getElementById('replaySeek');
     if (seek) seek.value = replayIndex;
-    renderReplayFrame(replayFrames[replayIndex]);
+    const frame = replayFrames[replayIndex];
+    if (frame) {
+      renderReplayFrame(frame);
+    }
+    if (!replayPaused && typeof replayLoop === 'function') {
+      replayLoop();
+    }
+  }
+
+  function buildReplayFrames() {
+    const frames = [];
+    replayHistory.forEach(r => {
+      if (!r || !Array.isArray(r.states) || !r.states.length) return;
+      frames.push({ state: r.states[0] });
+      for (let i = 1; i < r.states.length; i += 1) {
+        const frameActions = r.actions && r.actions.A && r.actions.B ? {
+          A: r.actions.A[i - 1],
+          B: r.actions.B[i - 1]
+        } : undefined;
+        frames.push({ state: r.states[i], actions: frameActions });
+      }
+    });
+    return frames;
+  }
+
+  function drawReplayCanvasFrame(ctx, frame) {
+    if (!ctx || !frame || !frame.state) return;
+    const canvas = ctx.canvas;
+    const width = canvas.width;
+    const height = canvas.height;
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const background = isLight ? '#f8fafc' : '#020617';
+    const boardFill = isLight ? '#e2e8f0' : '#0f172a';
+    const edgeFill = isLight ? '#fecdd3' : '#7f1d1d';
+    const gridColor = isLight ? 'rgba(15,23,42,0.18)' : 'rgba(148,163,184,0.35)';
+    const textColor = isLight ? '#0f172a' : '#f8fafc';
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
+    const padding = Math.round(Math.min(width, height) * 0.12);
+    const boardSize = Math.min(width, height) - padding * 2;
+    const originX = (width - boardSize) / 2;
+    const originY = (height - boardSize) / 2 + 32;
+    const cellSize = boardSize / 5;
+    const gap = Math.max(3, Math.round(cellSize * 0.08));
+    const state = frame.state;
+    for (let y = 0; y < 5; y += 1) {
+      for (let x = 0; x < 5; x += 1) {
+        const cellX = originX + x * cellSize;
+        const cellY = originY + y * cellSize;
+        const collapsed = state.edgesCollapsed && (x === 0 || x === 4 || y === 0 || y === 4);
+        ctx.fillStyle = collapsed ? edgeFill : boardFill;
+        ctx.fillRect(cellX, cellY, cellSize - gap, cellSize - gap);
+      }
+    }
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= 5; i += 1) {
+      const pos = originX + i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(pos, originY);
+      ctx.lineTo(pos, originY + boardSize - cellSize + gap);
+      ctx.stroke();
+      const posY = originY + i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(originX, posY);
+      ctx.lineTo(originX + boardSize - cellSize + gap, posY);
+      ctx.stroke();
+    }
+
+    const drawToken = (x, y, color, clipStart = 0, clipEnd = Math.PI * 2) => {
+      const centerX = originX + x * cellSize + (cellSize - gap) / 2;
+      const centerY = originY + y * cellSize + (cellSize - gap) / 2;
+      const radius = (cellSize - gap) * 0.32;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, clipStart, clipEnd, false);
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+
+    const aColor = '#38bdf8';
+    const bColor = '#f97316';
+    if (state.units && state.units.A && state.units.B && state.units.A.alive && state.units.B.alive &&
+        state.units.A.x === state.units.B.x && state.units.A.y === state.units.B.y) {
+      drawToken(state.units.A.x, state.units.A.y, aColor, Math.PI * 1.5, Math.PI * 0.5);
+      drawToken(state.units.B.x, state.units.B.y, bColor, Math.PI * 0.5, Math.PI * 1.5);
+    } else {
+      if (state.units && state.units.A && state.units.A.alive) {
+        drawToken(state.units.A.x, state.units.A.y, aColor);
+      }
+      if (state.units && state.units.B && state.units.B.alive) {
+        drawToken(state.units.B.x, state.units.B.y, bColor);
+      }
+    }
+
+    ctx.fillStyle = textColor;
+    ctx.font = '600 32px "Inter", "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    const roundLabel = typeof t === 'function' ? `${t('round')} ${state.round}` : `Round ${state.round}`;
+    ctx.fillText(roundLabel, width / 2, originY - 40);
+    ctx.font = '500 20px "Inter", "Segoe UI", sans-serif';
+    const stepLabel = typeof t === 'function' ? t('phaseExecuting', { step: state.step }) : `Step ${state.step}`;
+    ctx.fillText(stepLabel, width / 2, originY - 12);
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async function saveReplayVideo() {
     if (!replayHistory.length || recorder) return;
-    let stream;
-    if (document.body.captureStream) {
-      stream = document.body.captureStream();
-    } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: true }); }
-      catch (e) { alert(t('recordingNotSupported')); return; }
-    } else {
+    const frames = buildReplayFrames();
+    if (!frames.length) {
+      alert(typeof t === 'function' ? t('replaySaveFailed') : 'Unable to save replay.');
+      return;
+    }
+    if (typeof HTMLCanvasElement === 'undefined') {
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 720;
+    canvas.style.position = 'fixed';
+    canvas.style.left = '-9999px';
+    canvas.style.top = '-9999px';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0';
+    document.body.append(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx || typeof canvas.captureStream !== 'function') {
+      canvas.remove();
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const stream = canvas.captureStream(30);
+    if (!stream) {
+      canvas.remove();
       alert(t('recordingNotSupported'));
       return;
     }
     recordedChunks = [];
-    recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = e => recordedChunks.push(e.data);
-    recorder.onstop = async () => {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const file = new File([blob], 'replay.webm', { type: 'video/webm' });
-      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file] });
-        } catch (e) {
-          const url = URL.createObjectURL(file);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'replay.webm';
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      } else {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'replay.webm';
-        a.click();
-        URL.revokeObjectURL(url);
+    if (typeof MediaRecorder === 'undefined') {
+      try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      canvas.remove();
+      alert(t('recordingNotSupported'));
+      return;
+    }
+    const mp4Candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=h264,aac', 'video/mp4'];
+    let selectedRecorder = null;
+    let mime = null;
+    for (const candidate of mp4Candidates) {
+      if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported(candidate)) continue;
+      try {
+        selectedRecorder = new MediaRecorder(stream, { mimeType: candidate });
+        mime = selectedRecorder.mimeType || candidate;
+        break;
+      } catch (err) {
+        selectedRecorder = null;
       }
-      recordedChunks = [];
+    }
+    if (!selectedRecorder && typeof MediaRecorder.isTypeSupported !== 'function') {
+      try {
+        selectedRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
+        mime = selectedRecorder.mimeType || 'video/mp4';
+      } catch (err) {
+        selectedRecorder = null;
+      }
+    }
+    if (!selectedRecorder || !mime || !mime.includes('mp4')) {
+      try { stream.getTracks().forEach(track => track.stop()); } catch (err) {}
+      canvas.remove();
+      alert(t('recordingNotSupported'));
+      return;
+    }
+
+    recorder = selectedRecorder;
+    recorderMime = mime;
+    recorderExt = 'mp4';
+    recorderStream = stream;
+    recorderCanvas = canvas;
+    recorder.ondataavailable = e => {
+      if (e.data && e.data.size) recordedChunks.push(e.data);
     };
-    recorder.start();
-    startReplay();
+
+    const finishRecording = () => {
+      recordedChunks = [];
+      if (recorderStream) {
+        try { recorderStream.getTracks().forEach(track => track.stop()); } catch (err) {}
+        recorderStream = null;
+      }
+      if (recorderCanvas) {
+        try { recorderCanvas.remove(); } catch (err) {}
+        recorderCanvas = null;
+      }
+      recorder = null;
+    };
+
+    let resolveRecording;
+    let started = false;
+    const completion = new Promise(resolve => {
+      resolveRecording = resolve;
+      recorder.onstop = async () => {
+        try {
+          const blob = new Blob(recordedChunks, { type: recorderMime });
+          const filename = `replay.${recorderExt}`;
+          const fileObject = typeof File === 'function' ? new File([blob], filename, { type: recorderMime }) : null;
+          const triggerDownload = () => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+          };
+          if (recorderExt === 'mp4' && typeof window.showSaveFilePicker === 'function') {
+            try {
+              const handle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+              });
+              const writable = await handle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              return;
+            } catch (err) {
+              // fallback to sharing or download
+            }
+          }
+          if (fileObject && navigator.canShare && navigator.share && navigator.canShare({ files: [fileObject] })) {
+            try {
+              await navigator.share({ files: [fileObject] });
+              return;
+            } catch (err) {
+              triggerDownload();
+              return;
+            }
+          }
+          triggerDownload();
+        } catch (err) {
+          console.error('Failed to export replay video', err);
+          alert(t('replaySaveFailed'));
+        } finally {
+          finishRecording();
+          if (typeof resolveRecording === 'function') resolveRecording();
+        }
+      };
+    });
+
+    try {
+      recorder.start();
+      started = true;
+      const frameDuration = frames.length > 1 ? 450 : 800;
+      for (let i = 0; i < frames.length; i += 1) {
+        drawReplayCanvasFrame(ctx, frames[i]);
+        await delay(frameDuration);
+      }
+      await delay(320);
+      stopReplayRecordingIfNeeded();
+      await completion;
+    } catch (err) {
+      console.error('Failed to render replay video', err);
+      alert(typeof t === 'function' ? t('replaySaveFailed') : 'Unable to save replay.');
+      if (started) {
+        try { stopReplayRecordingIfNeeded(); } catch (e) {}
+        await completion;
+      } else {
+        finishRecording();
+        if (typeof resolveRecording === 'function') resolveRecording();
+      }
+    }
+  }
+
+  function stopReplayRecordingIfNeeded() {
+    if (!recorder) return;
+    try {
+      if (typeof recorder.state === 'string' && recorder.state === 'inactive') return;
+      recorder.stop();
+    } catch (err) {}
+  }
+
+  function saveReplayToStorage(resultText) {
+    if (!replayHistory.length) return false;
+    try {
+      const raw = localStorage.getItem('savedReplays');
+      const saved = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(saved) ? saved : [];
+      const entry = {
+        id: `replay-${Date.now()}`,
+        savedAt: new Date().toISOString(),
+        result: resultText,
+        language: window.i18n ? window.i18n.lang : 'en',
+        history: JSON.parse(JSON.stringify(replayHistory))
+      };
+      list.push(entry);
+      if (list.length > 20) list.splice(0, list.length - 20);
+      localStorage.setItem('savedReplays', JSON.stringify(list));
+      return true;
+    } catch (err) {
+      console.error('Failed to save replay', err);
+      return false;
+    }
   }
 
   function animateReplayActions(acts) {
@@ -965,7 +2234,7 @@ function startNewRound() {
     });
     setTimeout(() => {
       document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
-    }, 500);
+    }, 700);
   }
 
   function showDeath(x, y) {
@@ -974,22 +2243,46 @@ function startNewRound() {
     const ov = document.createElement('div');
     ov.className = 'death';
     cell.append(ov);
+    cell.classList.add('cell-shatter');
+    setTimeout(() => cell.classList.remove('cell-shatter'), 600);
   }
 
   function endReplay() {
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
+    replayLoop = null;
     isReplaying = false;
+    replayPaused = false;
+    replayIndex = 0;
+    replayFrames = [];
     if (recorder) {
-      try { recorder.stop(); } catch (e) {}
+      stopReplayRecordingIfNeeded();
       recorder = null;
     }
+    if (recorderStream) {
+      try { recorderStream.getTracks().forEach(track => track.stop()); } catch (e) {}
+      recorderStream = null;
+    }
+    recordedChunks = [];
+    recorderMime = 'video/webm';
+    recorderExt = 'webm';
     const ov = document.getElementById('replayOverlay');
-    if (ov) ov.classList.remove('show');
+    if (ov) {
+      ov.classList.remove('show');
+      ov.setAttribute('aria-hidden', 'true');
+    }
     resetGame();
     updateScore();
     updateReplayButton();
+    restoreResultOverlay();
   }
 
   window.startReplay = startReplay;
+  window.endReplay = endReplay;
+  window.seekReplay = seekReplay;
+  window.saveReplayVideo = saveReplayVideo;
 
   function updateReplayButton() {
     const btn = document.getElementById('replayBtn');
@@ -1016,36 +2309,107 @@ function startNewRound() {
       btn.onclick = () => {
         replaySpeed = parseFloat(btn.dataset.speed);
         ov.remove();
-        saveReplayVideo();
+        if (typeof window.saveReplayVideo === 'function') {
+          window.saveReplayVideo();
+        } else {
+          saveReplayVideo();
+        }
       };
     });
   }
 
+  window.showSaveSpeedModal = showSaveSpeedModal;
+
+  function removeResultOverlay() {
+    if (activeResultOverlay && activeResultOverlay.parentNode) {
+      activeResultOverlay.remove();
+    }
+    activeResultOverlay = null;
+    resultOverlaySuppressed = false;
+  }
+
+  function suppressResultOverlay() {
+    if (!activeResultOverlay || resultOverlaySuppressed) return;
+    activeResultOverlay.classList.add('hidden');
+    activeResultOverlay.setAttribute('aria-hidden', 'true');
+    resultOverlaySuppressed = true;
+  }
+
+  function restoreResultOverlay() {
+    if (!activeResultOverlay || !resultOverlaySuppressed) return;
+    activeResultOverlay.classList.remove('hidden');
+    activeResultOverlay.removeAttribute('aria-hidden');
+    const focusTarget = activeResultOverlay.querySelector('#resPlayAgain') || activeResultOverlay.querySelector('button');
+    if (focusTarget) {
+      setTimeout(() => focusTarget.focus(), 0);
+    }
+    resultOverlaySuppressed = false;
+  }
+
   function showResult(text) {
+    removeResultOverlay();
     const ov = document.createElement('div');
     ov.id = 'resultOverlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
     ov.innerHTML =
       `<div>${text}</div>` +
-      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
-      `<button id="resReplay">${t('replay')}</button>` +
-      `<button id="resMenu">${t('toMenu')}</button>` +
-      `<button id="resOk">${t('ok')}</button>` +
+      '<div class="resultActions">' +
+      '  <div class="resultGroup">' +
+      '    <div class="resultGroupButtons">' +
+      `      <button id="resReplay">${t('replay')}</button>` +
+      `      <button id="resSaveReplay">${t('saveReplay')}</button>` +
+      '    </div>' +
+      '    <div id="replaySaveStatus" class="resultStatus" role="status" aria-live="polite"></div>' +
+      '  </div>' +
+      '  <div class="resultGroup">' +
+      '    <div class="resultGroupButtons">' +
+      `      <button id="resMenu">${t('toMenu')}</button>` +
+      `      <button id="resPlayAgain">${t('playAgain')}</button>` +
+      '    </div>' +
+      '  </div>' +
       '</div>';
     document.body.append(ov);
-    document.getElementById('resOk').onclick = () => {
-      ov.remove();
-      resetGame();
-      if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
-      if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
-    };
-    document.getElementById('resMenu').onclick = () => {
-      ov.remove();
-      returnToMenu();
-    };
-    document.getElementById('resReplay').onclick = () => {
-      ov.remove();
-      startReplay();
-    };
+    activeResultOverlay = ov;
+    resultOverlaySuppressed = false;
+    ov.setAttribute('aria-hidden', 'false');
+    const resAgain = ov.querySelector('#resPlayAgain');
+    const resMenu = ov.querySelector('#resMenu');
+    const resReplay = ov.querySelector('#resReplay');
+    const resSave = ov.querySelector('#resSaveReplay');
+    const statusEl = ov.querySelector('#replaySaveStatus');
+    if (resAgain) {
+      resAgain.onclick = () => {
+        removeResultOverlay();
+        resetGame();
+        if (typeof window.exitOnlineMode === 'function') window.exitOnlineMode();
+        if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
+      };
+    }
+    if (resMenu) {
+      resMenu.onclick = () => {
+        removeResultOverlay();
+        returnToMenu();
+      };
+    }
+    if (resReplay) {
+      resReplay.onclick = () => {
+        suppressResultOverlay();
+        startReplay();
+      };
+    }
+    if (resSave) {
+      if (!replayHistory.length) resSave.disabled = true;
+      resSave.onclick = () => {
+        const saved = saveReplayToStorage(text);
+        if (statusEl) {
+          statusEl.textContent = saved ? t('replaySaved') : t('replaySaveFailed');
+          statusEl.classList.remove('success', 'error');
+          statusEl.classList.add(saved ? 'success' : 'error');
+        }
+        if (saved) resSave.disabled = true;
+      };
+    }
   }
 
   function resetGame() {
@@ -1059,13 +2423,14 @@ function startNewRound() {
     units = { A: { x: 0, y: 2, alive: true }, B: { x: 4, y: 2, alive: true } };
     edgesCollapsed = false;
     resetOnlineFlags();
+    resetMarkedCells();
     clearPlan();
     document.querySelectorAll('.attack,.shield,.death').forEach(e => e.remove());
     render(); btnNext.textContent = t('nextBtn'); updateUI();
   }
 
   function clearPlan() {
-    document.querySelectorAll('.planMove,.planAttack,.planShield').forEach(e => e.remove());
+    document.querySelectorAll('.planMove,.planAttack,.planShield,.planGhost').forEach(e => e.remove());
   }
 
   window.launchGame = startGame;
@@ -1140,19 +2505,39 @@ function startNewRound() {
 
   window.exitOnlineMode = exitOnlineMode;
   function returnToMenu() {
+    removeResultOverlay();
     resetGame();
+    hideAttackOverlay();
+    abortTutorial();
     board.style.visibility = 'hidden';
     ui.classList.remove('show');
+    closeHudMenu();
+    if (roundBadge) {
+      roundBadge.classList.remove('visible', 'bump');
+      displayedRound = 0;
+    }
     if (typeof window.cleanupRoom === 'function') window.cleanupRoom();
     if (typeof window.disconnectPeer === 'function') window.disconnectPeer();
     exitOnlineMode();
+    if (typeof window.hideSettingsModal === 'function') {
+      window.hideSettingsModal({ immediate: true, returnFocus: false });
+    } else {
+      const settingsModalEl = document.getElementById('settingsModal');
+      if (settingsModalEl) {
+        settingsModalEl.classList.remove('visible', 'show');
+        settingsModalEl.setAttribute('aria-hidden', 'true');
+      }
+      if (settingsIcon) settingsIcon.classList.remove('active');
+    }
     ms.style.display = 'flex';
     if (ds) ds.style.display = 'none';
     if (onlineMenu) onlineMenu.style.display = 'none';
+    updateLayoutScale();
   }
 
   window.returnToMenu = returnToMenu;
   window.plans = plans;
+  window.toggleCellMark = toggleCellMark;
 
   window.onStartRound = function(moves) {
     plans = { A: moves[0], B: moves[1] };
@@ -1173,6 +2558,9 @@ function startNewRound() {
     clearPlan();
     updateUI();
   };
+
+  syncHudSpacing();
+  updateLayoutScale();
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1180,6 +2568,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settingsModal');
   const settingsClose = document.getElementById('settingsClose');
   const volumeSlider = document.getElementById('volumeSlider');
+  const volumeValue = document.getElementById('volumeValue');
+  const soundToggle = document.getElementById('soundToggle');
   const langSelect = document.getElementById('langSelect');
   const menuBtn = document.getElementById('menuBtn');
   const replayClose = document.getElementById('replayClose');
@@ -1188,20 +2578,157 @@ document.addEventListener('DOMContentLoaded', () => {
   const replayBtn = document.getElementById('replayBtn');
   const saveReplayBtn = document.getElementById('saveReplay');
   const replaySeek = document.getElementById('replaySeek');
+  const hideHudMenu = () => {
+    if (typeof window.closeHudMenu === 'function') {
+      window.closeHudMenu();
+      return;
+    }
+    const menu = document.getElementById('scoreboardMenu');
+    if (menu) {
+      menu.classList.remove('show');
+      menu.setAttribute('aria-hidden', 'true');
+    }
+    const backdrop = document.getElementById('scoreboardBackdrop');
+    if (backdrop) backdrop.classList.remove('show');
+    const toggle = document.getElementById('scoreboardToggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  };
+
+  if (settingsModal) {
+    settingsModal.setAttribute('aria-hidden', 'true');
+  }
+
+  const showSettingsModal = () => {
+    if (!settingsModal) return;
+    hideHudMenu();
+    if (!settingsModal.classList.contains('show')) {
+      settingsModal.classList.add('show');
+    }
+    settingsModal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      settingsModal.classList.add('visible');
+    });
+    if (settingsBtn && !settingsBtn.classList.contains('active')) {
+      playHudIconAnimation(settingsBtn, true);
+      settingsBtn.classList.add('active');
+    }
+    const focusTarget = settingsModal.querySelector('button, input, select, [tabindex]:not([tabindex="-1"])');
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      try {
+        focusTarget.focus({ preventScroll: true });
+      } catch (err) {
+        focusTarget.focus();
+      }
+    }
+  };
+
+  const hideSettingsModal = (options = {}) => {
+    if (!settingsModal) return;
+    if (!settingsModal.classList.contains('show')) {
+      settingsModal.setAttribute('aria-hidden', 'true');
+      if (settingsBtn) settingsBtn.classList.remove('active');
+      return;
+    }
+    const immediate = options.immediate === true;
+    const finalize = () => {
+      settingsModal.classList.remove('show');
+      settingsModal.setAttribute('aria-hidden', 'true');
+    };
+    if (immediate) {
+      settingsModal.classList.remove('visible');
+      finalize();
+    } else {
+      if (settingsModal.classList.contains('visible')) {
+        settingsModal.classList.remove('visible');
+        const onTransition = evt => {
+          if (evt && evt.target !== settingsModal) return;
+          if (evt && evt.propertyName && evt.propertyName !== 'opacity') return;
+          finalize();
+          settingsModal.removeEventListener('transitionend', onTransition);
+        };
+        settingsModal.addEventListener('transitionend', onTransition);
+        setTimeout(() => {
+          finalize();
+          settingsModal.removeEventListener('transitionend', onTransition);
+        }, 360);
+      } else {
+        finalize();
+      }
+    }
+    if (settingsBtn && settingsBtn.classList.contains('active')) {
+      playHudIconAnimation(settingsBtn, false);
+      settingsBtn.classList.remove('active');
+    }
+    if (options.returnFocus && settingsBtn && typeof settingsBtn.focus === 'function') {
+      try {
+        settingsBtn.focus({ preventScroll: true });
+      } catch (err) {
+        settingsBtn.focus();
+      }
+    }
+  };
+
+  window.hideSettingsModal = hideSettingsModal;
 
   if (settingsBtn && settingsModal) {
-    settingsBtn.onclick = () => { settingsModal.style.display = 'block'; };
-  }
-  if (settingsClose && settingsModal) {
-    settingsClose.onclick = () => { settingsModal.style.display = 'none'; };
-  }
-  if (volumeSlider) {
-    volumeSlider.value = soundVolume;
-    volumeSlider.oninput = () => {
-      soundVolume = parseFloat(volumeSlider.value);
-      localStorage.setItem('volume', soundVolume);
+    settingsBtn.onclick = () => {
+      if (settingsModal.classList.contains('show') && settingsModal.classList.contains('visible')) {
+        hideSettingsModal({ returnFocus: false });
+      } else {
+        showSettingsModal();
+      }
     };
   }
+  if (settingsClose && settingsModal) {
+    settingsClose.onclick = () => {
+      hideSettingsModal({ returnFocus: true });
+    };
+  }
+  const syncSoundControls = () => {
+    if (volumeSlider) {
+      volumeSlider.value = soundVolume;
+      volumeSlider.dataset.muted = soundMuted ? '1' : '0';
+    }
+    if (volumeValue) {
+      volumeValue.textContent = `${Math.round(soundVolume * 100)}%`;
+    }
+    if (soundToggle) {
+      soundToggle.checked = !soundMuted;
+    }
+  };
+
+  if (volumeSlider) {
+    volumeSlider.value = soundVolume;
+    volumeSlider.addEventListener('input', () => {
+      const parsed = parseFloat(volumeSlider.value);
+      if (!isNaN(parsed)) {
+        soundVolume = Math.min(Math.max(parsed, 0), 1);
+        localStorage.setItem('volume', soundVolume.toString());
+        if (soundVolume === 0) {
+          if (!soundMuted) {
+            soundMuted = true;
+            localStorage.setItem('soundMuted', '1');
+          }
+        } else if (soundMuted) {
+          soundMuted = false;
+          localStorage.setItem('soundMuted', '0');
+        }
+        syncSoundControls();
+      }
+    });
+  }
+  if (soundToggle) {
+    soundToggle.checked = !soundMuted;
+    soundToggle.addEventListener('change', () => {
+      soundMuted = !soundToggle.checked;
+      localStorage.setItem('soundMuted', soundMuted ? '1' : '0');
+      syncSoundControls();
+      if (!soundMuted && soundVolume > 0) {
+        playSound('ui');
+      }
+    });
+  }
+  syncSoundControls();
   if (langSelect) {
     langSelect.dataset.value = window.i18n ? window.i18n.lang : 'en';
   }
@@ -1215,14 +2742,37 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  if (menuBtn) menuBtn.onclick = () => returnToMenu();
-  if (replayClose) replayClose.onclick = () => endReplay();
-  if (replayBtn) {
-    replayBtn.onclick = () => startReplay();
-    updateReplayButton();
+  if (menuBtn) {
+    menuBtn.onclick = () => {
+      hideHudMenu();
+      if (typeof window.returnToMenu === 'function') window.returnToMenu();
+    };
   }
-  if (saveReplayBtn) saveReplayBtn.onclick = () => showSaveSpeedModal();
-  if (replaySeek) replaySeek.oninput = () => seekReplay(parseInt(replaySeek.value));
+  if (replayClose) {
+    replayClose.onclick = () => {
+      if (typeof window.endReplay === 'function') window.endReplay();
+    };
+  }
+  if (replayBtn) {
+    replayBtn.onclick = () => {
+      hideHudMenu();
+      if (typeof window.startReplay === 'function') window.startReplay();
+    };
+    if (typeof window.updateReplayButton === 'function') window.updateReplayButton();
+  }
+  if (saveReplayBtn) {
+    saveReplayBtn.onclick = () => {
+      if (typeof window.showSaveSpeedModal === 'function') window.showSaveSpeedModal();
+    };
+  }
+  if (replaySeek) {
+    replaySeek.oninput = () => {
+      const target = parseInt(replaySeek.value, 10);
+      if (!Number.isNaN(target)) {
+        if (typeof window.seekReplay === 'function') window.seekReplay(target);
+      }
+    };
+  }
   if (speedBtns.length) {
     speedBtns.forEach(btn => {
       if (parseFloat(btn.dataset.speed) === replaySpeed) btn.classList.add('active');
@@ -1230,13 +2780,37 @@ document.addEventListener('DOMContentLoaded', () => {
         replaySpeed = parseFloat(btn.dataset.speed);
         speedBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        if (!replayPaused && typeof replayLoop === 'function') {
+          if (replayTimer) {
+            clearTimeout(replayTimer);
+            replayTimer = null;
+          }
+          replayLoop();
+        }
       };
     });
   }
   if (replayPauseBtn) {
+    replayPauseBtn.setAttribute('aria-label', t('pauseReplay'));
+    replayPauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
     replayPauseBtn.onclick = () => {
       replayPaused = !replayPaused;
-      replayPauseBtn.textContent = replayPaused ? '▶' : '❚❚';
+      if (replayPaused) {
+        replayPauseBtn.textContent = '▶';
+        replayPauseBtn.setAttribute('aria-label', t('resumeReplay'));
+        replayPauseBtn.setAttribute('data-i18n-aria', 'resumeReplay');
+        if (replayTimer) {
+          clearTimeout(replayTimer);
+          replayTimer = null;
+        }
+      } else {
+        replayPauseBtn.textContent = '❚❚';
+        replayPauseBtn.setAttribute('aria-label', t('pauseReplay'));
+        replayPauseBtn.setAttribute('data-i18n-aria', 'pauseReplay');
+        if (typeof replayLoop === 'function') {
+          replayLoop();
+        }
+      }
     };
   }
 
@@ -1244,8 +2818,14 @@ document.addEventListener('DOMContentLoaded', () => {
     playSound(e.target.dataset.sound || "ui");
   });
 
-  if (!localStorage.getItem('tutorialDone') && typeof window.startTutorial === 'function') {
-    window.startTutorial();
+  let shouldOfferTutorial = false;
+  try {
+    shouldOfferTutorial = !localStorage.getItem('tutorialDone');
+  } catch (err) {
+    shouldOfferTutorial = false;
+  }
+  if (shouldOfferTutorial) {
+    showTutorialPrompt();
   }
 });
 
