@@ -1,6 +1,14 @@
 # 5x5 Arena
 
-A simple WebSocket-based 5×5 PvP game.
+A turn-based 5×5 PvP arena with a bundled Node.js server, WebSocket matchmaking and optional peer-to-peer signalling.
+
+## Features
+
+- **Unified server** – `server.js` serves the static client, hosts the primary WebSocket backend and exposes a lightweight WebRTC signalling endpoint on the same port.
+- **Configurable connectivity** – override WebSocket or signalling endpoints through query parameters or globals such as `window.WS_SERVER_URL` and `window.SIGNAL_SERVER_URL`.
+- **Manual status checks** – the online lobby shows the current connection state and provides a dedicated **Check connection** button so you can refresh the status on demand without background polling.
+- **Replay tools** – every finished round can be replayed inside the browser and exported as a WebM video for sharing.
+- **Automated tests** – Playwright-driven integration tests exercise the lobby, server and replay flows via the Node.js test runner.
 
 ## Getting started
 
@@ -10,7 +18,7 @@ A simple WebSocket-based 5×5 PvP game.
    npm install
    ```
 
-2. Start the server (choose either command):
+2. Start the bundled HTTP/WebSocket server:
 
    ```bash
    npm start
@@ -18,29 +26,35 @@ A simple WebSocket-based 5×5 PvP game.
    node server.js
    ```
 
+   The game client becomes available at [http://localhost:3000](http://localhost:3000). The WebSocket endpoint defaults to `ws://localhost:3000` unless overridden.
 
-   The game will be served on [https://zippy-scintillating-asp.glitch.me](https://zippy-scintillating-asp.glitch.me).
+### Runtime configuration
 
-### Configuring the WebSocket server
+You can point the client at a different backend without rebuilding:
 
-The client connects to the hosted WebSocket server above by default (wss://zippy-scintillating-asp.glitch.me). For local development you can point the client at your own server in two ways:
+- Define `window.WS_SERVER_URL` before loading `js/socket.js` or pass a `?ws=` query parameter to change the primary WebSocket URL.
+- Define `window.SIGNAL_SERVER_URL` or pass a `?signal=` query parameter to override the WebRTC signalling server used for peer-to-peer duels.
+- Provide `window.__CROSSLINE_RUNTIME__` with `wsUrl` / `signalUrl` / `apiOrigin` fields for full runtime control (used by the bundled server when an ngrok tunnel is active).
 
-1. Define `WS_SERVER_URL` before including `js/socket.js`:
+### Server configuration
 
-   ```html
-   <script>window.WS_SERVER_URL = 'ws://localhost:8080';</script>
-   <script src="js/socket.js"></script>
-   ```
+Environment variables control the local server:
 
-2. Pass a `ws` query parameter when opening the page:
+- `PORT` – HTTP and WebSocket listening port (defaults to `3000`).
+- `NGROK_DOMAIN` – if set, the server will attempt to start an ngrok tunnel for external access using this reserved domain.
+- `NGROK_COMMAND` / `NGROK_EXE` – optional explicit path to the ngrok executable.
+- `CROSSLINE_CORS_ORIGIN` – comma-separated list of allowed origins for HTTP requests.
+- `CROSSLINE_API_URL` / `CROSSLINE_WS_URL` – override the URLs announced to the client when the server runs behind a reverse proxy or tunnel.
 
-   `http://localhost:8080/?ws=ws://localhost:8080`
+## Online lobby experience
 
-### Running tests
+- The connection banner now stays idle until you click **Check connection** – no periodic pings are sent in the background.
+- When the WebSocket connects or disconnects the banner updates automatically, and you can always trigger a manual refresh if the status looks stale.
+- Copy/paste helpers around the room code streamline inviting friends to a duel.
 
-After running `npm install`, Playwright's browsers are automatically installed
-via the `postinstall` script. Once dependencies are installed, the test suite
-can be run using:
+## Running tests
+
+After installing dependencies the `postinstall` script fetches Playwright browsers. Run the full test suite with:
 
 ```bash
 npm test
@@ -48,38 +62,14 @@ npm test
 
 ## Troubleshooting
 
-After you press the **Подтвердить** button your moves are sent to the server. The client waits for the `start_round` message to continue. If this message does not arrive within about 10 seconds you will see the error:
-
-```
-сервер не начал раунд, перепроверьте соединение
-```
-
-The confirm button becomes active again so you can resend the moves. This usually means that the connection to the server was interrupted.
-
-If the page manages to reconnect, you will see **«Переподключено, повторный вход…»** and the client will automatically recreate or rejoin the last room.
-
-When your opponent leaves the room you will now see a popup with options to return to the online menu or immediately create a new room. Leaving the online menu (including via the **В меню** button) calls `exitOnlineMode()` which sets the game back to offline mode, resets the room state with `resetRoomState()` and shows the main screen. Exiting the online screen or reloading the page also clears `isOnline` and `playerIndex`.
+- After pressing **Подтвердить**, the client waits for a `start_round` message. If it never arrives you will see `сервер не начал раунд, перепроверьте соединение` and can resend your plan.
+- Leaving the online menu resets the multiplayer state: `exitOnlineMode()` switches the UI back to offline mode, clears `isOnline`, `playerIndex` and room data.
+- When an opponent disconnects a modal appears with quick actions to return to the menu or instantly create a new room.
 
 ## Replays and video export
 
-After a match a **Replay** button appears on the scoreboard. Clicking it opens a
-full-screen overlay where you can watch the recorded round. The pause button and
-seek bar let you step through each action, while the numbered buttons adjust the
-playback speed from 1× to 5×. To keep a copy of the match press **Save** and the
-browser will export the replay as a WebM video. Use **Close** to return to the
-game.
+Finishing a match reveals a **Replay** button on the scoreboard. The full-screen player lets you scrub through every action, adjust playback speed from 1× to 5× and export the session to WebM via the **Save** button.
 
-### P2P mode
+## Peer-to-peer mode
 
-The client can establish a direct WebRTC connection using a small signaling
-server hosted at [https://hypnotic-brassy-forest.glitch.me](https://hypnotic-brassy-forest.glitch.me).
-Clients join a room by sending `{ type: 'join', room: '<id>' }` and then
-exchange `{ type: 'signal', payload: ... }` messages containing WebRTC offers,
-answers and ICE candidates. The first peer in the room creates the offer and the
-second responds. To close the connection call `disconnectPeer()` which cleans up
-both the WebRTC channel and the WebSocket. See `p2p-server-info.txt` for the
-message format.
-
-You can point the client at a different signaling server in the same way as the
-main WebSocket connection: either define `SIGNAL_SERVER_URL` before loading
-`js/p2p.js` or supply a `signal` query parameter in the page URL.
+A built-in signalling server relays WebRTC offers, answers and ICE candidates. Clients join with `{ type: 'join', room: '<id>' }` and exchange `{ type: 'signal', payload: ... }` messages until the peer connection is established. Call `disconnectPeer()` to close both the WebRTC channel and its fallback WebSocket. For message samples refer to `p2p-server-info.txt`.

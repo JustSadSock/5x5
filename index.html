@@ -291,6 +291,13 @@
       align-items:center;
       gap:20px;
     }
+    .online-status-group {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
     .online-heading {
       display:flex;
       flex-direction:column;
@@ -406,6 +413,40 @@
     .online-status[data-state="reconnecting"] .status-dot,
     .online-status[data-state="checking"] .status-dot {
       animation:status-pulse 1.2s ease-in-out infinite;
+    }
+    .status-refresh {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid var(--color-border);
+      background:rgba(15,23,42,0.35);
+      color:var(--color-text-primary);
+      font-weight:600;
+      transition:background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .status-refresh:hover:not(:disabled) {
+      background:rgba(59,130,246,0.2);
+      border-color:rgba(59,130,246,0.45);
+      color:var(--color-accent);
+    }
+    .status-refresh:disabled,
+    .status-refresh[aria-disabled="true"] {
+      opacity:0.6;
+      cursor:not-allowed;
+    }
+    .status-refresh .refresh-icon {
+      font-size:16px;
+      line-height:1;
+      display:inline-flex;
+    }
+    .status-refresh.is-loading .refresh-icon {
+      animation:refresh-spin 1s linear infinite;
+    }
+    @keyframes refresh-spin {
+      from { transform:rotate(0deg); }
+      to { transform:rotate(360deg); }
     }
     @keyframes status-pulse {
       0%, 100% { transform:scale(0.9); opacity:0.7; }
@@ -2170,9 +2211,15 @@
             <h2 class="online-title" data-i18n="onlineLobbyTitle">Онлайн-дуэль</h2>
             <p class="online-subtitle" data-i18n="onlineLobbySubtitle">Создайте комнату или присоединитесь по коду, чтобы сыграть с другом.</p>
           </div>
-          <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span class="status-text" data-i18n="checkingConnection">Проверяем соединение…</span>
+          <div class="online-status-group">
+            <div id="connectionStatus" class="online-status" data-state="checking" aria-live="polite">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span class="status-text" data-i18n="checkingConnection">Проверяем соединение…</span>
+            </div>
+            <button id="connectionRetry" class="status-refresh" type="button" data-i18n-aria="retryConnection" data-i18n-title="retryConnection" aria-label="Проверить соединение" title="Проверить соединение">
+              <span class="refresh-icon" aria-hidden="true">↻</span>
+              <span class="refresh-label" data-i18n="retryConnection">Проверить соединение</span>
+            </button>
           </div>
         </div>
         <div class="online-panels">
