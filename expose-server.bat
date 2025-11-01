@@ -3,7 +3,8 @@ setlocal EnableExtensions EnableDelayedExpansion
 pushd "%~dp0"
 
 if not defined PORT set "PORT=3000"
-if not defined NGROK_DOMAIN set "NGROK_DOMAIN=visually-definite-frog.ngrok-free.app"
+if not defined CLOUDFLARED_TUNNEL set "CLOUDFLARED_TUNNEL=irgri-tunnel"
+if not defined PUBLIC_TUNNEL_URL set "PUBLIC_TUNNEL_URL=https://irgri.uk"
 
 echo Checking Node.js and npm...
 where node >nul 2>nul || (echo Node.js was not found in PATH.& goto :fail)
@@ -17,64 +18,47 @@ if not exist node_modules (
   echo node_modules directory detected, skipping npm ci.
 )
 
-set "NGROK_CMD=ngrok"
-if defined NGROK_EXE (
-  set "NGROK_CMD=%NGROK_EXE%"
-  set "NGROK_CMD=%NGROK_CMD:\"=%"
-  set "NGROK_CMD=%NGROK_CMD:'=%"
-  if not exist "%NGROK_CMD%" (
-    for /f "delims=" %%I in ('where %NGROK_CMD% 2^>nul') do (
-      set "NGROK_CMD=%%I"
-      goto :ngrok_ok
+set "CLOUDFLARED_CMD=cloudflared"
+if defined CLOUDFLARED_EXE (
+  set "CLOUDFLARED_CMD=%CLOUDFLARED_EXE%"
+  set "CLOUDFLARED_CMD=%CLOUDFLARED_CMD:\"=%"
+  set "CLOUDFLARED_CMD=%CLOUDFLARED_CMD:'=%"
+  if not exist "%CLOUDFLARED_CMD%" (
+    for /f "delims=" %%I in ('where %CLOUDFLARED_CMD% 2^>nul') do (
+      set "CLOUDFLARED_CMD=%%I"
+      goto :cloudflared_ok
     )
-    echo Provided NGROK_EXE path was not found: %NGROK_CMD%
+    echo Provided CLOUDFLARED_EXE path was not found: %CLOUDFLARED_CMD%
     goto :fail
   )
-  goto :ngrok_ok
+  goto :cloudflared_ok
 ) else (
-  for /f "delims=" %%I in ('where ngrok 2^>nul') do (
-    set "NGROK_CMD=%%I"
-    goto :ngrok_ok
+  for /f "delims=" %%I in ('where cloudflared 2^>nul') do (
+    set "CLOUDFLARED_CMD=%%I"
+    goto :cloudflared_ok
   )
-  echo ngrok was not found. Install it or set NGROK_EXE to the full path.
+  echo cloudflared was not found. Install it or set CLOUDFLARED_EXE to the full path.
   goto :fail
 )
 
-:ngrok_ok
-if defined NGROK_AUTHTOKEN (
-  echo Applying ngrok auth token...
-  "%NGROK_CMD%" config add-authtoken %NGROK_AUTHTOKEN% >nul 2>&1
-)
+:cloudflared_ok
 
 echo Starting local server on port %PORT%...
 start "5x5-local-server" cmd /k "cd /d %~dp0 && set PORT=%PORT% && npm run start"
 
-set "NGROK_ARGS=http --domain %NGROK_DOMAIN% %PORT%"
-echo Launching ngrok tunnel (%NGROK_CMD% %NGROK_ARGS%)...
-start "5x5-ngrok" cmd /k call "%NGROK_CMD%" %NGROK_ARGS%
+set "CLOUDFLARED_ARGS=tunnel run %CLOUDFLARED_TUNNEL%"
+echo Launching Cloudflare Tunnel (%CLOUDFLARED_CMD% %CLOUDFLARED_ARGS%)...
+start "5x5-cloudflared" cmd /k call "%CLOUDFLARED_CMD%" %CLOUDFLARED_ARGS%
 
-echo Waiting for ngrok to initialise...
-set "TUNNEL_URL="
-for /L %%S in (1,1,15) do (
-  timeout /t 2 >nul
-  for /f "usebackq tokens=* delims=" %%I in (`powershell -NoLogo -NoProfile -Command "Try { $resp = Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:4040/api/tunnels'; ($resp.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1).public_url } Catch { '' }"`) do set "TUNNEL_URL=%%I"
-  if defined TUNNEL_URL goto :got_tunnel
-)
-
-:got_tunnel
-
-if defined TUNNEL_URL (
-  set "WS_URL=!TUNNEL_URL:https://=wss://!"
-  if not exist scripts mkdir scripts >nul 2>&1
-  >scripts\.crossline-tunnel.env echo CROSSLINE_API_URL=!TUNNEL_URL!
-  >>scripts\.crossline-tunnel.env echo CROSSLINE_WS_URL=!WS_URL!
-  echo.
-  echo Tunnel available: !TUNNEL_URL!
-  echo Saved variables to scripts\.crossline-tunnel.env
-  echo Use these values for CROSSLINE_API_URL and CROSSLINE_WS_URL when deploying the client.
-) else (
-  echo Could not determine tunnel URL automatically. Check the ngrok window for details.
-)
+set "TUNNEL_URL=%PUBLIC_TUNNEL_URL%"
+set "WS_URL=%TUNNEL_URL:https://=wss://%"
+if not exist scripts mkdir scripts >nul 2>&1
+>scripts\.crossline-tunnel.env echo CROSSLINE_API_URL=%TUNNEL_URL%
+>>scripts\.crossline-tunnel.env echo CROSSLINE_WS_URL=%WS_URL%
+echo.
+echo Tunnel available: %TUNNEL_URL%
+echo Saved variables to scripts\.crossline-tunnel.env
+echo Use these values for CROSSLINE_API_URL and CROSSLINE_WS_URL when deploying the client.
 
 if exist monitor-server.ps1 (
   echo Launching monitor-server.ps1 ...
