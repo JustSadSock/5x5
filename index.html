@@ -1593,6 +1593,33 @@
       flex-direction:column;
       gap:12px;
     }
+    #tutorialPrompt .tutorialPromptLanguage {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      text-align:left;
+    }
+    #tutorialPrompt .tutorialPromptLanguage label {
+      font-weight:600;
+      font-size:15px;
+      color:var(--color-heading);
+    }
+    #tutorialPrompt .tutorialPromptLanguage select {
+      appearance:none;
+      background:var(--color-input-bg);
+      border:1px solid var(--color-input-border);
+      border-radius:12px;
+      padding:10px 14px;
+      color:var(--color-text-primary);
+      font-size:15px;
+      font-weight:500;
+      outline:none;
+      transition:border-color .2s ease, box-shadow .2s ease;
+    }
+    #tutorialPrompt .tutorialPromptLanguage select:focus {
+      border-color:var(--color-accent);
+      box-shadow:0 0 0 3px rgba(56,189,248,0.25);
+    }
     #tutorialPrompt button.secondary {
       background:transparent;
       color:var(--color-accent);
@@ -2422,6 +2449,14 @@
     <div class="tutorialPromptCard">
       <h2 id="tutorialPromptTitle" data-i18n="tutorialPromptTitle">Learn the basics?</h2>
       <p id="tutorialPromptBody" data-i18n="tutorialPromptBody">Would you like to run the guided tutorial or skip it for now?</p>
+      <div class="tutorialPromptLanguage">
+        <label for="tutorialPromptLang" data-i18n="tutorialPromptLanguage">Language</label>
+        <select id="tutorialPromptLang">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="uk">Українська</option>
+        </select>
+      </div>
       <div class="tutorialPromptButtons">
         <button id="tutorialPromptStart" class="primary" data-i18n="tutorialPromptStart" data-sound="nav">Start tutorial</button>
         <button id="tutorialPromptSkip" class="secondary" data-i18n="tutorialPromptSkip" data-sound="nav">Skip for now</button>

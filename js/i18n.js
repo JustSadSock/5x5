@@ -157,6 +157,7 @@
       ,tutorialPromptStart: 'Yes, teach me'
       ,tutorialPromptSkip: 'Not now'
       ,tutorialPromptNote: 'You can launch the tutorial later from the Rules menu.'
+      ,tutorialPromptLanguage: 'Language'
     },
     ru: {
       singlePlayer: '1 игрок',
@@ -312,6 +313,7 @@
       ,tutorialPromptStart: '\u0416\u0435\u043b\u0430\u044e'
       ,tutorialPromptSkip: '\u041d\u0435\u0442'
       ,tutorialPromptNote: '\u041f\u043e\u0437\u0436\u0435 \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435 \u043c\u043e\u0436\u043d\u043e \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u0440\u0430\u0437\u0434\u0435\u043b\u0435 \u00ab\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u00bb.'
+      ,tutorialPromptLanguage: '\u042f\u0437\u044b\u043a \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430'
     },
     uk: {
       singlePlayer: '1 гравець',
@@ -467,6 +469,7 @@
       ,tutorialPromptStart: '\u0411\u0430\u0436\u0430\u044e'
       ,tutorialPromptSkip: '\u041d\u0456'
       ,tutorialPromptNote: '\u041f\u043e\u0432\u0435\u0440\u043d\u0443\u0442\u0438\u0441\u044c \u0434\u043e \u043d\u0430\u0432\u0447\u0430\u043d\u043d\u044f \u043c\u043e\u0436\u043d\u0430 \u0437\u0433\u043e\u0434\u043e\u043c \u0447\u0435\u0440\u0435\u0437 \u043c\u0435\u043d\u044e \u00ab\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u00bb.'
+      ,tutorialPromptLanguage: '\u041c\u043e\u0432\u0430 \u0456\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0443'
     }
   };
 

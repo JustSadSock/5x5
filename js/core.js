@@ -285,15 +285,24 @@ function startNewRound() {
     }
     const totalWidth = Math.max(300, maxRight - minLeft);
     const totalHeight = Math.max(320, maxBottom - minTop);
-    const availableWidth = Math.max(320, window.innerWidth - 32);
-    const availableHeight = Math.max(320, window.innerHeight - 32);
+    const safeMarginX = Math.max(16, Math.min(32, Math.round(window.innerWidth * 0.04)));
+    const safeMarginY = Math.max(16, Math.min(56, Math.round(window.innerHeight * 0.06)));
+    const availableWidth = Math.max(320, window.innerWidth - safeMarginX * 2);
+    const availableHeight = Math.max(320, window.innerHeight - safeMarginY * 2);
     let scale = Math.min(1, availableWidth / totalWidth, availableHeight / totalHeight);
     if (!Number.isFinite(scale) || scale <= 0) {
       root.style.setProperty('--ui-scale', prev.trim() || '1');
       return;
     }
-    scale = Math.max(0.45, Math.min(scale, 1));
+    const minScale = 0.35;
+    scale = Math.max(minScale, Math.min(scale, 1));
     root.style.setProperty('--ui-scale', scale.toFixed(3));
+    const scaledHeight = totalHeight * scale;
+    const shouldAllowScroll = scaledHeight > (window.innerHeight - safeMarginY * 0.5);
+    if (document.body) {
+      document.body.style.overflowY = shouldAllowScroll ? 'auto' : 'hidden';
+    }
+    document.documentElement.style.overflowY = shouldAllowScroll ? 'auto' : 'hidden';
     requestAnimationFrame(syncHudSpacing);
   }
 
@@ -1908,13 +1917,14 @@ function startNewRound() {
     const frames = [];
     replayHistory.forEach(r => {
       if (!r || !Array.isArray(r.states) || !r.states.length) return;
-      frames.push({ state: r.states[0] });
+      frames.push({ state: r.states[0], prevState: null });
       for (let i = 1; i < r.states.length; i += 1) {
         const frameActions = r.actions && r.actions.A && r.actions.B ? {
           A: r.actions.A[i - 1],
           B: r.actions.B[i - 1]
         } : undefined;
-        frames.push({ state: r.states[i], actions: frameActions });
+        const prevState = r.states[i - 1] || null;
+        frames.push({ state: r.states[i], actions: frameActions, prevState });
       }
     });
     return frames;
@@ -1922,55 +1932,154 @@ function startNewRound() {
 
   function drawReplayCanvasFrame(ctx, frame) {
     if (!ctx || !frame || !frame.state) return;
-    const canvas = ctx.canvas;
+    const { canvas } = ctx;
     const width = canvas.width;
     const height = canvas.height;
     const isLight = document.documentElement.dataset.theme === 'light';
     const background = isLight ? '#f8fafc' : '#020617';
     const boardFill = isLight ? '#e2e8f0' : '#0f172a';
+    const boardInner = isLight ? '#ffffff' : '#111827';
     const edgeFill = isLight ? '#fecdd3' : '#7f1d1d';
-    const gridColor = isLight ? 'rgba(15,23,42,0.18)' : 'rgba(148,163,184,0.35)';
     const textColor = isLight ? '#0f172a' : '#f8fafc';
+    const attackHighlights = { A: 'rgba(56,189,248,0.65)', B: 'rgba(249,115,22,0.65)' };
+    const shieldHighlights = { A: 'rgba(56,189,248,0.5)', B: 'rgba(249,115,22,0.5)' };
+
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, width, height);
 
-    const padding = Math.round(Math.min(width, height) * 0.12);
-    const boardSize = Math.min(width, height) - padding * 2;
-    const originX = (width - boardSize) / 2;
-    const originY = (height - boardSize) / 2 + 32;
-    const cellSize = boardSize / 5;
-    const gap = Math.max(3, Math.round(cellSize * 0.08));
+    const topReserve = Math.round(height * 0.18);
+    const boardOuter = Math.min(width * 0.86, (height - topReserve) * 0.94);
+    const boardX = Math.round((width - boardOuter) / 2);
+    const boardY = Math.round((height - boardOuter) / 2 + topReserve * 0.25);
+    const cornerRadius = Math.max(18, Math.round(boardOuter * 0.06));
+    const innerPadding = Math.max(16, Math.round(boardOuter * 0.08));
+    const gap = Math.max(4, Math.round(boardOuter * 0.022));
+    const innerSize = boardOuter - innerPadding * 2;
+    const cellSize = (innerSize - gap * 4) / 5;
+    const cellRadius = Math.max(10, cellSize * 0.22);
     const state = frame.state;
+    const prevState = frame.prevState || null;
+
+    const drawRoundedRect = (x, y, w, h, r) => {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h - radius);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      ctx.lineTo(x + radius, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    ctx.fillStyle = boardFill;
+    drawRoundedRect(boardX, boardY, boardOuter, boardOuter, cornerRadius);
+
+    const innerX = boardX + innerPadding;
+    const innerY = boardY + innerPadding;
+    const getCellRect = (x, y) => ({
+      x: innerX + x * (cellSize + gap),
+      y: innerY + y * (cellSize + gap)
+    });
+    const getCellCenter = (x, y) => {
+      const rect = getCellRect(x, y);
+      return {
+        x: rect.x + cellSize / 2,
+        y: rect.y + cellSize / 2
+      };
+    };
+
     for (let y = 0; y < 5; y += 1) {
       for (let x = 0; x < 5; x += 1) {
-        const cellX = originX + x * cellSize;
-        const cellY = originY + y * cellSize;
+        const rect = getCellRect(x, y);
         const collapsed = state.edgesCollapsed && (x === 0 || x === 4 || y === 0 || y === 4);
-        ctx.fillStyle = collapsed ? edgeFill : boardFill;
-        ctx.fillRect(cellX, cellY, cellSize - gap, cellSize - gap);
+        ctx.fillStyle = collapsed ? edgeFill : boardInner;
+        drawRoundedRect(rect.x, rect.y, cellSize, cellSize, cellRadius);
       }
     }
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 2;
-    for (let i = 0; i <= 5; i += 1) {
-      const pos = originX + i * cellSize;
-      ctx.beginPath();
-      ctx.moveTo(pos, originY);
-      ctx.lineTo(pos, originY + boardSize - cellSize + gap);
-      ctx.stroke();
-      const posY = originY + i * cellSize;
-      ctx.beginPath();
-      ctx.moveTo(originX, posY);
-      ctx.lineTo(originX + boardSize - cellSize + gap, posY);
-      ctx.stroke();
+
+    const highlightCell = (x, y, color, alpha = 0.5) => {
+      if (x < 0 || x > 4 || y < 0 || y > 4) return;
+      const rect = getCellRect(x, y);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      drawRoundedRect(rect.x, rect.y, cellSize, cellSize, cellRadius);
+      ctx.restore();
+    };
+
+    const postDraw = [];
+
+    const drawShield = (player, unit) => {
+      if (!unit) return;
+      const color = shieldHighlights[player] || 'rgba(148,163,184,0.45)';
+      highlightCell(unit.x, unit.y, color, 0.35);
+      const center = getCellCenter(unit.x, unit.y);
+      const radius = Math.max(cellSize * 0.38, cellSize / 2 - gap * 0.45);
+      postDraw.push(() => {
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(4, cellSize * 0.16);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = Math.max(6, cellSize * 0.12);
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      });
+    };
+
+    const drawAttack = (player, unit, dirs) => {
+      if (!unit || !Array.isArray(dirs)) return;
+      const color = attackHighlights[player] || 'rgba(14,165,233,0.6)';
+      highlightCell(unit.x, unit.y, color, 0.6);
+      const origin = getCellCenter(unit.x, unit.y);
+      dirs.forEach(dir => {
+        const delta = DXY[dir];
+        if (!delta) return;
+        const tx = unit.x + delta[0];
+        const ty = unit.y + delta[1];
+        if (tx < 0 || tx > 4 || ty < 0 || ty > 4) return;
+        highlightCell(tx, ty, color, 0.45);
+        const target = getCellCenter(tx, ty);
+        ctx.save();
+        ctx.globalAlpha = 0.65;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(3, cellSize * 0.1);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.stroke();
+        ctx.restore();
+      });
+    };
+
+    if (frame.actions) {
+      ['A', 'B'].forEach(player => {
+        const act = frame.actions[player];
+        if (!act) return;
+        const currentUnit = state.units && state.units[player] ? { ...state.units[player] } : null;
+        const fallbackUnit = !currentUnit && prevState && prevState.units ? prevState.units[player] : null;
+        const unit = currentUnit || fallbackUnit;
+        if (act === 'shield') {
+          drawShield(player, unit);
+        } else if (act && typeof act === 'object') {
+          drawAttack(player, unit, act.dirs);
+        }
+      });
     }
 
     const drawToken = (x, y, color, clipStart = 0, clipEnd = Math.PI * 2) => {
-      const centerX = originX + x * cellSize + (cellSize - gap) / 2;
-      const centerY = originY + y * cellSize + (cellSize - gap) / 2;
-      const radius = (cellSize - gap) * 0.32;
+      const center = getCellCenter(x, y);
+      const radius = cellSize * 0.36;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, clipStart, clipEnd, false);
+      ctx.arc(center.x, center.y, radius, clipStart, clipEnd, false);
       ctx.fillStyle = color;
       ctx.fill();
     };
@@ -1988,16 +2097,48 @@ function startNewRound() {
       if (state.units && state.units.B && state.units.B.alive) {
         drawToken(state.units.B.x, state.units.B.y, bColor);
       }
+      if (state.units && state.units.A && !state.units.A.alive && Number.isFinite(state.units.A.x) && Number.isFinite(state.units.A.y)) {
+        const center = getCellCenter(state.units.A.x, state.units.A.y);
+        highlightCell(state.units.A.x, state.units.A.y, 'rgba(239,68,68,0.45)', 0.45);
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = Math.max(4, cellSize * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(center.x - cellSize * 0.32, center.y - cellSize * 0.32);
+        ctx.lineTo(center.x + cellSize * 0.32, center.y + cellSize * 0.32);
+        ctx.moveTo(center.x + cellSize * 0.32, center.y - cellSize * 0.32);
+        ctx.lineTo(center.x - cellSize * 0.32, center.y + cellSize * 0.32);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (state.units && state.units.B && !state.units.B.alive && Number.isFinite(state.units.B.x) && Number.isFinite(state.units.B.y)) {
+        const center = getCellCenter(state.units.B.x, state.units.B.y);
+        highlightCell(state.units.B.x, state.units.B.y, 'rgba(239,68,68,0.45)', 0.45);
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = Math.max(4, cellSize * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(center.x - cellSize * 0.32, center.y - cellSize * 0.32);
+        ctx.lineTo(center.x + cellSize * 0.32, center.y + cellSize * 0.32);
+        ctx.moveTo(center.x + cellSize * 0.32, center.y - cellSize * 0.32);
+        ctx.lineTo(center.x - cellSize * 0.32, center.y + cellSize * 0.32);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
+    postDraw.forEach(fn => fn());
+
     ctx.fillStyle = textColor;
-    ctx.font = '600 32px "Inter", "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
     const roundLabel = typeof t === 'function' ? `${t('round')} ${state.round}` : `Round ${state.round}`;
-    ctx.fillText(roundLabel, width / 2, originY - 40);
-    ctx.font = '500 20px "Inter", "Segoe UI", sans-serif';
+    ctx.font = '600 30px "Inter", "Segoe UI", sans-serif';
+    ctx.fillText(roundLabel, width / 2, Math.max(48, boardY - 36));
     const stepLabel = typeof t === 'function' ? t('phaseExecuting', { step: state.step }) : `Step ${state.step}`;
-    ctx.fillText(stepLabel, width / 2, originY - 12);
+    ctx.font = '500 20px "Inter", "Segoe UI", sans-serif';
+    ctx.fillText(stepLabel, width / 2, Math.max(72, boardY - 8));
   }
 
   function delay(ms) {
@@ -2147,12 +2288,12 @@ function startNewRound() {
     try {
       recorder.start();
       started = true;
-      const frameDuration = frames.length > 1 ? 450 : 800;
+      const frameDuration = frames.length > 1 ? 560 : 900;
       for (let i = 0; i < frames.length; i += 1) {
         drawReplayCanvasFrame(ctx, frames[i]);
         await delay(frameDuration);
       }
-      await delay(320);
+      await delay(Math.max(820, frameDuration));
       stopReplayRecordingIfNeeded();
       await completion;
     } catch (err) {
@@ -2571,6 +2712,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const volumeValue = document.getElementById('volumeValue');
   const soundToggle = document.getElementById('soundToggle');
   const langSelect = document.getElementById('langSelect');
+  const tutorialPromptLang = document.getElementById('tutorialPromptLang');
   const menuBtn = document.getElementById('menuBtn');
   const replayClose = document.getElementById('replayClose');
   const speedBtns = document.querySelectorAll('.speedBtn');
@@ -2729,17 +2871,64 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   syncSoundControls();
-  if (langSelect) {
-    langSelect.dataset.value = window.i18n ? window.i18n.lang : 'en';
+  const detectInitialLanguage = () => {
+    if (window.i18n && window.i18n.lang) return window.i18n.lang;
+    try {
+      const stored = localStorage.getItem('language');
+      if (stored) return stored;
+    } catch (err) {}
+    return 'en';
+  };
+
+  const syncLanguageControls = lang => {
+    if (langSelect) {
+      langSelect.dataset.value = lang;
+      const display = langSelect.querySelector('.dropdown-display');
+      const option = langSelect.querySelector(`.dropdown-option[data-value="${lang}"]`);
+      if (display && option) {
+        display.textContent = option.textContent;
+      }
+    }
+    if (tutorialPromptLang) {
+      tutorialPromptLang.value = lang;
+    }
+  };
+
+  const applyLanguage = lang => {
+    if (!lang) return;
+    const normalized = lang.toLowerCase();
+    const translations = window.i18n && window.i18n.translations;
+    if (translations && translations[normalized]) {
+      window.i18n.setLang(normalized);
+    } else {
+      syncLanguageControls(normalized);
+    }
+    try { localStorage.setItem('language', normalized); } catch (err) {}
+  };
+
+  if (window.i18n && typeof window.i18n.setLang === 'function') {
+    const originalSetLang = window.i18n.setLang.bind(window.i18n);
+    window.i18n.setLang = lang => {
+      originalSetLang(lang);
+      syncLanguageControls(window.i18n.lang);
+    };
   }
+
+  const initialLang = detectInitialLanguage();
+  syncLanguageControls(initialLang);
+
   if (typeof setupDropdowns === 'function') setupDropdowns();
+
   if (langSelect) {
     langSelect.addEventListener('change', () => {
       const val = langSelect.dataset.value;
-      if (window.i18n) {
-        window.i18n.setLang(val);
-        localStorage.setItem('language', val);
-      }
+      applyLanguage(val);
+    });
+  }
+
+  if (tutorialPromptLang) {
+    tutorialPromptLang.addEventListener('change', () => {
+      applyLanguage(tutorialPromptLang.value);
     });
   }
   if (menuBtn) {
