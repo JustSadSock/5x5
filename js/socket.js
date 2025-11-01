@@ -20,7 +20,6 @@ const ROOM_CODE_PATTERN = /^[A-Z0-9]{4}$/;
 const RECONNECT_BASE_DELAY_MS = 2000;
 const RECONNECT_BACKOFF_FACTOR = 1.5;
 const RECONNECT_MAX_DELAY_MS = 20000;
-const CONNECTIVITY_INTERVAL_MS = 3000;
 const CONNECTIVITY_TIMEOUT_MS = 2500;
 
 const runtimeConfig = typeof window !== 'undefined' ? (window.__CROSSLINE_RUNTIME__ || {}) : {};
@@ -32,14 +31,14 @@ const API_ORIGIN = (() => {
   return null;
 })();
 
-let connectivityTimer = null;
-let connectivityHasInitialResult = false;
+let connectivityCheckInProgress = false;
 
 const roomDisplay = typeof document !== 'undefined' ? document.getElementById('roomDisplay') : null;
 const copyRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('copyRoomCode') : null;
 const pasteRoomCodeBtn = typeof document !== 'undefined' ? document.getElementById('pasteRoomCode') : null;
 const roomInputField = typeof document !== 'undefined' ? document.getElementById('roomInput') : null;
 const onlineHint = typeof document !== 'undefined' ? document.getElementById('onlineHint') : null;
+const connectionRetryBtn = typeof document !== 'undefined' ? document.getElementById('connectionRetry') : null;
 let onlineHintDefault = null;
 let onlineHintTimer = null;
 // Connect to the dedicated WebSocket server by default. The URL can be
@@ -121,41 +120,39 @@ function showOnlineToast(type, message) {
   }, 4000);
 }
 
-function scheduleConnectivityPoll() {
-  connectivityHasInitialResult = false;
-  if (connectivityTimer) clearTimeout(connectivityTimer);
-  if (typeof fetch !== 'function' || !API_ORIGIN) return;
-  const poll = async () => {
-    const statusEl = document.getElementById('connectionStatus');
-    const currentState = statusEl ? statusEl.dataset.state : null;
-    if (
-      !connectivityHasInitialResult &&
-      statusEl &&
-      (!socket || socket.readyState !== WebSocket.OPEN) &&
-      currentState !== 'connecting' &&
-      currentState !== 'reconnecting'
-    ) {
-      updateConnectionStatus(t('checkingConnection'), 'checking');
+async function checkConnectivity(manual = false) {
+  if (connectivityCheckInProgress) return;
+  if (typeof fetch !== 'function' || !API_ORIGIN) {
+    if (manual) {
+      updateConnectionStatus(t('serverUnavailable'), 'offline');
     }
-    try {
-      const controller = typeof AbortController === 'function' ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS) : null;
-      await fetch(API_ORIGIN, { method: 'HEAD', cache: 'no-store', signal: controller ? controller.signal : undefined });
-      if (timeoutId) clearTimeout(timeoutId);
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        updateConnectionStatus(t('onlineStatus'), 'online');
-      }
-      connectivityHasInitialResult = true;
-    } catch (err) {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        updateConnectionStatus(t('serverUnavailable'), 'offline');
-      }
-      connectivityHasInitialResult = true;
-    } finally {
-      connectivityTimer = setTimeout(poll, CONNECTIVITY_INTERVAL_MS);
+    return;
+  }
+  const statusEl = document.getElementById('connectionStatus');
+  const currentState = statusEl ? statusEl.dataset.state : null;
+  if (currentState !== 'connecting' && currentState !== 'reconnecting') {
+    updateConnectionStatus(t('checkingConnection'), 'checking');
+  }
+  connectivityCheckInProgress = true;
+  if (connectionRetryBtn) {
+    connectionRetryBtn.disabled = true;
+    connectionRetryBtn.classList.add('is-loading');
+  }
+  try {
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS) : null;
+    await fetch(API_ORIGIN, { method: 'HEAD', cache: 'no-store', signal: controller ? controller.signal : undefined });
+    if (timeoutId) clearTimeout(timeoutId);
+    updateConnectionStatus(t('onlineStatus'), 'online');
+  } catch (err) {
+    updateConnectionStatus(t('serverUnavailable'), 'offline');
+  } finally {
+    connectivityCheckInProgress = false;
+    if (connectionRetryBtn) {
+      connectionRetryBtn.disabled = false;
+      connectionRetryBtn.classList.remove('is-loading');
     }
-  };
-  poll();
+  }
 }
 
 function setRoomCodeDisplay(code) {
@@ -559,7 +556,16 @@ document.addEventListener('DOMContentLoaded', () => {
   updateConnectionStatus(t('offline'), 'offline');
   resetRoomState();
   setRoomCodeDisplay(null);
-  scheduleConnectivityPoll();
+  if (connectionRetryBtn) {
+    if (typeof fetch !== 'function' || !API_ORIGIN) {
+      connectionRetryBtn.disabled = true;
+      connectionRetryBtn.setAttribute('aria-disabled', 'true');
+    } else {
+      connectionRetryBtn.addEventListener('click', () => {
+        checkConnectivity(true);
+      });
+    }
+  }
   if (pasteRoomCodeBtn) {
     if (!(navigator.clipboard && navigator.clipboard.readText) || !roomInputField) {
       pasteRoomCodeBtn.disabled = true;
